@@ -6,3 +6,4 @@ dist/
 coverage/
 backend/uploads/*
 !backend/uploads/.gitkeep
+.mongodb-atlas-uri.txt

@@ -41,14 +41,14 @@ Backend giữ kiến trúc controller → service → DAO → entity và DTO. Fr
 
 ## Chạy dự án
 
-Cần Node.js 22.12+ và MongoDB local. Mỗi thư mục có package.json và package-lock.json riêng.
+Cần Node.js 22.12+. Mỗi thư mục có package.json và package-lock.json riêng.
 
 ```powershell
 npm ci --prefix backend
 npm ci --prefix frontend
 ```
 
-Cấu hình hiện có được chuyển sang `backend/.env`, giữ database và tài khoản Admin. Với máy mới, sao chép `backend/.env.example` thành `backend/.env`, điền SESSION_SECRET ngẫu nhiên ít nhất 32 ký tự và mật khẩu seed.
+Mỗi thành viên tạo `backend/.env` từ `backend/.env.example`. Để cả nhóm dùng chung dữ liệu, điền cùng một MongoDB Atlas connection string vào `MONGODB_URI`; chuỗi kết nối không được commit hoặc gửi trong chat nhóm. Hướng dẫn tạo và phân quyền database nằm tại [docs/TEAM_MONGODB.md](docs/TEAM_MONGODB.md). `SESSION_SECRET` phải giống nhau giữa các máy khi cần chia sẻ session, nhưng không được đưa vào Git.
 
 Terminal 1 tại thư mục gốc:
 
@@ -91,7 +91,3 @@ Requests ghi gửi JSON và header `X-CSRF-Token`, cookie cùng phiên. Refresh 
 Đã hoạt động: đăng ký, đăng nhập, đăng xuất, hồ sơ, danh sách/thêm/chi tiết người dùng, danh sách/thêm/chi tiết phòng và phân công quản lý, dashboard và các trang xem dữ liệu phân quyền.
 
 Role: ADMIN (Landlord), MANAGER (Property Manager), TENANT (Tenant). Các trang hợp đồng, hóa đơn, thanh toán, tiền cọc, yêu cầu, điện nước và cấu hình vẫn chỉ xem dữ liệu. Chưa thực hiện các workflow tạo/duyệt hợp đồng, thanh toán, gửi OTP. Xem `docs/MONGODB.md` và `ROLE_PERMISSIONS.md`.
-
-## Existing repository scaffold
-
-The original `client/` and `server/` starter folders are preserved. The implemented rental management application is in `frontend/` and `backend/`; use the root commands documented above to run it.
