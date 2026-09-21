@@ -91,3 +91,7 @@ Requests ghi gửi JSON và header `X-CSRF-Token`, cookie cùng phiên. Refresh 
 Đã hoạt động: đăng ký, đăng nhập, đăng xuất, hồ sơ, danh sách/thêm/chi tiết người dùng, danh sách/thêm/chi tiết phòng và phân công quản lý, dashboard và các trang xem dữ liệu phân quyền.
 
 Role: ADMIN (Landlord), MANAGER (Property Manager), TENANT (Tenant). Các trang hợp đồng, hóa đơn, thanh toán, tiền cọc, yêu cầu, điện nước và cấu hình vẫn chỉ xem dữ liệu. Chưa thực hiện các workflow tạo/duyệt hợp đồng, thanh toán, gửi OTP. Xem `docs/MONGODB.md` và `ROLE_PERMISSIONS.md`.
+
+## Existing repository scaffold
+
+The original `client/` and `server/` starter folders are preserved. The implemented rental management application is in `frontend/` and `backend/`; use the root commands documented above to run it.
