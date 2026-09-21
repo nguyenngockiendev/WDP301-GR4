@@ -8,7 +8,7 @@ export default function Auth({ register = false }) {
     navigate = useNavigate(),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to="/dashboard" replace />;
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
@@ -17,7 +17,7 @@ export default function Auth({ register = false }) {
       const data = Object.fromEntries(new FormData(e.currentTarget));
       await send(register ? '/auth/register' : '/auth/login', data);
       await refresh();
-      navigate(register ? '/login?registered=1' : '/');
+      navigate(register ? '/login?registered=1' : '/dashboard');
     } catch (e) {
       setError(e.message);
     } finally {

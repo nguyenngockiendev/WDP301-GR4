@@ -5,7 +5,7 @@ export default function Sidebar() {
   const { user, modules } = useAuth();
   const links = user
     ? [
-        ['/', 'Overview'],
+        ['/dashboard', 'Overview'],
         ['/profile', 'My profile'],
       ]
     : [

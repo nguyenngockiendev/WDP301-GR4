@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
+import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Records from './pages/Records';
 import { ManagementList, ManagementForm, ManagementDetail } from './pages/Management';
@@ -22,10 +23,11 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
+        <Route index element={<Home />} />
         <Route path="login" element={<Auth />} />
         <Route path="register" element={<Auth register />} />
         <Route element={<Protected />}>
-          <Route index element={<Dashboard />} />
+          <Route path="dashboard" element={<Dashboard />} />
           <Route path="profile" element={<Profile />} />
           <Route path="workspace/:module" element={<Records />} />
           <Route element={<Protected roles={['ADMIN']} />}>
