@@ -1,0 +1,3 @@
+import mongoose from 'mongoose';
+import { entity, ref, money, quantity, state, shortText } from './fields.js';
+export default entity('Payment', { invoice: ref('Invoice'), tenant: ref('User'), amount: {...money(),min:1}, method: state('CASH BANK GATEWAY','CASH'), status: state('PENDING SUCCEEDED FAILED REFUNDED','PENDING'), idempotencyKey: shortText, provider: String, providerTransactionId: String, paidAt: Date, recordedBy: ref('User',false), note: String }, [[{idempotencyKey:1},{unique:true}],[{provider:1,providerTransactionId:1},{unique:true,partialFilterExpression:{providerTransactionId:{$type:'string'}}}],[{invoice:1,status:1},{}],[{status:1,paidAt:1},{}]]);
