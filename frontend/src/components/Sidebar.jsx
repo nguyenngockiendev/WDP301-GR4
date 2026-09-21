@@ -12,7 +12,7 @@ export default function Sidebar() {
         ['/login', 'Sign in'],
         ['/register', 'Create account'],
       ];
-  if (user?.role === 'ADMIN') links.push(['/users', 'People']);
+  if (user?.role === 'ADMIN') links.push(['/buildings', 'Buildings'], ['/users', 'People']);
   if (['ADMIN', 'MANAGER'].includes(user?.role)) links.push(['/rooms', 'Rooms']);
   return (
     <aside className="sidebar">

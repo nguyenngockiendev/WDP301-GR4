@@ -1,9 +1,10 @@
 import { AppError } from '../utils/errors.js';
 export class ListingService {
-  constructor(dao, roles, userDAO) {
+  constructor(dao, roles, userDAO, buildingService) {
     this.dao = dao;
     this.roles = roles;
     this.userDAO = userDAO;
+    this.buildingService = buildingService;
   }
   authorize(user) {
     if (!user || !this.roles.includes(user.role))
@@ -12,11 +13,13 @@ export class ListingService {
   async create(dto, user) {
     this.authorize(user);
     if (user.role !== 'ADMIN') throw new AppError('Only landlords can create rooms.', 403);
+    if (dto.building) await this.buildingService.detail(dto.building, user);
     return this.dao.create({
       title: dto.title,
       description: dto.description,
       price: dto.price,
       owner: user.id,
+      building: dto.building || null,
     });
   }
   async managers(user) {
@@ -36,6 +39,19 @@ export class ListingService {
         throw new AppError('The assigned account must be a property manager.');
     }
     return this.dao.assignManager(id, managerId || null);
+  }
+  async buildings(user) {
+    return user.role === 'ADMIN' ? this.buildingService.available(user) : [];
+  }
+  async assignBuilding(id, buildingId, user) {
+    this.authorize(user);
+    if (user.role !== 'ADMIN')
+      throw new AppError('Only landlords can assign rooms to buildings.', 403);
+    await this.detail(id, user);
+    if (typeof buildingId !== 'string' || (buildingId && !/^[a-f\d]{24}$/i.test(buildingId)))
+      throw new AppError('Please select a valid building.');
+    if (buildingId) await this.buildingService.detail(buildingId, user);
+    return this.dao.assignBuilding(id, buildingId || null);
   }
   async list(user, page) {
     this.authorize(user);

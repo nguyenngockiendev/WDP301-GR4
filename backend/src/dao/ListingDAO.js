@@ -6,6 +6,13 @@ export class ListingDAO {
       { new: true, runValidators: true },
     );
   }
+  assignBuilding(id, building) {
+    return this.model.findByIdAndUpdate(
+      id,
+      { $set: { building } },
+      { new: true, runValidators: true },
+    );
+  }
   constructor(model) {
     this.model = model;
   }

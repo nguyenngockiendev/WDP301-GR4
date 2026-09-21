@@ -57,7 +57,8 @@ export function ManagementList({ kind }) {
 export function ManagementForm({ kind }) {
   const navigate = useNavigate(),
     [error, setError] = useState(''),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    buildings = useData('/buildings?page=1');
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
@@ -105,6 +106,19 @@ export function ManagementForm({ kind }) {
           ) : (
             <>
               <Field name="title" label="Room name" minLength="2" maxLength="150" />
+              <label className="form-label" htmlFor="building">
+                Building
+              </label>
+              <select id="building" name="building" className="form-select mb-3">
+                <option value="">Not assigned to a building</option>
+                {(buildings.data?.items || [])
+                  .filter(b => b.status === 'ACTIVE')
+                  .map(b => (
+                    <option key={b._id} value={b._id}>
+                      {b.name} — {b.address}
+                    </option>
+                  ))}
+              </select>
               <label className="form-label" htmlFor="description">
                 Description
               </label>
@@ -160,6 +174,22 @@ export function ManagementDetail({ kind }) {
       setBusy(false);
     }
   }
+  async function assignBuilding(e) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await send(
+        '/rooms/' + id + '/building',
+        Object.fromEntries(new FormData(e.currentTarget)),
+        'PATCH',
+      );
+      setMessage('Building assignment saved.');
+    } catch (e) {
+      setMessage(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   const item = state.data?.user || state.data?.item;
   return (
     <>
@@ -183,32 +213,55 @@ export function ManagementDetail({ kind }) {
               <p>{item.status}</p>
               <p className="description">{item.description}</p>
               {user.role === 'ADMIN' && (
-                <form onSubmit={assign}>
-                  <label htmlFor="manager" className="form-label">
-                    Assign property manager
-                  </label>
-                  <select
-                    id="manager"
-                    name="manager"
-                    defaultValue={item.manager || ''}
-                    className="form-select mb-3"
-                  >
-                    <option value="">Unassigned</option>
-                    {state.data.managers.map(m => (
-                      <option key={m._id} value={m._id}>
-                        {m.name} — {m.email}
-                      </option>
-                    ))}
-                  </select>
-                  <button className="btn btn-primary" disabled={busy}>
-                    Save assignment
-                  </button>
-                  {message && (
-                    <p className="mt-3" role="status">
-                      {message}
-                    </p>
-                  )}
-                </form>
+                <>
+                  <form onSubmit={assign}>
+                    <label htmlFor="manager" className="form-label">
+                      Assign property manager
+                    </label>
+                    <select
+                      id="manager"
+                      name="manager"
+                      defaultValue={item.manager || ''}
+                      className="form-select mb-3"
+                    >
+                      <option value="">Unassigned</option>
+                      {state.data.managers.map(m => (
+                        <option key={m._id} value={m._id}>
+                          {m.name} — {m.email}
+                        </option>
+                      ))}
+                    </select>
+                    <button className="btn btn-primary" disabled={busy}>
+                      Save assignment
+                    </button>
+                    {message && (
+                      <p className="mt-3" role="status">
+                        {message}
+                      </p>
+                    )}
+                  </form>
+                  <form className="mt-4" onSubmit={assignBuilding}>
+                    <label htmlFor="building" className="form-label">
+                      Assign building
+                    </label>
+                    <select
+                      id="building"
+                      name="building"
+                      defaultValue={item.building || ''}
+                      className="form-select mb-3"
+                    >
+                      <option value="">Not assigned to a building</option>
+                      {(state.data.buildings || []).map(b => (
+                        <option key={b._id} value={b._id}>
+                          {b.name} — {b.address}
+                        </option>
+                      ))}
+                    </select>
+                    <button className="btn btn-primary" disabled={busy}>
+                      Save building
+                    </button>
+                  </form>
+                </>
               )}
             </>
           )}

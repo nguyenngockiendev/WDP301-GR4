@@ -5,17 +5,21 @@ import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import { UserDAO } from './dao/UserDAO.js';
 import { ListingDAO } from './dao/ListingDAO.js';
+import { BuildingDAO } from './dao/BuildingDAO.js';
 import { WorkspaceDAO } from './dao/WorkspaceDAO.js';
 import { UserService } from './services/UserService.js';
 import { ListingService } from './services/ListingService.js';
+import { BuildingService } from './services/BuildingService.js';
 import { WorkspaceService } from './services/WorkspaceService.js';
 import { AuthController } from './controllers/AuthController.js';
 import { UserController } from './controllers/UserController.js';
 import { ListingController } from './controllers/ListingController.js';
+import { BuildingController } from './controllers/BuildingController.js';
 import { WorkspaceController } from './controllers/WorkspaceController.js';
 import { USER_ROLES } from './config/roles.js';
 import { modules } from './config/modules.js';
 import Room from './entities/Room.js';
+import Building from './entities/Building.js';
 import { csrf, requireAuth, roles } from './middleware/security.js';
 export function createApp({ mongoUrl, secret, store, production = false }) {
   if (!secret || secret.length < 32)
@@ -79,14 +83,22 @@ export function createApp({ mongoUrl, secret, store, production = false }) {
   app.get('/api/users', roles('ADMIN'), users.list);
   app.post('/api/users', roles('ADMIN'), users.create);
   app.get('/api/users/:id', roles('ADMIN'), users.detail);
+  const buildingService = new BuildingService(new BuildingDAO(Building, Room));
+  const buildings = new BuildingController(buildingService);
+  app.get('/api/buildings', roles('ADMIN'), buildings.list);
+  app.post('/api/buildings', roles('ADMIN'), buildings.create);
+  app.get('/api/buildings/:id', roles('ADMIN'), buildings.detail);
+  app.patch('/api/buildings/:id', roles('ADMIN'), buildings.update);
+  app.delete('/api/buildings/:id', roles('ADMIN'), buildings.remove);
   const rooms = new ListingController(
-    new ListingService(new ListingDAO(Room), ['ADMIN', 'MANAGER'], new UserDAO()),
+    new ListingService(new ListingDAO(Room), ['ADMIN', 'MANAGER'], new UserDAO(), buildingService),
   );
   app.use('/api/rooms', roles('ADMIN', 'MANAGER'));
   app.get('/api/rooms', rooms.list);
   app.post('/api/rooms', roles('ADMIN'), rooms.create);
   app.get('/api/rooms/:id', rooms.detail);
   app.patch('/api/rooms/:id/manager', roles('ADMIN'), rooms.assign);
+  app.patch('/api/rooms/:id/building', roles('ADMIN'), rooms.assignBuilding);
   const workspace = new WorkspaceController(new WorkspaceService(new WorkspaceDAO()));
   app.get('/api/dashboard', workspace.dashboard);
   app.get('/api/workspace/:module', workspace.list);
