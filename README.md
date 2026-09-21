@@ -1,2 +1,2 @@
 ﻿# WDP301-GR4
-Smart Apartment Management 
+Smart rental management system
