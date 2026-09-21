@@ -4,28 +4,28 @@ Database local: `boarding_house`. Chạy `npm --prefix backend run db:init` đ�
 
 ## Collection và use case
 
-| Collection | Nội dung | Use case |
-|---|---|---|
-| users | Tài khoản, hash mật khẩu, role, emailVerifiedAt, active | 1–6, 9 |
-| otpchallenges | Hash OTP, mục đích xác thực/reset, số lần thử, hạn dùng | 4, 5, 40 |
-| buildings | Dãy trọ, địa chỉ, chủ trọ, quản lý được phân công | 7, 10 |
-| rooms | Phòng, dãy, mã phòng, giá thuê, trạng thái, diện tích/sức chứa | 8, 13, 17, 33 |
-| tenantprofiles | Hồ sơ người thuê, liên hệ khẩn cấp | 11 |
-| rentalrequests | Yêu cầu thuê, trạng thái và người xử lý | 18–20 |
-| contracts | Hợp đồng, kỳ thuê, tiền thuê/cọc, người duyệt, bản chụp chính sách/phí | 12, 21, 22, 34 |
-| utilityrates | Đơn giá điện nước theo dãy và ngày hiệu lực | 14 |
-| servicefees | Dịch vụ/phí theo dãy, đơn vị tháng/người/sử dụng | 15 |
-| contractpolicies | Chính sách theo dãy và phiên bản | 16 |
-| utilityreadings | Chỉ số cũ/mới điện nước theo phòng và tháng | 23 |
-| checkoutrequests | Yêu cầu trả phòng | 24, 37 |
-| checkoutsettlements | Kiểm tra phòng, công nợ, khấu trừ cọc, hoàn trả | 25 |
-| deposittransactions | Sổ tiền cọc: nhận, cấn trừ, hoàn | 26 |
-| invoices | Hóa đơn tháng, dòng tiền phòng/điện/nước/phí, tổng tiền | 27, 30, 32, 35 |
-| payments | Khoản thanh toán, trạng thái, mã chống xử lý trùng | 28–31, 38, 39, 41 |
-| paymentevents | Tiếp nhận sự kiện cổng thanh toán, trạng thái xác minh/xử lý | 29, 41 |
-| notifications | Thông báo trong ứng dụng, thời điểm đã đọc | 27, 36 |
-| emaildeliveries | Hàng đợi/nhật ký gửi email và thử lại | 27, 40 |
-| auditlogs | Nhật ký người thao tác trên dữ liệu nghiệp vụ | Theo dõi quản trị |
+| Collection          | Nội dung                                                               | Use case          |
+| ------------------- | ---------------------------------------------------------------------- | ----------------- |
+| users               | Tài khoản, hash mật khẩu, role, emailVerifiedAt, active                | 1–6, 9            |
+| otpchallenges       | Hash OTP, mục đích xác thực/reset, số lần thử, hạn dùng                | 4, 5, 40          |
+| buildings           | Dãy trọ, địa chỉ, chủ trọ, quản lý được phân công                      | 7, 10             |
+| rooms               | Phòng, dãy, mã phòng, giá thuê, trạng thái, diện tích/sức chứa         | 8, 13, 17, 33     |
+| tenantprofiles      | Hồ sơ người thuê, liên hệ khẩn cấp                                     | 11                |
+| rentalrequests      | Yêu cầu thuê, trạng thái và người xử lý                                | 18–20             |
+| contracts           | Hợp đồng, kỳ thuê, tiền thuê/cọc, người duyệt, bản chụp chính sách/phí | 12, 21, 22, 34    |
+| utilityrates        | Đơn giá điện nước theo dãy và ngày hiệu lực                            | 14                |
+| servicefees         | Dịch vụ/phí theo dãy, đơn vị tháng/người/sử dụng                       | 15                |
+| contractpolicies    | Chính sách theo dãy và phiên bản                                       | 16                |
+| utilityreadings     | Chỉ số cũ/mới điện nước theo phòng và tháng                            | 23                |
+| checkoutrequests    | Yêu cầu trả phòng                                                      | 24, 37            |
+| checkoutsettlements | Kiểm tra phòng, công nợ, khấu trừ cọc, hoàn trả                        | 25                |
+| deposittransactions | Sổ tiền cọc: nhận, cấn trừ, hoàn                                       | 26                |
+| invoices            | Hóa đơn tháng, dòng tiền phòng/điện/nước/phí, tổng tiền                | 27, 30, 32, 35    |
+| payments            | Khoản thanh toán, trạng thái, mã chống xử lý trùng                     | 28–31, 38, 39, 41 |
+| paymentevents       | Tiếp nhận sự kiện cổng thanh toán, trạng thái xác minh/xử lý           | 29, 41            |
+| notifications       | Thông báo trong ứng dụng, thời điểm đã đọc                             | 27, 36            |
+| emaildeliveries     | Hàng đợi/nhật ký gửi email và thử lại                                  | 27, 40            |
+| auditlogs           | Nhật ký người thao tác trên dữ liệu nghiệp vụ                          | Theo dõi quản trị |
 
 Collection sessions do connect-mongo quản lý khi ứng dụng chạy, không phải entity nghiệp vụ.
 

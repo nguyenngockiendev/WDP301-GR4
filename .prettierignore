@@ -1,0 +1,8 @@
+backend/node_modules/
+backend/uploads/
+frontend/dist/
+frontend/node_modules/
+node_modules/
+*.min.css
+*.min.js
+package-lock.json

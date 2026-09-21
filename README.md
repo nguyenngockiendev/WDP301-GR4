@@ -71,7 +71,10 @@ npm --prefix backend run db:init
 npm --prefix backend run seed
 npm test
 npm run build
+npm run format:check
 ```
+
+Code style is enforced by Prettier for every source, JSON, CSS and Markdown file. Run `npm run format` before committing; it keeps imports, objects, functions and JSX consistently spaced and split into readable lines.
 
 Seed không ghi đè tài khoản đã có. Build React tạo `frontend/dist`. Production cần web server phục vụ dist, fallback index.html cho React routes và reverse proxy `/api` về backend, dùng HTTPS và cấu hình trust proxy phù hợp; Vite dev proxy không phải cấu hình production.
 
