@@ -135,6 +135,46 @@ test('Room API enforces creation and assignment permissions', async () => {
     .expect(200);
   await manager.get(url).expect(404);
 });
+test('Landlord can manage buildings and assign rooms to an owned building', async () => {
+  const admin = await login('admin@test.com');
+  const csrf = await token(admin);
+  const building = await admin
+    .post('/api/buildings')
+    .set('X-CSRF-Token', csrf)
+    .send({ name: 'Sunrise House', address: '1 Main Street', status: 'ACTIVE' })
+    .expect(201);
+  const buildingId = String(building.body.item._id);
+  await admin
+    .patch('/api/buildings/' + buildingId)
+    .set('X-CSRF-Token', csrf)
+    .send({ name: 'Sunrise House', address: '2 Main Street', status: 'INACTIVE' })
+    .expect(200);
+  const room = await admin
+    .post('/api/rooms')
+    .set('X-CSRF-Token', csrf)
+    .send({ title: 'Room in building', description: 'Room for building test', price: 2500000 })
+    .expect(201);
+  await admin
+    .patch('/api/rooms/' + room.body.item._id + '/building')
+    .set('X-CSRF-Token', csrf)
+    .send({ building: buildingId })
+    .expect(200);
+  await admin
+    .delete('/api/buildings/' + buildingId)
+    .set('X-CSRF-Token', csrf)
+    .expect(409);
+  await admin
+    .patch('/api/rooms/' + room.body.item._id + '/building')
+    .set('X-CSRF-Token', csrf)
+    .send({ building: '' })
+    .expect(200);
+  await admin
+    .delete('/api/buildings/' + buildingId)
+    .set('X-CSRF-Token', csrf)
+    .expect(204);
+  const manager = await login('manager@test.com');
+  await manager.get('/api/buildings').expect(403);
+});
 test('Dashboard and workspace JSON are scoped to the signed-in user', async () => {
   const admin = await login('admin@test.com'),
     tenant = await login('tenant@test.com');

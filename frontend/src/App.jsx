@@ -8,6 +8,7 @@ import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Records from './pages/Records';
 import { ManagementList, ManagementForm, ManagementDetail } from './pages/Management';
+import { BuildingsList, BuildingForm, BuildingDetail } from './pages/Buildings';
 function Protected({ roles }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -34,6 +35,10 @@ export default function App() {
             <Route path="users" element={<ManagementList kind="users" />} />
             <Route path="users/new" element={<ManagementForm kind="users" />} />
             <Route path="users/:id" element={<ManagementDetail kind="users" />} />
+            <Route path="buildings" element={<BuildingsList />} />
+            <Route path="buildings/new" element={<BuildingForm />} />
+            <Route path="buildings/:id" element={<BuildingDetail />} />
+            <Route path="buildings/:id/edit" element={<BuildingForm />} />
             <Route path="rooms/new" element={<ManagementForm kind="rooms" />} />
           </Route>
           <Route element={<Protected roles={['ADMIN', 'MANAGER']} />}>

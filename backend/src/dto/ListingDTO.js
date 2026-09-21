@@ -9,5 +9,11 @@ export class ListingDTO {
     this.price = Number(body.price);
     if (!Number.isSafeInteger(this.price) || this.price < 0 || this.price > 1000000000)
       throw new AppError('Price must be a whole number between 0 and 1 billion VND.');
+    this.building = body.building || '';
+    if (
+      typeof this.building !== 'string' ||
+      (this.building && !/^[a-f\d]{24}$/i.test(this.building))
+    )
+      throw new AppError('Please select a valid building.');
   }
 }
