@@ -22,9 +22,9 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <Link className="brand" to="/">
-        <span className="brand-icon">h.</span>
+        <span className="brand-icon">SR</span>
         <span>
-          haven<span className="brand-sub">PROPERTY WORKSPACE</span>
+          Smart Rental<span className="brand-sub">MANAGEMENT SYSTEM</span>
         </span>
       </Link>
       <nav aria-label="Main navigation">
@@ -61,7 +61,7 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <div className="sidebar-note">Your everyday property workspace</div>
+      <div className="sidebar-note">Smart operations for every rental home</div>
     </aside>
   );
 }
