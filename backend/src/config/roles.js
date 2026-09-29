@@ -1,5 +1,5 @@
 export const ROLE_LABELS = Object.freeze({
-  ADMIN: 'Landlord',
+  LANDLORD: 'Landlord',
   MANAGER: 'Property Manager',
   TENANT: 'Tenant',
 });

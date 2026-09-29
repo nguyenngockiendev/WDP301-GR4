@@ -2,7 +2,7 @@
 
 | Mã vai trò | Tên hiển thị    | Quyền hiện có                                                                  |
 | ---------- | --------------- | ------------------------------------------------------------------------------ |
-| ADMIN      | Chủ trọ         | Quản lý tài khoản, tạo phòng, xem tất cả phòng, phân công/đổi/gỡ quản lý phòng |
+| LANDLORD   | Chủ trọ         | Quản lý tài khoản, tạo phòng, xem tất cả phòng, phân công/đổi/gỡ quản lý phòng |
 | MANAGER    | Quản lý dãy trọ | Xem danh sách và chi tiết phòng được phân công, cập nhật hồ sơ cá nhân         |
 | TENANT     | Người thuê      | Đăng ký, đăng nhập, cập nhật hồ sơ cá nhân                                     |
 

@@ -1,4 +1,4 @@
-import { CreateUserDTO } from '../dto/UserDTO.js';
+import { ChangeRoleDTO, CreateUserDTO } from '../dto/UserDTO.js';
 export function pageNumber(value) {
   const n = Number(value);
   return Number.isSafeInteger(n) && n > 0 ? Math.min(n, 10000) : 1;
@@ -25,5 +25,13 @@ export class UserController {
     const user = await this.service.create(new CreateUserDTO(req.body, true));
 
     res.status(201).json({ user });
+  };
+  changeRole = async (req, res) => {
+    const user = await this.service.changeRole(
+      req.params.id,
+      new ChangeRoleDTO(req.body),
+      req.user,
+    );
+    res.json({ user });
   };
 }

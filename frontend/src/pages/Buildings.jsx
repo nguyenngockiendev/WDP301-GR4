@@ -138,6 +138,22 @@ export function BuildingDetail() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const item = state.data?.item;
+  async function assignManager(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await send(
+        '/buildings/' + id + '/manager',
+        Object.fromEntries(new FormData(event.currentTarget)),
+        'PATCH',
+      );
+      window.location.reload();
+    } catch (e) {
+      setError(e.message);
+      setBusy(false);
+    }
+  }
   async function remove() {
     if (!window.confirm('Delete this building? Rooms must be moved first.')) return;
     setBusy(true);
@@ -163,6 +179,27 @@ export function BuildingDetail() {
             <dt>Status</dt>
             <dd>{item.status}</dd>
           </dl>
+          <form className="mb-4" onSubmit={assignManager}>
+            <label className="form-label" htmlFor="manager">
+              Assign property manager
+            </label>
+            <select
+              id="manager"
+              name="manager"
+              className="form-select mb-3"
+              defaultValue={item.manager || ''}
+            >
+              <option value="">Unassigned</option>
+              {(state.data.managers || []).map(manager => (
+                <option key={manager._id} value={manager._id}>
+                  {manager.name} — {manager.email}
+                </option>
+              ))}
+            </select>
+            <button className="btn btn-primary" disabled={busy}>
+              Save assignment
+            </button>
+          </form>
           {error && (
             <p role="alert" className="alert alert-danger">
               {error}

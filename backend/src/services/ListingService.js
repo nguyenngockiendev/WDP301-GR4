@@ -12,7 +12,7 @@ export class ListingService {
   }
   async create(dto, user) {
     this.authorize(user);
-    if (user.role !== 'ADMIN') throw new AppError('Only landlords can create rooms.', 403);
+    if (user.role !== 'LANDLORD') throw new AppError('Only landlords can create rooms.', 403);
     if (dto.building) await this.buildingService.detail(dto.building, user);
     return this.dao.create({
       title: dto.title,
@@ -24,12 +24,12 @@ export class ListingService {
   }
   async managers(user) {
     this.authorize(user);
-    if (user.role !== 'ADMIN') return [];
+    if (user.role !== 'LANDLORD') return [];
     return this.userDAO.managers();
   }
   async assign(id, managerId, user) {
     this.authorize(user);
-    if (user.role !== 'ADMIN') throw new AppError('Only landlords can assign managers.', 403);
+    if (user.role !== 'LANDLORD') throw new AppError('Only landlords can assign managers.', 403);
     await this.detail(id, user);
     if (typeof managerId !== 'string' || (managerId !== '' && !/^[a-f\d]{24}$/i.test(managerId)))
       throw new AppError('Please select a valid manager.');
@@ -41,11 +41,11 @@ export class ListingService {
     return this.dao.assignManager(id, managerId || null);
   }
   async buildings(user) {
-    return user.role === 'ADMIN' ? this.buildingService.available(user) : [];
+    return user.role === 'LANDLORD' ? this.buildingService.available(user) : [];
   }
   async assignBuilding(id, buildingId, user) {
     this.authorize(user);
-    if (user.role !== 'ADMIN')
+    if (user.role !== 'LANDLORD')
       throw new AppError('Only landlords can assign rooms to buildings.', 403);
     await this.detail(id, user);
     if (typeof buildingId !== 'string' || (buildingId && !/^[a-f\d]{24}$/i.test(buildingId)))
@@ -55,7 +55,7 @@ export class ListingService {
   }
   async list(user, page) {
     this.authorize(user);
-    const filter = user.role === 'ADMIN' ? {} : { manager: user.id };
+    const filter = user.role === 'LANDLORD' ? {} : { manager: user.id };
     return {
       items: await this.dao.list(filter, (page - 1) * 10, 10),
       total: await this.dao.count(filter),
@@ -65,7 +65,7 @@ export class ListingService {
     this.authorize(user);
     if (!/^[a-f\d]{24}$/i.test(id)) throw new AppError('Record not found.', 404);
     const item = await this.dao.findById(id);
-    if (!item || (user.role !== 'ADMIN' && String(item.manager) !== user.id))
+    if (!item || (user.role !== 'LANDLORD' && String(item.manager) !== user.id))
       throw new AppError('Record not found.', 404);
     return item;
   }

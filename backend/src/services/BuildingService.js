@@ -3,11 +3,12 @@ import { AppError } from '../utils/errors.js';
 const validId = id => typeof id === 'string' && /^[a-f\d]{24}$/i.test(id);
 
 export class BuildingService {
-  constructor(dao) {
+  constructor(dao, userDAO) {
     this.dao = dao;
+    this.userDAO = userDAO;
   }
   authorize(user) {
-    if (user?.role !== 'ADMIN') throw new AppError('Only landlords can manage buildings.', 403);
+    if (user?.role !== 'LANDLORD') throw new AppError('Only landlords can manage buildings.', 403);
   }
   async detail(id, user) {
     this.authorize(user);
@@ -50,5 +51,20 @@ export class BuildingService {
   async available(user) {
     this.authorize(user);
     return this.dao.available(user.id);
+  }
+  async managers(user) {
+    this.authorize(user);
+    return this.userDAO.managers();
+  }
+  async assignManager(id, managerId, user) {
+    await this.detail(id, user);
+    if (typeof managerId !== 'string' || (managerId && !validId(managerId)))
+      throw new AppError('Please select a valid manager.');
+    if (managerId) {
+      const manager = await this.userDAO.findById(managerId);
+      if (!manager || manager.role !== 'MANAGER')
+        throw new AppError('The assigned account must be a property manager.');
+    }
+    return this.dao.assignManager(id, managerId || null);
   }
 }

@@ -34,7 +34,7 @@ before(async () => {
     store: new session.MemoryStore(),
   });
   for (const [email, role] of [
-    ['admin@test.com', 'ADMIN'],
+    ['landlord@test.com', 'LANDLORD'],
     ['manager@test.com', 'MANAGER'],
     ['other@test.com', 'MANAGER'],
     ['tenant@test.com', 'TENANT'],
@@ -54,7 +54,7 @@ test('JSON session, registration, login rotation, profile whitelist and logout',
   await agent
     .post('/api/auth/register')
     .set('X-CSRF-Token', csrf)
-    .send({ name: 'New Tenant', email: 'new@test.com', password, role: 'ADMIN' })
+    .send({ name: 'New Tenant', email: 'new@test.com', password, role: 'LANDLORD' })
     .expect(201);
   assert.equal((await User.findOne({ email: 'new@test.com' })).role, 'TENANT');
   await agent
@@ -72,7 +72,7 @@ test('JSON session, registration, login rotation, profile whitelist and logout',
   const result = await agent
     .patch('/api/profile')
     .set('X-CSRF-Token', fresh)
-    .send({ name: 'Changed', role: 'ADMIN', email: 'hacked@test.com' })
+    .send({ name: 'Changed', role: 'LANDLORD', email: 'hacked@test.com' })
     .expect(200);
   assert.equal(result.body.user.role, 'TENANT');
   assert.equal(result.body.user.email, 'new@test.com');
@@ -80,7 +80,7 @@ test('JSON session, registration, login rotation, profile whitelist and logout',
   await agent.get('/api/dashboard').expect(401);
 });
 test('Landlord user API rejects legacy roles and omits password hash', async () => {
-  const admin = await login('admin@test.com'),
+  const admin = await login('landlord@test.com'),
     csrf = await token(admin);
   const created = await admin
     .post('/api/users')
@@ -98,8 +98,25 @@ test('Landlord user API rejects legacy roles and omits password hash', async () 
   const tenant = await login('tenant@test.com');
   await tenant.get('/api/users').expect(403);
 });
+test('Landlord can change another account role but cannot change their own role', async () => {
+  const landlord = await login('landlord@test.com');
+  const manager = await User.findOne({ email: 'manager@test.com' });
+  await landlord
+    .patch('/api/users/' + manager._id + '/role')
+    .set('X-CSRF-Token', await token(landlord))
+    .send({ role: 'TENANT' })
+    .expect(200);
+  assert.equal((await User.findById(manager._id)).role, 'TENANT');
+  const landlordUser = await User.findOne({ email: 'landlord@test.com' });
+  await landlord
+    .patch('/api/users/' + landlordUser._id + '/role')
+    .set('X-CSRF-Token', await token(landlord))
+    .send({ role: 'TENANT' })
+    .expect(400);
+  await User.findByIdAndUpdate(manager._id, { $set: { role: 'MANAGER' } });
+});
 test('Room API enforces creation and assignment permissions', async () => {
-  const admin = await login('admin@test.com'),
+  const admin = await login('landlord@test.com'),
     manager = await login('manager@test.com'),
     other = await login('other@test.com');
   const csrf = await token(admin);
@@ -136,7 +153,7 @@ test('Room API enforces creation and assignment permissions', async () => {
   await manager.get(url).expect(404);
 });
 test('Landlord can manage buildings and assign rooms to an owned building', async () => {
-  const admin = await login('admin@test.com');
+  const admin = await login('landlord@test.com');
   const csrf = await token(admin);
   const building = await admin
     .post('/api/buildings')
@@ -176,7 +193,7 @@ test('Landlord can manage buildings and assign rooms to an owned building', asyn
   await manager.get('/api/buildings').expect(403);
 });
 test('Dashboard and workspace JSON are scoped to the signed-in user', async () => {
-  const admin = await login('admin@test.com'),
+  const admin = await login('landlord@test.com'),
     tenant = await login('tenant@test.com');
   await admin.get('/api/dashboard').expect(200);
   for (const key of [
@@ -196,7 +213,7 @@ test('Dashboard and workspace JSON are scoped to the signed-in user', async () =
     await admin.get('/api/workspace/' + key).expect(200);
   await tenant.get('/api/workspace/rates').expect(403);
   const tu = await User.findOne({ email: 'tenant@test.com' }),
-    au = await User.findOne({ email: 'admin@test.com' });
+    au = await User.findOne({ email: 'landlord@test.com' });
   await Notification.create({ recipient: tu._id, title: 'Tenant private', body: 'Tenant only' });
   await Notification.create({ recipient: au._id, title: 'Admin private', body: 'Admin only' });
   const result = await tenant.get('/api/workspace/notifications').expect(200);

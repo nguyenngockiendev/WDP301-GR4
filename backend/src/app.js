@@ -10,11 +10,13 @@ import { WorkspaceDAO } from './dao/WorkspaceDAO.js';
 import { UserService } from './services/UserService.js';
 import { ListingService } from './services/ListingService.js';
 import { BuildingService } from './services/BuildingService.js';
+import { ReportService } from './services/ReportService.js';
 import { WorkspaceService } from './services/WorkspaceService.js';
 import { AuthController } from './controllers/AuthController.js';
 import { UserController } from './controllers/UserController.js';
 import { ListingController } from './controllers/ListingController.js';
 import { BuildingController } from './controllers/BuildingController.js';
+import { ReportController } from './controllers/ReportController.js';
 import { WorkspaceController } from './controllers/WorkspaceController.js';
 import { USER_ROLES } from './config/roles.js';
 import { modules } from './config/modules.js';
@@ -80,27 +82,36 @@ export function createApp({ mongoUrl, secret, store, production = false }) {
   app.use('/api', requireAuth);
   app.post('/api/auth/logout', auth.logout);
   app.patch('/api/profile', auth.profile);
-  app.get('/api/users', roles('ADMIN'), users.list);
-  app.post('/api/users', roles('ADMIN'), users.create);
-  app.get('/api/users/:id', roles('ADMIN'), users.detail);
-  const buildingService = new BuildingService(new BuildingDAO(Building, Room));
+  app.get('/api/users', roles('LANDLORD'), users.list);
+  app.post('/api/users', roles('LANDLORD'), users.create);
+  app.get('/api/users/:id', roles('LANDLORD'), users.detail);
+  app.patch('/api/users/:id/role', roles('LANDLORD'), users.changeRole);
+  const buildingService = new BuildingService(new BuildingDAO(Building, Room), new UserDAO());
   const buildings = new BuildingController(buildingService);
-  app.get('/api/buildings', roles('ADMIN'), buildings.list);
-  app.post('/api/buildings', roles('ADMIN'), buildings.create);
-  app.get('/api/buildings/:id', roles('ADMIN'), buildings.detail);
-  app.patch('/api/buildings/:id', roles('ADMIN'), buildings.update);
-  app.delete('/api/buildings/:id', roles('ADMIN'), buildings.remove);
+  app.get('/api/buildings', roles('LANDLORD'), buildings.list);
+  app.post('/api/buildings', roles('LANDLORD'), buildings.create);
+  app.get('/api/buildings/:id', roles('LANDLORD'), buildings.detail);
+  app.patch('/api/buildings/:id', roles('LANDLORD'), buildings.update);
+  app.delete('/api/buildings/:id', roles('LANDLORD'), buildings.remove);
+  app.patch('/api/buildings/:id/manager', roles('LANDLORD'), buildings.assignManager);
   const rooms = new ListingController(
-    new ListingService(new ListingDAO(Room), ['ADMIN', 'MANAGER'], new UserDAO(), buildingService),
+    new ListingService(
+      new ListingDAO(Room),
+      ['LANDLORD', 'MANAGER'],
+      new UserDAO(),
+      buildingService,
+    ),
   );
-  app.use('/api/rooms', roles('ADMIN', 'MANAGER'));
+  app.use('/api/rooms', roles('LANDLORD', 'MANAGER'));
   app.get('/api/rooms', rooms.list);
-  app.post('/api/rooms', roles('ADMIN'), rooms.create);
+  app.post('/api/rooms', roles('LANDLORD'), rooms.create);
   app.get('/api/rooms/:id', rooms.detail);
-  app.patch('/api/rooms/:id/manager', roles('ADMIN'), rooms.assign);
-  app.patch('/api/rooms/:id/building', roles('ADMIN'), rooms.assignBuilding);
+  app.patch('/api/rooms/:id/manager', roles('LANDLORD'), rooms.assign);
+  app.patch('/api/rooms/:id/building', roles('LANDLORD'), rooms.assignBuilding);
   const workspace = new WorkspaceController(new WorkspaceService(new WorkspaceDAO()));
+  const reports = new ReportController(new ReportService(new WorkspaceDAO()));
   app.get('/api/dashboard', workspace.dashboard);
+  app.get('/api/reports', roles('LANDLORD'), reports.summary);
   app.get('/api/workspace/:module', workspace.list);
   app.use((req, res) => res.status(404).json({ message: 'Not found.' }));
   app.use((error, req, res, next) => {

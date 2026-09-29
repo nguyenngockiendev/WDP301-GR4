@@ -7,7 +7,7 @@ export class WorkspaceService {
   }
   async scope(user) {
     const uid = new mongoose.Types.ObjectId(user.id);
-    if (user.role === 'ADMIN') return { uid };
+    if (user.role === 'LANDLORD') return { uid };
     const roomIds = user.role === 'MANAGER' ? await this.dao.ids('Room', { manager: uid }) : [];
     const contractFilter = user.role === 'TENANT' ? { tenant: uid } : { room: { $in: roomIds } };
     const contractIds = await this.dao.ids('Contract', contractFilter);
@@ -15,7 +15,7 @@ export class WorkspaceService {
   }
   filter(model, user, s) {
     if (model === 'Notification') return { recipient: s.uid };
-    if (user.role === 'ADMIN') return {};
+    if (user.role === 'LANDLORD') return {};
     if (model === 'Building') return { manager: s.uid };
     if (model === 'Room') return { _id: { $in: s.roomIds } };
     if (['DepositTransaction', 'CheckoutRequest'].includes(model))

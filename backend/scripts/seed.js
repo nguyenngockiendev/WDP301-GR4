@@ -8,9 +8,9 @@ try {
   const dto = new CreateUserDTO(
     {
       name: 'Chủ trọ',
-      email: process.env.SEED_ADMIN_EMAIL,
-      password: process.env.SEED_ADMIN_PASSWORD,
-      role: 'ADMIN',
+      email: process.env.SEED_LANDLORD_EMAIL,
+      password: process.env.SEED_LANDLORD_PASSWORD,
+      role: 'LANDLORD',
     },
     true,
   );

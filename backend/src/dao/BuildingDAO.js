@@ -25,6 +25,11 @@ export class BuildingDAO {
       .findByIdAndUpdate(id, { $set: data }, { new: true, runValidators: true })
       .lean();
   }
+  assignManager(id, manager) {
+    return this.model
+      .findByIdAndUpdate(id, { $set: { manager } }, { new: true, runValidators: true })
+      .lean();
+  }
   delete(id) {
     return this.model.findByIdAndDelete(id).lean();
   }
