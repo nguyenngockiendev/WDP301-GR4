@@ -10,7 +10,7 @@ export function ManagementList({ kind }) {
   return (
     <>
       <Heading>{kind === 'users' ? 'People' : 'Rooms'}</Heading>
-      {user.role === 'ADMIN' && (
+      {user.role === 'LANDLORD' && (
         <Link className="btn btn-primary mb-4" to={'/' + kind + '/new'}>
           + Add {kind === 'users' ? 'user' : 'room'}
         </Link>
@@ -100,7 +100,7 @@ export function ManagementForm({ kind }) {
               <select id="role" name="role" className="form-select mb-4">
                 <option value="TENANT">Tenant</option>
                 <option value="MANAGER">Property Manager</option>
-                <option value="ADMIN">Landlord</option>
+                <option value="LANDLORD">Landlord</option>
               </select>
             </>
           ) : (
@@ -190,6 +190,24 @@ export function ManagementDetail({ kind }) {
       setBusy(false);
     }
   }
+  async function changeRole(e) {
+    e.preventDefault();
+    setBusy(true);
+    setMessage('');
+    try {
+      await send(
+        '/users/' + id + '/role',
+        Object.fromEntries(new FormData(e.currentTarget)),
+        'PATCH',
+      );
+      setMessage('Account role saved.');
+      window.setTimeout(() => window.location.reload(), 500);
+    } catch (e) {
+      setMessage(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   const item = state.data?.user || state.data?.item;
   return (
     <>
@@ -199,20 +217,42 @@ export function ManagementDetail({ kind }) {
         <div className="card form-card p-4">
           <h2 className="h4">{item.name || item.title}</h2>
           {kind === 'users' ? (
-            <dl>
-              <dt>Email</dt>
-              <dd>{item.email}</dd>
-              <dt>Phone</dt>
-              <dd>{item.phone || 'Not provided'}</dd>
-              <dt>Role</dt>
-              <dd>{item.roleLabel}</dd>
-            </dl>
+            <>
+              <dl>
+                <dt>Email</dt>
+                <dd>{item.email}</dd>
+                <dt>Phone</dt>
+                <dd>{item.phone || 'Not provided'}</dd>
+                <dt>Role</dt>
+                <dd>
+                  <span className="role-badge">{item.roleLabel}</span>
+                </dd>
+              </dl>
+              {user.role === 'LANDLORD' && user.id !== item.id && (
+                <form className="role-editor" onSubmit={changeRole}>
+                  <label htmlFor="role" className="form-label">
+                    Account role
+                  </label>
+                  <div className="role-editor-row">
+                    <select id="role" name="role" className="form-select" defaultValue={item.role}>
+                      <option value="TENANT">Tenant</option>
+                      <option value="MANAGER">Property Manager</option>
+                      <option value="LANDLORD">Landlord</option>
+                    </select>
+                    <button className="btn btn-primary" disabled={busy}>
+                      Save role
+                    </button>
+                  </div>
+                  <p>Changing the role updates this account’s access immediately.</p>
+                </form>
+              )}
+            </>
           ) : (
             <>
               <p className="h4 text-primary my-3">{format(item.price, 'price')} / month</p>
               <p>{item.status}</p>
               <p className="description">{item.description}</p>
-              {user.role === 'ADMIN' && (
+              {user.role === 'LANDLORD' && (
                 <>
                   <form onSubmit={assign}>
                     <label htmlFor="manager" className="form-label">

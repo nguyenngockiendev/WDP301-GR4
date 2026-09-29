@@ -12,8 +12,13 @@ export default function Sidebar() {
         ['/login', 'Sign in'],
         ['/register', 'Create account'],
       ];
-  if (user?.role === 'ADMIN') links.push(['/buildings', 'Buildings'], ['/users', 'People']);
-  if (['ADMIN', 'MANAGER'].includes(user?.role)) links.push(['/rooms', 'Rooms']);
+  if (user?.role === 'LANDLORD')
+    links.push(
+      ['/buildings', 'Rental houses'],
+      ['/users', 'Accounts'],
+      ['/reports', 'Business reports'],
+    );
+  if (['LANDLORD', 'MANAGER'].includes(user?.role)) links.push(['/rooms', 'Rooms']);
   return (
     <aside className="sidebar">
       <Link className="brand" to="/">

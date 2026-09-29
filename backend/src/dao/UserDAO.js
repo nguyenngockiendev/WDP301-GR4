@@ -21,4 +21,7 @@ export class UserDAO {
   updateProfile(id, data) {
     return User.findByIdAndUpdate(id, { $set: data }, { new: true, runValidators: true });
   }
+  updateRole(id, role) {
+    return User.findByIdAndUpdate(id, { $set: { role } }, { new: true, runValidators: true });
+  }
 }

@@ -9,6 +9,7 @@ import Profile from './pages/Profile';
 import Records from './pages/Records';
 import { ManagementList, ManagementForm, ManagementDetail } from './pages/Management';
 import { BuildingsList, BuildingForm, BuildingDetail } from './pages/Buildings';
+import Reports from './pages/Reports';
 function Protected({ roles }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -31,7 +32,7 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="profile" element={<Profile />} />
           <Route path="workspace/:module" element={<Records />} />
-          <Route element={<Protected roles={['ADMIN']} />}>
+          <Route element={<Protected roles={['LANDLORD']} />}>
             <Route path="users" element={<ManagementList kind="users" />} />
             <Route path="users/new" element={<ManagementForm kind="users" />} />
             <Route path="users/:id" element={<ManagementDetail kind="users" />} />
@@ -39,9 +40,10 @@ export default function App() {
             <Route path="buildings/new" element={<BuildingForm />} />
             <Route path="buildings/:id" element={<BuildingDetail />} />
             <Route path="buildings/:id/edit" element={<BuildingForm />} />
+            <Route path="reports" element={<Reports />} />
             <Route path="rooms/new" element={<ManagementForm kind="rooms" />} />
           </Route>
-          <Route element={<Protected roles={['ADMIN', 'MANAGER']} />}>
+          <Route element={<Protected roles={['LANDLORD', 'MANAGER']} />}>
             <Route path="rooms" element={<ManagementList kind="rooms" />} />
             <Route path="rooms/:id" element={<ManagementDetail kind="rooms" />} />
           </Route>

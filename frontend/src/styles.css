@@ -1,15 +1,17 @@
 :root {
-  --brand: #256451;
-  --ink: #243b36;
-  --muted: #7b8984;
-  --border: #e5ebe7;
+  --brand: #176b57;
+  --brand-dark: #0d493b;
+  --ink: #18332c;
+  --muted: #71847d;
+  --border: #dfe8e2;
+  --surface: #ffffff;
 }
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
-  background: #f6f8f6;
+  background: radial-gradient(circle at top right, #e6f1eb 0, transparent 33%), #f4f7f5;
   color: var(--ink);
   font-family:
     Inter,
@@ -28,7 +30,7 @@ a {
 .sidebar {
   width: 244px;
   flex-shrink: 0;
-  background: #fff;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbf8 100%);
   border-right: 1px solid var(--border);
   padding: 30px 18px;
   position: sticky;
@@ -48,7 +50,7 @@ a {
   color: #214e3d;
 }
 .brand-icon {
-  background: #245b48;
+  background: linear-gradient(145deg, #247c65, #164d3f);
   color: #fff;
   width: 43px;
   height: 43px;
@@ -79,11 +81,16 @@ a {
   align-items: center;
   gap: 12px;
   font-size: 13px;
-  margin: 3px 0;
+  margin: 4px 0;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
 }
 .nav-link:hover {
   background: #f2f6f3;
   color: #245b48;
+  transform: translateX(2px);
 }
 .nav-link.active {
   background: #e9f2eb;
@@ -118,7 +125,8 @@ a {
   height: 82px;
   padding: 0 38px;
   border-bottom: 1px solid var(--border);
-  background: #fff;
+  background: rgb(255 255 255 / 88%);
+  backdrop-filter: blur(12px);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -187,9 +195,9 @@ a {
   font-size: 11px;
 }
 .welcome {
-  background: #e8efe4;
-  border: 1px solid #e0e9da;
-  border-radius: 14px;
+  background: linear-gradient(125deg, #e5f2e9, #f4f8ed 62%, #deeee6);
+  border: 1px solid #d6e8da;
+  border-radius: 18px;
   padding: 34px 38px;
   display: flex;
   justify-content: space-between;
@@ -218,10 +226,19 @@ a {
   font-size: 12px;
   border-radius: 7px;
   padding: 10px 16px;
+  font-weight: 600;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    background 150ms ease;
+}
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
 }
 .btn-primary {
   background: var(--brand);
   border-color: var(--brand);
+  box-shadow: 0 7px 18px rgb(23 107 87 / 18%);
 }
 .btn-primary:hover {
   background: #194733;
@@ -293,13 +310,25 @@ a {
 }
 .stat-card,
 .card {
-  background: white;
+  background: rgb(255 255 255 / 94%);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: none;
+  box-shadow: 0 8px 24px rgb(30 65 53 / 5%);
 }
 .stat-card {
   padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::after {
+  background: linear-gradient(135deg, transparent, rgb(109 169 132 / 16%));
+  border-radius: 50%;
+  content: '';
+  height: 92px;
+  position: absolute;
+  right: -35px;
+  top: -42px;
+  width: 92px;
 }
 .stat-top {
   display: flex;
@@ -373,6 +402,16 @@ a {
   overflow-wrap: anywhere;
   border-bottom-color: #f0f3ee;
 }
+.table tbody tr {
+  transition: background 150ms ease;
+}
+.table tbody tr:hover {
+  background: #f6faf7;
+}
+.table td a {
+  font-weight: 650;
+  text-decoration: none;
+}
 .status-pill {
   background: #edf3e8;
   color: #648150;
@@ -442,6 +481,7 @@ a {
 }
 .form-card {
   max-width: 700px;
+  padding: 4px;
 }
 .form-label {
   font-size: 12px;
@@ -452,6 +492,7 @@ a {
   padding: 11px;
   border-color: #dfe7db;
   font-size: 13px;
+  background: #fbfdfb;
 }
 .form-control:focus,
 .form-select:focus {
@@ -507,6 +548,36 @@ a {
 .description {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+.role-badge {
+  background: #e6f3ec;
+  border: 1px solid #cce5d6;
+  border-radius: 999px;
+  color: #176b57;
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+}
+.role-editor {
+  background: linear-gradient(135deg, #f0f8f3, #f9fbf9);
+  border: 1px solid #dcece1;
+  border-radius: 12px;
+  margin-top: 24px;
+  padding: 18px;
+}
+.role-editor-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+.role-editor-row .form-select {
+  margin: 0;
+}
+.role-editor p {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 10px 0 0;
 }
 .home-page {
   display: grid;
@@ -686,5 +757,9 @@ a {
     align-items: flex-start;
     flex-direction: column;
     gap: 20px;
+  }
+  .role-editor-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

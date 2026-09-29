@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "seed": "node create-admin.js",
+    "seed": "node create-landlord.js",
     "test": "node --test",
     "db:init": "node create-indexes.js"
   },

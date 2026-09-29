@@ -9,8 +9,13 @@ export class BuildingController {
     const page = pageNumber(req.query.page);
     res.json({ page, ...(await this.service.list(req.user, page)) });
   };
-  detail = async (req, res) =>
-    res.json({ item: await this.service.detail(req.params.id, req.user) });
+  detail = async (req, res) => {
+    const [item, managers] = await Promise.all([
+      this.service.detail(req.params.id, req.user),
+      this.service.managers(req.user),
+    ]);
+    res.json({ item, managers });
+  };
   create = async (req, res) =>
     res.status(201).json({ item: await this.service.create(new BuildingDTO(req.body), req.user) });
   update = async (req, res) =>
@@ -21,4 +26,6 @@ export class BuildingController {
     await this.service.remove(req.params.id, req.user);
     res.status(204).end();
   };
+  assignManager = async (req, res) =>
+    res.json({ item: await this.service.assignManager(req.params.id, req.body.manager, req.user) });
 }

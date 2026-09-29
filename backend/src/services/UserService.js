@@ -46,4 +46,11 @@ export class UserService {
   async profile(id, dto) {
     return new UserDTO(await this.dao.updateProfile(id, { name: dto.name, phone: dto.phone }));
   }
+  async changeRole(id, dto, actor) {
+    if (actor.role !== 'LANDLORD')
+      throw new AppError('Only landlords can edit account roles.', 403);
+    const user = await this.detail(id);
+    if (user.id === actor.id) throw new AppError('You cannot change your own role.', 400);
+    return new UserDTO(await this.dao.updateRole(id, dto.role));
+  }
 }

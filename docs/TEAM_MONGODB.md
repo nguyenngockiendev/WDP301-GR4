@@ -34,7 +34,7 @@ npm ci --prefix backend
 npm --prefix backend run db:init
 ```
 
-Only one designated teammate should run `npm --prefix backend run seed` against the shared database. The seed script does not overwrite an existing admin account.
+Only one designated teammate should run `npm --prefix backend run seed` against the shared database. The seed script does not overwrite an existing landlord account.
 
 ## Working safely as a team
 
