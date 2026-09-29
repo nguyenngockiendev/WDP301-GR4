@@ -19,8 +19,8 @@ export default function Home() {
         <span className="home-kicker">PROPERTY MANAGEMENT, MADE SIMPLE</span>
         <h1>A calmer way to manage rental homes.</h1>
         <p>
-          Haven brings people, rooms and essential property information together in one focused
-          workspace.
+          Smart Rental Management System brings people, rooms and essential property information
+          together in one focused workspace.
         </p>
         <div className="home-actions">
           <Link className="btn btn-primary" to="/login">
@@ -32,7 +32,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="home-benefits" aria-label="Haven benefits">
+      <section className="home-benefits" aria-label="Smart Rental Management System benefits">
         {benefits.map(([title, description], index) => (
           <article className="home-benefit" key={title}>
             <span className="home-benefit-number">0{index + 1}</span>

@@ -1,4 +1,4 @@
-# Haven — React frontend + Node.js backend
+# Smart Rental Management System — React frontend + Node.js backend
 
 Dự án làm việc: `E:\Giáo trình WDP301\WDP301`. Cấu trúc tách FE/BE theo code mẫu. Frontend React dùng Vite để build; backend Express cung cấp JSON API, không render EJS. Giao diện tiếng Anh.
 

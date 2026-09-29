@@ -6,7 +6,7 @@ export default function Header() {
   const [error, setError] = React.useState('');
   return (
     <header className="topbar">
-      <div className="breadcrumb-label">Haven / Property workspace</div>
+      <div className="breadcrumb-label">Smart Rental Management System / Workspace</div>
       <div className="topbar-account">
         {user ? (
           <>
@@ -25,7 +25,7 @@ export default function Header() {
             {error && <span role="alert">{error}</span>}
           </>
         ) : (
-          <span>A better place to manage home.</span>
+          <span>Manage every rental operation in one place.</span>
         )}
       </div>
     </header>
