@@ -1,10 +1,21 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { IconMenu, IconBell, IconSearch, IconChevronRight, IconHome, IconLogout } from './Icons';
+import { useTheme } from '../context/ThemeContext';
+import {
+  IconMenu,
+  IconBell,
+  IconSearch,
+  IconChevronRight,
+  IconHome,
+  IconLogout,
+  IconSun,
+  IconMoon,
+} from './Icons';
 
 export default function Header({ onToggleMobileMenu }) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [error, setError] = React.useState('');
   const location = useLocation();
 
@@ -57,6 +68,17 @@ export default function Header({ onToggleMobileMenu }) {
       </div>
 
       <div className="topbar-right">
+        {/* Theme Toggle Button */}
+        <button
+          className="topbar-action-btn theme-toggle-btn"
+          type="button"
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+        </button>
+
         {user ? (
           <>
             <Link to="/workspace/notifications" className="topbar-action-btn" title="Notifications">
