@@ -1,24 +1,45 @@
 import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+
+const routeIcons = {
+  '/dashboard': '◫',
+  '/profile': '◉',
+  '/login': '↪',
+  '/register': '+',
+  '/buildings': '⌂',
+  '/users': '♙',
+  '/reports': '▥',
+  '/rooms': '▦',
+};
+
+const groupIcons = {
+  PROPERTY: '⌂',
+  OPERATIONS: '▦',
+  FINANCE: '＄',
+  SETTINGS: '⚙',
+  ACCOUNT: '◉',
+};
+
 export default function Sidebar() {
   const { user, modules } = useAuth();
   const links = user
     ? [
-        ['/dashboard', 'Overview'],
-        ['/profile', 'My profile'],
+        ['/dashboard', 'Overview', routeIcons['/dashboard']],
+        ['/profile', 'My profile', routeIcons['/profile']],
       ]
     : [
-        ['/login', 'Sign in'],
-        ['/register', 'Create account'],
+        ['/login', 'Sign in', routeIcons['/login']],
+        ['/register', 'Create account', routeIcons['/register']],
       ];
   if (user?.role === 'LANDLORD')
     links.push(
-      ['/buildings', 'Rental houses'],
-      ['/users', 'Accounts'],
-      ['/reports', 'Business reports'],
+      ['/buildings', 'Rental houses', routeIcons['/buildings']],
+      ['/users', 'Accounts', routeIcons['/users']],
+      ['/reports', 'Business reports', routeIcons['/reports']],
     );
-  if (['LANDLORD', 'MANAGER'].includes(user?.role)) links.push(['/rooms', 'Rooms']);
+  if (['LANDLORD', 'MANAGER'].includes(user?.role))
+    links.push(['/rooms', 'Rooms', routeIcons['/rooms']]);
   return (
     <aside className="sidebar">
       <Link className="brand" to="/">
@@ -29,14 +50,16 @@ export default function Sidebar() {
       </Link>
       <nav aria-label="Main navigation">
         <div className="nav-group">WORKSPACE</div>
-        {links.map(([to, label]) => (
+        {links.map(([to, label, icon]) => (
           <NavLink
             end={to === '/'}
             key={to}
             to={to}
             className={({ isActive }) => 'nav-link ' + (isActive ? 'active' : '')}
           >
-            <span className="nav-icon">·</span>
+            <span className="nav-icon" aria-hidden="true">
+              {icon}
+            </span>
             {label}
           </NavLink>
         ))}
@@ -52,7 +75,9 @@ export default function Sidebar() {
                     key={key}
                     to={'/workspace/' + key}
                   >
-                    <span className="nav-icon">·</span>
+                    <span className="nav-icon" aria-hidden="true">
+                      {groupIcons[group] || '◦'}
+                    </span>
                     {m.title}
                   </NavLink>
                 ))}

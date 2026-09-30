@@ -27,7 +27,7 @@ export default function Auth({ register = false }) {
   return (
     <>
       <Heading>{register ? 'Create account' : 'Sign in'}</Heading>
-      <section className="card form-card p-4">
+      <section className="card form-card auth-card p-4">
         <h2 className="h4">{register ? 'Make yourself at home' : 'Welcome back'}</h2>
         <p className="text-secondary">
           {register

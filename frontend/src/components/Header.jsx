@@ -6,18 +6,29 @@ export default function Header() {
   const [error, setError] = React.useState('');
   return (
     <header className="topbar">
-      <div className="breadcrumb-label">Smart Rental Management System / Workspace</div>
-      <div className="topbar-account">
+      <div className="breadcrumb-label">
+        {user ? (
+          <>
+            Workspace <span aria-hidden="true">/</span> {user.roleLabel}
+          </>
+        ) : (
+          'Smart Rental Management System'
+        )}
+      </div>
+      <div className="topbar-account" aria-label="User account">
         {user ? (
           <>
             <Link to="/workspace/notifications">Notifications</Link>
-            <span className="avatar">{user.name[0]}</span>
+            <span className="avatar" aria-hidden="true">
+              {user.name?.trim().charAt(0) || 'U'}
+            </span>
             <div>
               <strong>{user.name}</strong>
               <small>{user.roleLabel}</small>
             </div>
             <button
               className="btn btn-light"
+              type="button"
               onClick={() => logout().catch(e => setError(e.message))}
             >
               Sign out
