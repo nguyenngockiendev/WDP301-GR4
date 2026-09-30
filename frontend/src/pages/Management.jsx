@@ -2,63 +2,187 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { send } from '../services/api';
-import { useData, Heading, Notice, Pager, Field, format } from '../components/Common';
+import { useData, Heading, Notice, Pager, Field, format, StatusBadge } from '../components/Common';
+import {
+  IconUsers,
+  IconUser,
+  IconRoom,
+  IconPlus,
+  IconSearch,
+  IconArrowRight,
+  IconBuilding,
+  IconShieldCheck,
+  IconMail,
+  IconPhone,
+} from '../components/Icons';
+
 export function ManagementList({ kind }) {
-  const [page, setPage] = useState(1),
-    state = useData('/' + kind + '?page=' + page),
-    { user } = useAuth();
+  const [page, setPage] = useState(1);
+  const [filterQuery, setFilterQuery] = useState('');
+  const state = useData('/' + kind + '?page=' + page);
+  const { user } = useAuth();
+
+  const isUsers = kind === 'users';
+  const items = state.data?.items || [];
+
+  const filteredItems = filterQuery
+    ? items.filter(item => {
+        const text = isUsers
+          ? `${item.name} ${item.email} ${item.roleLabel || item.role}`
+          : `${item.title || item.name} ${item.status}`;
+        return text.toLowerCase().includes(filterQuery.toLowerCase());
+      })
+    : items;
+
   return (
-    <>
-      <Heading>{kind === 'users' ? 'People' : 'Rooms'}</Heading>
-      {user.role === 'LANDLORD' && (
-        <Link className="btn btn-primary mb-4" to={'/' + kind + '/new'}>
-          + Add {kind === 'users' ? 'user' : 'room'}
-        </Link>
-      )}
+    <div className="management-page">
+      <Heading
+        eyebrow={isUsers ? 'USER DIRECTORY' : 'ROOM INVENTORY'}
+        subtitle={
+          isUsers
+            ? 'Manage landlords, property managers, and tenant accounts.'
+            : 'Track unit vacancy, rental pricing, and property assignments.'
+        }
+        action={
+          user.role === 'LANDLORD' ? (
+            <Link className="btn btn-primary" to={'/' + kind + '/new'}>
+              <IconPlus size={16} />
+              <span>Add {isUsers ? 'Account' : 'Room'}</span>
+            </Link>
+          ) : null
+        }
+      >
+        {isUsers ? 'Accounts' : 'Rooms'}
+      </Heading>
+
       <Notice state={state} />
+
       {state.data && (
         <>
-          <div className="card table-responsive">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>{kind === 'users' ? 'Email' : 'Monthly rent'}</th>
-                  <th>{kind === 'users' ? 'Role' : 'Status'}</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.data.items.map(item => (
-                  <tr key={item.id || item._id}>
-                    <td>{item.name || item.title}</td>
-                    <td>{kind === 'users' ? item.email : format(item.price, 'price')}</td>
-                    <td>{item.roleLabel || item.status}</td>
-                    <td>
-                      <Link to={'/' + kind + '/' + (item.id || item._id)}>Details →</Link>
-                    </td>
+          {/* Filter Bar */}
+          <div className="table-filter-bar mb-3">
+            <div className="search-input-wrapper">
+              <IconSearch size={16} className="search-icon" />
+              <input
+                type="text"
+                className="form-control table-search-input"
+                placeholder={
+                  isUsers
+                    ? 'Search accounts by name or email...'
+                    : 'Search rooms by name or status...'
+                }
+                value={filterQuery}
+                onChange={e => setFilterQuery(e.target.value)}
+              />
+            </div>
+            <div className="filter-summary text-muted">
+              {filteredItems.length} of {state.data.total} records
+            </div>
+          </div>
+
+          <section className="card table-card">
+            <div className="table-responsive">
+              <table className="table custom-table">
+                <thead>
+                  <tr>
+                    <th>{isUsers ? 'Account Holder' : 'Room Name'}</th>
+                    <th>{isUsers ? 'Email & Contact' : 'Monthly Rent'}</th>
+                    <th>{isUsers ? 'Access Role' : 'Availability Status'}</th>
+                    <th className="text-end">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {!state.data.items.length && (
+                </thead>
+                <tbody>
+                  {filteredItems.map(item => (
+                    <tr key={item.id || item._id}>
+                      <td>
+                        <div className="d-flex align-items-center gap-3">
+                          <div
+                            className={`table-avatar-icon ${isUsers ? 'table-avatar-user' : ''}`}
+                          >
+                            {isUsers ? (
+                              <span>{(item.name || 'U').charAt(0).toUpperCase()}</span>
+                            ) : (
+                              <IconRoom size={18} />
+                            )}
+                          </div>
+                          <div>
+                            <strong className="d-block text-dark">{item.name || item.title}</strong>
+                            <small className="text-muted">
+                              ID: {(item.id || item._id)?.slice(-6)}
+                            </small>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        {isUsers ? (
+                          <div className="text-secondary small">
+                            <div>{item.email}</div>
+                            {item.phone && <div className="text-muted">{item.phone}</div>}
+                          </div>
+                        ) : (
+                          <strong className="text-dark">{format(item.price, 'price')}</strong>
+                        )}
+                      </td>
+                      <td>
+                        {isUsers ? (
+                          <span
+                            className={`role-chip role-chip-${(item.role || '').toLowerCase()}`}
+                          >
+                            {item.roleLabel || item.role}
+                          </span>
+                        ) : (
+                          <StatusBadge status={item.status} />
+                        )}
+                      </td>
+                      <td className="text-end">
+                        <Link
+                          to={'/' + kind + '/' + (item.id || item._id)}
+                          className="btn btn-outline-primary btn-sm"
+                        >
+                          <span>Details</span>
+                          <IconArrowRight size={14} />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {!filteredItems.length && (
               <div className="empty-state">
-                <h3>No records yet</h3>
-                <p>Your records will appear here.</p>
+                <div className="empty-icon">
+                  {isUsers ? <IconUsers size={32} /> : <IconRoom size={32} />}
+                </div>
+                <h3>{filterQuery ? 'No matching records' : 'No entries found'}</h3>
+                <p>
+                  {filterQuery
+                    ? 'Try different keywords to find what you are looking for.'
+                    : `Get started by adding your first ${isUsers ? 'user account' : 'room unit'}.`}
+                </p>
+                {!filterQuery && user.role === 'LANDLORD' && (
+                  <Link to={'/' + kind + '/new'} className="btn btn-primary mt-2">
+                    <IconPlus size={15} /> Add First {isUsers ? 'Account' : 'Room'}
+                  </Link>
+                )}
               </div>
             )}
-          </div>
+          </section>
+
           <Pager page={page} total={state.data.total} setPage={setPage} />
         </>
       )}
-    </>
+    </div>
   );
 }
+
 export function ManagementForm({ kind }) {
-  const navigate = useNavigate(),
-    [error, setError] = useState(''),
-    [busy, setBusy] = useState(false),
-    buildings = useData('/buildings?page=1');
+  const navigate = useNavigate();
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const buildings = useData('/buildings?page=1');
+  const isUsers = kind === 'users';
+
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
@@ -72,92 +196,149 @@ export function ManagementForm({ kind }) {
       setBusy(false);
     }
   }
+
   return (
-    <>
-      <Heading>Add {kind === 'users' ? 'user' : 'room'}</Heading>
-      <div className="card form-card p-4">
+    <div className="management-form-page">
+      <Heading
+        eyebrow={isUsers ? 'USER MANAGEMENT' : 'ROOM SETUP'}
+        subtitle={
+          isUsers
+            ? 'Provision a new tenant, manager, or landlord profile.'
+            : 'Configure a new rentable unit and assign it to a building.'
+        }
+      >
+        Add {isUsers ? 'User Account' : 'Room Unit'}
+      </Heading>
+
+      <div className="card form-card">
         {error && (
-          <p role="alert" className="alert alert-danger">
+          <div role="alert" className="alert alert-danger custom-alert mb-4">
             {error}
-          </p>
+          </div>
         )}
+
         <form onSubmit={submit}>
-          {kind === 'users' ? (
+          {isUsers ? (
             <>
-              <Field name="name" label="Full name" minLength="2" maxLength="100" />
-              <Field name="email" label="Email" type="email" />
-              <Field name="phone" label="Phone number" required={false} />
+              <Field
+                name="name"
+                label="Full Name"
+                placeholder="e.g. Nguyễn Văn An"
+                minLength="2"
+                maxLength="100"
+              />
+              <Field
+                name="email"
+                label="Email Address"
+                placeholder="e.g. user@example.com"
+                type="email"
+              />
+              <Field
+                name="phone"
+                label="Phone Number"
+                placeholder="e.g. 0901234567"
+                required={false}
+              />
               <Field
                 name="password"
-                label="Password"
+                label="Initial Password"
                 type="password"
                 minLength="8"
                 autoComplete="new-password"
+                helperText="Must be at least 8 characters long."
               />
-              <label className="form-label" htmlFor="role">
-                Role
-              </label>
-              <select id="role" name="role" className="form-select mb-4">
-                <option value="TENANT">Tenant</option>
-                <option value="MANAGER">Property Manager</option>
-                <option value="LANDLORD">Landlord</option>
-              </select>
+              <div className="form-field-group mb-4">
+                <label className="form-label" htmlFor="role">
+                  System Role
+                </label>
+                <select id="role" name="role" className="form-select">
+                  <option value="TENANT">Tenant (View leases, invoices, and payments)</option>
+                  <option value="MANAGER">
+                    Property Manager (Manage rooms, utilities, reports)
+                  </option>
+                  <option value="LANDLORD">
+                    Landlord (Full operational and financial control)
+                  </option>
+                </select>
+              </div>
             </>
           ) : (
             <>
-              <Field name="title" label="Room name" minLength="2" maxLength="150" />
-              <label className="form-label" htmlFor="building">
-                Building
-              </label>
-              <select id="building" name="building" className="form-select mb-3">
-                <option value="">Not assigned to a building</option>
-                {(buildings.data?.items || [])
-                  .filter(b => b.status === 'ACTIVE')
-                  .map(b => (
-                    <option key={b._id} value={b._id}>
-                      {b.name} — {b.address}
-                    </option>
-                  ))}
-              </select>
-              <label className="form-label" htmlFor="description">
-                Description
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                className="form-control mb-3"
-                rows="5"
-                required
-                minLength="5"
-                maxLength="5000"
+              <Field
+                name="title"
+                label="Room Designation / Title"
+                placeholder="e.g. Room 201 - Studio, Penthouse 502"
+                minLength="2"
+                maxLength="150"
               />
+              <div className="form-field-group mb-3">
+                <label className="form-label" htmlFor="building">
+                  Associated Building
+                </label>
+                <select id="building" name="building" className="form-select">
+                  <option value="">— Not assigned to a building —</option>
+                  {(buildings.data?.items || [])
+                    .filter(b => b.status === 'ACTIVE')
+                    .map(b => (
+                      <option key={b._id} value={b._id}>
+                        {b.name} ({b.address})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="form-field-group mb-3">
+                <label className="form-label" htmlFor="description">
+                  Room Description & Amenities
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  className="form-control"
+                  rows="4"
+                  required
+                  minLength="5"
+                  maxLength="5000"
+                  placeholder="Detail room area (sqm), furnishings (air conditioner, bed, wardrobe), and policies..."
+                />
+              </div>
+
               <Field
                 name="price"
-                label="Monthly rent (VND)"
+                label="Monthly Rent (VND)"
                 type="number"
                 min="0"
                 max="1000000000"
                 step="1"
+                placeholder="e.g. 4500000"
+                helperText="Base monthly rental rate in Vietnamese Dong."
               />
             </>
           )}
-          <button className="btn btn-primary" disabled={busy}>
-            {busy ? 'Saving…' : 'Save'}
-          </button>{' '}
-          <Link className="btn btn-light" to={'/' + kind}>
-            Cancel
-          </Link>
+
+          <div className="form-actions d-flex gap-2">
+            <button className="btn btn-primary" disabled={busy}>
+              {busy ? 'Saving…' : `Create ${isUsers ? 'Account' : 'Room'}`}
+            </button>
+            <Link className="btn btn-light" to={'/' + kind}>
+              Cancel
+            </Link>
+          </div>
         </form>
       </div>
-    </>
+    </div>
   );
 }
+
 export function ManagementDetail({ kind }) {
-  const { id } = useParams(),
-    { user } = useAuth(),
-    state = useData('/' + kind + '/' + id),
-    [message, setMessage] = useState(''),
-    [busy, setBusy] = useState(false);
+  const { id } = useParams();
+  const { user } = useAuth();
+  const state = useData('/' + kind + '/' + id);
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const isUsers = kind === 'users';
+
   async function assign(e) {
     e.preventDefault();
     setBusy(true);
@@ -167,13 +348,14 @@ export function ManagementDetail({ kind }) {
         Object.fromEntries(new FormData(e.currentTarget)),
         'PATCH',
       );
-      setMessage('Manager assignment saved.');
+      setMessage('Property manager assignment updated successfully.');
     } catch (e) {
       setMessage(e.message);
     } finally {
       setBusy(false);
     }
   }
+
   async function assignBuilding(e) {
     e.preventDefault();
     setBusy(true);
@@ -183,13 +365,14 @@ export function ManagementDetail({ kind }) {
         Object.fromEntries(new FormData(e.currentTarget)),
         'PATCH',
       );
-      setMessage('Building assignment saved.');
+      setMessage('Building assignment updated successfully.');
     } catch (e) {
       setMessage(e.message);
     } finally {
       setBusy(false);
     }
   }
+
   async function changeRole(e) {
     e.preventDefault();
     setBusy(true);
@@ -200,116 +383,211 @@ export function ManagementDetail({ kind }) {
         Object.fromEntries(new FormData(e.currentTarget)),
         'PATCH',
       );
-      setMessage('Account role saved.');
-      window.setTimeout(() => window.location.reload(), 500);
+      setMessage('Account role updated successfully.');
+      window.setTimeout(() => window.location.reload(), 600);
     } catch (e) {
       setMessage(e.message);
     } finally {
       setBusy(false);
     }
   }
+
   const item = state.data?.user || state.data?.item;
+
   return (
-    <>
-      <Heading>{kind === 'users' ? 'User details' : 'Room details'}</Heading>
-      <Notice state={state} />
-      {item && (
-        <div className="card form-card p-4">
-          <h2 className="h4">{item.name || item.title}</h2>
-          {kind === 'users' ? (
-            <>
-              <dl>
-                <dt>Email</dt>
-                <dd>{item.email}</dd>
-                <dt>Phone</dt>
-                <dd>{item.phone || 'Not provided'}</dd>
-                <dt>Role</dt>
-                <dd>
-                  <span className="role-badge">{item.roleLabel}</span>
-                </dd>
-              </dl>
-              {user.role === 'LANDLORD' && user.id !== item.id && (
-                <form className="role-editor" onSubmit={changeRole}>
-                  <label htmlFor="role" className="form-label">
-                    Account role
-                  </label>
-                  <div className="role-editor-row">
-                    <select id="role" name="role" className="form-select" defaultValue={item.role}>
-                      <option value="TENANT">Tenant</option>
-                      <option value="MANAGER">Property Manager</option>
-                      <option value="LANDLORD">Landlord</option>
-                    </select>
-                    <button className="btn btn-primary" disabled={busy}>
-                      Save role
-                    </button>
-                  </div>
-                  <p>Changing the role updates this account’s access immediately.</p>
-                </form>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="h4 text-primary my-3">{format(item.price, 'price')} / month</p>
-              <p>{item.status}</p>
-              <p className="description">{item.description}</p>
-              {user.role === 'LANDLORD' && (
-                <>
-                  <form onSubmit={assign}>
-                    <label htmlFor="manager" className="form-label">
-                      Assign property manager
-                    </label>
-                    <select
-                      id="manager"
-                      name="manager"
-                      defaultValue={item.manager || ''}
-                      className="form-select mb-3"
-                    >
-                      <option value="">Unassigned</option>
-                      {state.data.managers.map(m => (
-                        <option key={m._id} value={m._id}>
-                          {m.name} — {m.email}
-                        </option>
-                      ))}
-                    </select>
-                    <button className="btn btn-primary" disabled={busy}>
-                      Save assignment
-                    </button>
-                    {message && (
-                      <p className="mt-3" role="status">
-                        {message}
-                      </p>
-                    )}
-                  </form>
-                  <form className="mt-4" onSubmit={assignBuilding}>
-                    <label htmlFor="building" className="form-label">
-                      Assign building
-                    </label>
-                    <select
-                      id="building"
-                      name="building"
-                      defaultValue={item.building || ''}
-                      className="form-select mb-3"
-                    >
-                      <option value="">Not assigned to a building</option>
-                      {(state.data.buildings || []).map(b => (
-                        <option key={b._id} value={b._id}>
-                          {b.name} — {b.address}
-                        </option>
-                      ))}
-                    </select>
-                    <button className="btn btn-primary" disabled={busy}>
-                      Save building
-                    </button>
-                  </form>
-                </>
-              )}
-            </>
-          )}
-          <Link className="mt-4" to={'/' + kind}>
-            Back to list
+    <div className="management-detail-page">
+      <Heading
+        eyebrow={isUsers ? 'ACCOUNT PROFILE' : 'UNIT DETAILS'}
+        subtitle={
+          isUsers
+            ? 'Account identity, contact information, and permission level.'
+            : 'Pricing, current occupancy state, and building assignments.'
+        }
+        action={
+          <Link className="btn btn-outline-primary btn-sm" to={'/' + kind}>
+            Back to List
           </Link>
+        }
+      >
+        {item ? item.name || item.title : isUsers ? 'User Details' : 'Room Details'}
+      </Heading>
+
+      <Notice state={state} />
+
+      {message && (
+        <div className="alert alert-info py-2 mb-4" role="status">
+          {message}
         </div>
       )}
-    </>
+
+      {item && (
+        <div className="row g-4">
+          <div className="col-lg-7">
+            <div className="card detail-card p-4">
+              <div className="d-flex justify-content-between align-items-start mb-3">
+                <div className="d-flex align-items-center gap-3">
+                  <div className={`table-avatar-icon ${isUsers ? 'table-avatar-user' : ''}`}>
+                    {isUsers ? (
+                      <span>{(item.name || 'U').charAt(0).toUpperCase()}</span>
+                    ) : (
+                      <IconRoom size={20} />
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="h4 mb-0">{item.name || item.title}</h2>
+                    <small className="text-muted">ID: {item.id || item._id}</small>
+                  </div>
+                </div>
+                {isUsers ? (
+                  <span className={`role-chip role-chip-${(item.role || '').toLowerCase()}`}>
+                    {item.roleLabel || item.role}
+                  </span>
+                ) : (
+                  <StatusBadge status={item.status} />
+                )}
+              </div>
+
+              <hr className="my-3" />
+
+              {isUsers ? (
+                <dl className="property-meta-list">
+                  <div className="meta-row">
+                    <dt className="d-flex align-items-center gap-2">
+                      <IconMail size={14} /> Email
+                    </dt>
+                    <dd>{item.email}</dd>
+                  </div>
+                  <div className="meta-row">
+                    <dt className="d-flex align-items-center gap-2">
+                      <IconPhone size={14} /> Phone
+                    </dt>
+                    <dd>{item.phone || <span className="text-muted">Not provided</span>}</dd>
+                  </div>
+                  <div className="meta-row">
+                    <dt className="d-flex align-items-center gap-2">
+                      <IconShieldCheck size={14} /> Permission
+                    </dt>
+                    <dd>
+                      <strong>{item.roleLabel || item.role}</strong>
+                    </dd>
+                  </div>
+                </dl>
+              ) : (
+                <>
+                  <div className="room-price-banner mb-3 p-3 bg-light rounded-3 d-flex justify-content-between align-items-center">
+                    <div>
+                      <span className="text-muted small d-block">Monthly Rental Price</span>
+                      <strong className="h4 text-emerald mb-0">
+                        {format(item.price, 'price')}
+                      </strong>
+                    </div>
+                    <StatusBadge status={item.status} />
+                  </div>
+
+                  <h3 className="h6 fw-bold mt-3">Description & Facilities</h3>
+                  <div className="description p-3 bg-light rounded-3 small">
+                    {item.description || 'No description provided.'}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="col-lg-5">
+            {isUsers
+              ? user.role === 'LANDLORD' &&
+                user.id !== item.id && (
+                  <div className="card role-editor-card p-4">
+                    <div className="d-flex align-items-center gap-2 mb-2">
+                      <IconShieldCheck size={18} className="text-emerald" />
+                      <h3 className="h5 mb-0">Modify Account Role</h3>
+                    </div>
+                    <p className="text-muted small">
+                      Adjust this user's administrative clearance. Changes will apply on their next
+                      request.
+                    </p>
+
+                    <form onSubmit={changeRole}>
+                      <div className="mb-3">
+                        <label htmlFor="role" className="form-label small fw-semibold">
+                          Select Role
+                        </label>
+                        <select
+                          id="role"
+                          name="role"
+                          className="form-select"
+                          defaultValue={item.role}
+                        >
+                          <option value="TENANT">Tenant (Lease & Billing Access)</option>
+                          <option value="MANAGER">Property Manager (Operational Control)</option>
+                          <option value="LANDLORD">Landlord (Master Admin)</option>
+                        </select>
+                      </div>
+
+                      <button className="btn btn-primary w-100" disabled={busy}>
+                        {busy ? 'Saving…' : 'Update User Role'}
+                      </button>
+                    </form>
+                  </div>
+                )
+              : user.role === 'LANDLORD' && (
+                  <div className="d-flex flex-column gap-3">
+                    {/* Manager assignment card */}
+                    <div className="card p-4">
+                      <h3 className="h6 fw-bold mb-2">Assign Property Manager</h3>
+                      <p className="text-muted small mb-3">
+                        Assign a staff member responsible for unit inspections and maintenance.
+                      </p>
+                      <form onSubmit={assign}>
+                        <select
+                          id="manager"
+                          name="manager"
+                          defaultValue={item.manager || ''}
+                          className="form-select mb-3"
+                        >
+                          <option value="">— Unassigned —</option>
+                          {(state.data?.managers || []).map(m => (
+                            <option key={m._id} value={m._id}>
+                              {m.name} ({m.email})
+                            </option>
+                          ))}
+                        </select>
+                        <button className="btn btn-primary btn-sm w-100" disabled={busy}>
+                          {busy ? 'Saving…' : 'Save Manager'}
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Building assignment card */}
+                    <div className="card p-4">
+                      <h3 className="h6 fw-bold mb-2">Assign Building</h3>
+                      <p className="text-muted small mb-3">
+                        Link this room to an existing property building.
+                      </p>
+                      <form onSubmit={assignBuilding}>
+                        <select
+                          id="building"
+                          name="building"
+                          defaultValue={item.building || ''}
+                          className="form-select mb-3"
+                        >
+                          <option value="">— Not assigned to a building —</option>
+                          {(state.data?.buildings || []).map(b => (
+                            <option key={b._id} value={b._id}>
+                              {b.name} ({b.address})
+                            </option>
+                          ))}
+                        </select>
+                        <button className="btn btn-primary btn-sm w-100" disabled={busy}>
+                          {busy ? 'Saving…' : 'Save Building'}
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
