@@ -9,11 +9,9 @@ import {
   IconTrendingUp,
   IconArrowRight,
   IconSparkles,
-  IconCheck,
   IconCheckCircle,
   IconZap,
   IconStar,
-  IconWallet,
   IconBell,
   IconContract,
 } from '../components/Icons';
@@ -22,78 +20,78 @@ const features = [
   {
     icon: IconBuilding,
     colorClass: 'feature-color-emerald',
-    badge: 'TỔ CHỨC KHÔNG GIAN',
-    title: 'Quản lý Tòa nhà & Phòng đa tầng',
-    desc: 'Thiết lập danh mục bất động sản, phân chia phòng ốc, diện tích, giá thuê gốc và trang thiết bị nội thất chi tiết.',
+    badge: 'SPACE & ASSETS',
+    title: 'Multi-Floor Building & Room Hierarchy',
+    desc: 'Configure multi-unit properties, floor allocations, individual room specifications, baseline rent tariffs, and inventory amenities.',
   },
   {
     icon: IconZap,
     colorClass: 'feature-color-indigo',
-    badge: 'TỰ ĐỘNG HÓA CƯỚC',
-    title: 'Tính toán Điện Nước & Dịch vụ tức thì',
-    desc: 'Chỉ cần nhập chỉ số mới, hệ thống tự động trừ chỉ số cũ, áp đơn giá bậc thang và kết xuất chi phí chuẩn xác 100%.',
+    badge: 'AUTO UTILITIES',
+    title: 'Automated Electricity & Water Calculation',
+    desc: 'Simply input new meter readings; the platform calculates delta usage, applies tiered unit rates, and totals fees with 100% precision.',
   },
   {
     icon: IconInvoice,
     colorClass: 'feature-color-purple',
-    badge: 'MINH BẠCH TÀI CHÍNH',
-    title: 'Hóa đơn & Biên lai số hóa',
-    desc: 'Tự động tạo bảng kê chi tiết gửi đến khách thuê, theo dõi trạng thái đã thanh toán, chưa thu và nợ đọng theo kỳ.',
+    badge: 'FINANCIAL CLARITY',
+    title: 'Digital Invoices & Itemized Receipts',
+    desc: 'Automatically issue itemized monthly statements to tenants, track real-time payment states (Paid, Pending, Overdue), and reconcile ledger entries.',
   },
   {
     icon: IconContract,
     colorClass: 'feature-color-amber',
-    badge: 'PHÁP LÝ & AN TOÀN',
-    title: 'Hợp đồng & Tiền cọc minh bạch',
-    desc: 'Lưu trữ hồ sơ hợp đồng điện tử, chu kỳ thanh toán, ngày bắt đầu - kết thúc và lịch sử hoàn trả tiền cọc an tâm.',
+    badge: 'LEGAL & DEPOSITS',
+    title: 'Lease Agreements & Security Deposits',
+    desc: 'Manage digital lease contracts, billing cycles, start-and-end term schedules, and complete security deposit refund records.',
   },
   {
     icon: IconShieldCheck,
     colorClass: 'feature-color-teal',
-    badge: 'BẢO MẬT & PHÂN QUYỀN',
-    title: 'Phân quyền 3 Cấp độ chuyên nghiệp',
-    desc: 'Không gian làm việc chuyên biệt dành cho Chủ nhà (Toàn quyền), Quản lý cơ sở (Vận hành) và Khách thuê (Tra cứu hóa đơn).',
+    badge: 'ROLE SECURITY',
+    title: 'Three-Tier Role Management',
+    desc: 'Dedicated role-scoped workspaces for Landlords (Master Admin), Property Managers (Day-to-day Operations), and Tenants (Self-service billing).',
   },
   {
     icon: IconTrendingUp,
     colorClass: 'feature-color-rose',
-    badge: 'PHÂN TÍCH THÔNG MINH',
-    title: 'Báo cáo Doanh thu & Tỷ lệ lấp đầy',
-    desc: 'Biểu đồ trực quan theo dõi tỷ lệ phòng trống, dòng tiền thu thực tế và dự báo tài chính theo tháng và quý.',
+    badge: 'SMART ANALYTICS',
+    title: 'Revenue Flow & Occupancy Analytics',
+    desc: 'Interactive dashboards tracking vacant vs. occupied ratios, collected cashflow, and seasonal forecasting across all managed buildings.',
   },
 ];
 
 const workflows = [
   {
     step: '01',
-    title: 'Khởi tạo Tòa nhà & Phòng',
-    desc: 'Tạo danh mục phòng, giá thuê và cấu hình chỉ số điện nước ban đầu chỉ trong 2 phút.',
+    title: 'Register Properties & Units',
+    desc: 'Set up buildings, rooms, rental prices, and baseline utility meter counters in under 2 minutes.',
   },
   {
     step: '02',
-    title: 'Ghi chỉ số & Xuất Hóa đơn',
-    desc: 'Nhập số công tơ định kỳ hàng tháng, hệ thống tự động kết xuất hóa đơn chi tiết cho từng người thuê.',
+    title: 'Log Readings & Issue Bills',
+    desc: 'Record periodic meter readings; comprehensive billing statements are computed and published instantly.',
   },
   {
     step: '03',
-    title: 'Thu phí & Xem Báo cáo',
-    desc: 'Xác nhận thanh toán qua chuyển khoản hoặc tiền mặt, dòng tiền tự động cập nhật vào báo cáo kinh doanh.',
+    title: 'Collect Rent & Review Reports',
+    desc: 'Verify payments via bank transfer or cash; revenues and balances update seamlessly into your financial reports.',
   },
 ];
 
 const testimonials = [
   {
-    name: 'Chị Mai Phương',
-    role: 'Chủ chuỗi 4 nhà trọ (48 phòng) • Hà Nội',
+    name: 'Mai Phuong',
+    role: 'Portfolio Owner (48 Units) • Hanoi',
     quote:
-      'Từ ngày dùng Smart Rental, tôi không còn phải ghi sổ tay hay sợ tính nhầm tiền điện nước. Khách thuê rất thích vì hóa đơn rõ ràng, minh bạch.',
+      'Since adopting Smart Rental, I never have to write down meter numbers in paper notebooks or calculate invoices manually. Tenants appreciate the clear itemized bills.',
     rating: 5,
   },
   {
-    name: 'Anh Hoàng Nam',
-    role: 'Quản lý Căn hộ dịch vụ • TP. Hồ Chí Minh',
+    name: 'Hoang Nam',
+    role: 'Apartment Complex Director • Ho Chi Minh City',
     quote:
-      'Giao diện hiện đại, tốc độ cực nhanh và quản lý tập trung từ xa rất tiện lợi. Tỷ lệ thất thoát công nợ phòng của chúng tôi về mức 0%.',
+      'Modern interface, lightning speed, and effortless remote oversight. Our receivable loss rate and reconciliation delays dropped to exactly zero.',
     rating: 5,
   },
 ];
@@ -117,28 +115,29 @@ export default function Home() {
               <IconSparkles size={14} />
             </span>
             <span className="vibrant-badge-text">
-              GIẢI PHÁP QUẢN LÝ NHÀ TRỌ & BẤT ĐỘNG SẢN THẾ HỆ MỚI
+              NEXT-GENERATION RENTAL PROPERTY OPERATING SYSTEM
             </span>
           </div>
 
           <h1 className="vibrant-hero-title">
-            Quản lý nhà trọ thông minh,{' '}
-            <span className="gradient-text-vibrant">đột phá doanh thu</span> và vận hành tinh gọn.
+            Intelligent rental management,{' '}
+            <span className="gradient-text-vibrant">accelerated growth</span> and effortless
+            operations.
           </h1>
 
           <p className="vibrant-hero-subtitle">
-            Hệ điều hành toàn diện dành cho <strong>Chủ nhà trọ, Quản lý tòa nhà</strong> và{' '}
-            <strong>Khách thuê</strong>. Loại bỏ hoàn toàn sổ sách thủ công, tự động hóa tính tiền
-            điện nước, phát hành hóa đơn và kiểm soát dòng tiền chính xác 100%.
+            The all-in-one platform built for <strong>Landlords, Property Managers</strong>, and{' '}
+            <strong>Tenants</strong>. Eliminate spreadsheet chaos, automate utility calculations,
+            issue itemized invoices, and track revenue flow with precision.
           </p>
 
           <div className="vibrant-hero-actions">
             <Link className="btn btn-vibrant-primary btn-lg" to="/login">
-              <span>Đăng nhập hệ thống ngay</span>
+              <span>Sign in to Workspace</span>
               <IconArrowRight size={18} />
             </Link>
             <Link className="btn btn-vibrant-glass btn-lg" to="/register">
-              <span>Tạo tài khoản khách thuê</span>
+              <span>Create Tenant Account</span>
             </Link>
           </div>
 
@@ -147,25 +146,25 @@ export default function Home() {
               <span className="usp-icon">
                 <IconCheckCircle size={16} />
               </span>
-              <span>100% Số hóa hóa đơn & hợp đồng</span>
+              <span>100% Digital invoices & lease records</span>
             </div>
             <div className="usp-item">
               <span className="usp-icon">
                 <IconCheckCircle size={16} />
               </span>
-              <span>Tự động tính điện nước theo số</span>
+              <span>Automated electricity & water metering</span>
             </div>
             <div className="usp-item">
               <span className="usp-icon">
                 <IconCheckCircle size={16} />
               </span>
-              <span>Bảo mật phân quyền dữ liệu cao cấp</span>
+              <span>Bank-grade multi-role data security</span>
             </div>
             <div className="usp-item">
               <span className="usp-icon">
                 <IconCheckCircle size={16} />
               </span>
-              <span>Báo cáo doanh thu & tỷ lệ lấp đầy</span>
+              <span>Real-time occupancy & financial ledger</span>
             </div>
           </div>
         </div>
@@ -180,10 +179,12 @@ export default function Home() {
                 <span className="dot-yellow" />
                 <span className="dot-green" />
               </div>
-              <div className="showcase-window-title">Smart Rental Suite • Trực quan hóa danh mục</div>
+              <div className="showcase-window-title">
+                Smart Rental Suite • Real-time Portfolio Control
+              </div>
               <div className="showcase-live-tag">
                 <span className="live-pulse" />
-                <span>Realtime</span>
+                <span>Live System</span>
               </div>
             </div>
 
@@ -191,56 +192,56 @@ export default function Home() {
             <div className="showcase-kpi-grid">
               <div className="showcase-kpi-card kpi-card-emerald">
                 <div className="kpi-card-header">
-                  <span>DOANH THU THÁNG</span>
+                  <span>MONTHLY REVENUE</span>
                   <div className="kpi-icon-bubble">
                     <IconTrendingUp size={15} />
                   </div>
                 </div>
-                <div className="kpi-card-value">148.500.000 ₫</div>
-                <div className="kpi-card-trend text-emerald">↑ +18.4% so với tháng trước</div>
+                <div className="kpi-card-value">148,500,000 VND</div>
+                <div className="kpi-card-trend text-emerald">↑ +18.4% vs last month</div>
               </div>
 
               <div className="showcase-kpi-card kpi-card-sapphire">
                 <div className="kpi-card-header">
-                  <span>TỶ LỆ LẤP ĐẦY</span>
+                  <span>OCCUPANCY RATE</span>
                   <div className="kpi-icon-bubble">
                     <IconRoom size={15} />
                   </div>
                 </div>
                 <div className="kpi-card-value">96.8%</div>
-                <div className="kpi-card-trend text-info">31/32 phòng đang thuê</div>
+                <div className="kpi-card-trend text-info">31 of 32 units leased</div>
               </div>
 
               <div className="showcase-kpi-card kpi-card-amber">
                 <div className="kpi-card-header">
-                  <span>ĐIỆN NƯỚC KỲ NÀY</span>
+                  <span>UTILITIES CYCLE</span>
                   <div className="kpi-icon-bubble">
                     <IconZap size={15} />
                   </div>
                 </div>
-                <div className="kpi-card-value">32/32 Đã chốt</div>
-                <div className="kpi-card-trend text-warning">Tự động hóa hoàn tất</div>
+                <div className="kpi-card-value">32/32 Audited</div>
+                <div className="kpi-card-trend text-warning">Auto-calculation done</div>
               </div>
             </div>
 
             {/* Simulated Live Unit Matrix */}
             <div className="showcase-unit-section">
               <div className="showcase-section-title">
-                <span>Tình trạng phòng nổi bật</span>
-                <span className="badge-counter">4 Tòa nhà đang quản lý</span>
+                <span>Featured Unit Inventory</span>
+                <span className="badge-counter">4 Properties Active</span>
               </div>
 
               <div className="showcase-units-list">
                 <div className="showcase-unit-item">
                   <div className="unit-avatar avatar-emerald">101</div>
                   <div className="unit-meta">
-                    <strong>Phòng 101 • Sunshine Landmark</strong>
-                    <small>Nguyễn Văn Nam • Hợp đồng 1 năm</small>
+                    <strong>Room 101 • Sunshine Landmark</strong>
+                    <small>Tenant: Nguyen Van Nam • 1-Year Contract</small>
                   </div>
                   <div className="unit-pricing">
-                    <span className="unit-price">5.500.000 ₫</span>
+                    <span className="unit-price">5,500,000 VND</span>
                     <span className="status-badge status-badge-success">
-                      <span className="status-badge-dot" /> Đã thanh toán
+                      <span className="status-badge-dot" /> Paid
                     </span>
                   </div>
                 </div>
@@ -248,13 +249,13 @@ export default function Home() {
                 <div className="showcase-unit-item">
                   <div className="unit-avatar avatar-sapphire">204</div>
                   <div className="unit-meta">
-                    <strong>Phòng 204 • Sunshine Landmark</strong>
-                    <small>Ban công rộng, full nội thất cao cấp</small>
+                    <strong>Room 204 • Sunshine Landmark</strong>
+                    <small>Spacious balcony, fully furnished studio</small>
                   </div>
                   <div className="unit-pricing">
-                    <span className="unit-price">4.200.000 ₫</span>
+                    <span className="unit-price">4,200,000 VND</span>
                     <span className="status-badge status-badge-info">
-                      <span className="status-badge-dot" /> Sẵn sàng cho thuê
+                      <span className="status-badge-dot" /> Ready to Lease
                     </span>
                   </div>
                 </div>
@@ -262,13 +263,13 @@ export default function Home() {
                 <div className="showcase-unit-item">
                   <div className="unit-avatar avatar-amber">302</div>
                   <div className="unit-meta">
-                    <strong>Phòng 302 • Sunrise Apartment</strong>
-                    <small>Trần Thị Hạnh • Hóa đơn kỳ 09/2026</small>
+                    <strong>Room 302 • Sunrise Apartment</strong>
+                    <small>Tenant: Tran Thi Hanh • Billing cycle 09/2026</small>
                   </div>
                   <div className="unit-pricing">
-                    <span className="unit-price">6.800.000 ₫</span>
+                    <span className="unit-price">6,800,000 VND</span>
                     <span className="status-badge status-badge-warning">
-                      <span className="status-badge-dot" /> Chờ thanh toán
+                      <span className="status-badge-dot" /> Payment Due
                     </span>
                   </div>
                 </div>
@@ -281,10 +282,10 @@ export default function Home() {
                 <IconBell size={16} />
               </div>
               <div className="toast-text">
-                <strong>Vừa nhận thanh toán: 5.500.000 ₫</strong>
-                <small>Khách thuê P.101 chuyển khoản thành công</small>
+                <strong>Payment Received: 5,500,000 VND</strong>
+                <small>Tenant Room 101 settled via Bank Transfer</small>
               </div>
-              <span className="toast-time">Vừa xong</span>
+              <span className="toast-time">Just now</span>
             </div>
           </div>
         </div>
@@ -293,40 +294,40 @@ export default function Home() {
       {/* Metrics Banner */}
       <section className="vibrant-metrics-strip">
         <div className="metric-strip-card">
-          <div className="metric-strip-number">5.000+</div>
-          <div className="metric-strip-label">Phòng đang quản lý</div>
-          <div className="metric-strip-sub">Trên toàn quốc</div>
+          <div className="metric-strip-number">5,000+</div>
+          <div className="metric-strip-label">Units Managed</div>
+          <div className="metric-strip-sub">Nationwide footprint</div>
         </div>
         <div className="metric-strip-divider" />
         <div className="metric-strip-card">
           <div className="metric-strip-number">99.98%</div>
-          <div className="metric-strip-label">Thời gian hoạt động</div>
-          <div className="metric-strip-sub">Hạ tầng mượt mà 24/7</div>
+          <div className="metric-strip-label">System Uptime</div>
+          <div className="metric-strip-sub">Cloud infrastructure 24/7</div>
         </div>
         <div className="metric-strip-divider" />
         <div className="metric-strip-card">
           <div className="metric-strip-number">100%</div>
-          <div className="metric-strip-label">Số hóa minh bạch</div>
-          <div className="metric-strip-sub">Không còn sai lệch sổ sách</div>
+          <div className="metric-strip-label">Paperless Records</div>
+          <div className="metric-strip-sub">Zero reconciliation errors</div>
         </div>
         <div className="metric-strip-divider" />
         <div className="metric-strip-card">
-          <div className="metric-strip-number">0 ₫</div>
-          <div className="metric-strip-label">Chi phí thất thoát</div>
-          <div className="metric-strip-sub">Kiểm soát công nợ chặt chẽ</div>
+          <div className="metric-strip-number">0 VND</div>
+          <div className="metric-strip-label">Uncollected Loss</div>
+          <div className="metric-strip-sub">Strict receivable tracking</div>
         </div>
       </section>
 
       {/* Features Grid (6 Vivid Features) */}
-      <section className="vibrant-features-section" aria-label="Tính năng nổi bật">
+      <section className="vibrant-features-section" aria-label="Key features">
         <div className="vibrant-section-header text-center">
-          <span className="vibrant-section-eyebrow">TÍNH NĂNG TOÀN DIỆN</span>
+          <span className="vibrant-section-eyebrow">COMPREHENSIVE CAPABILITIES</span>
           <h2 className="vibrant-section-title">
-            Bộ công cụ vận hành bất động sản cho thuê chuyên nghiệp
+            The complete operating suite for rental property professionals
           </h2>
           <p className="vibrant-section-description">
-            Tất cả những gì bạn cần để quản lý từ một dãy phòng trọ cho đến hàng chục tòa nhà chung cư
-            mini đa tầng.
+            Everything you need to orchestrate a single boarding house or dozens of multi-story
+            apartment complexes from one elegant control panel.
           </p>
         </div>
 
@@ -353,8 +354,8 @@ export default function Home() {
       {/* 3-Step Workflow Section */}
       <section className="vibrant-workflow-section">
         <div className="vibrant-section-header text-center">
-          <span className="vibrant-section-eyebrow">QUY TRÌNH ĐƠN GIẢN</span>
-          <h2 className="vibrant-section-title">Khởi động quản lý chỉ trong 3 bước</h2>
+          <span className="vibrant-section-eyebrow">STREAMLINED WORKFLOW</span>
+          <h2 className="vibrant-section-title">Get up and running in 3 simple steps</h2>
         </div>
 
         <div className="workflow-steps-grid">
@@ -371,8 +372,8 @@ export default function Home() {
       {/* Testimonials Trust Section */}
       <section className="vibrant-testimonials-section">
         <div className="vibrant-section-header text-center">
-          <span className="vibrant-section-eyebrow">ĐƯỢC CHỦ NHÀ TIN CẬY</span>
-          <h2 className="vibrant-section-title">Khách hàng nói gì về Smart Rental?</h2>
+          <span className="vibrant-section-eyebrow">TRUSTED BY PROPERTY OWNERS</span>
+          <h2 className="vibrant-section-title">What landlords say about Smart Rental</h2>
         </div>
 
         <div className="testimonials-grid">
@@ -404,32 +405,32 @@ export default function Home() {
         <div className="cta-inner-content text-center">
           <div className="cta-badge">
             <IconSparkles size={14} />
-            <span>NÂNG TẦM QUẢN LÝ NGAY HÔM NAY</span>
+            <span>ELEVATE YOUR RENTAL OPERATIONS TODAY</span>
           </div>
 
           <h2 className="cta-heading">
-            Sẵn sàng chuyển đổi số cho khu nhà trọ & căn hộ của bạn?
+            Ready to revolutionize your rental property portfolio?
           </h2>
 
           <p className="cta-sub">
-            Trải nghiệm nền tảng quản trị thông minh, không cần cài đặt, truy cập tức thì trên cả máy
-            tính và điện thoại.
+            Experience smart property management with zero installation required, accessible
+            anywhere across desktop, tablet, and mobile.
           </p>
 
           <div className="cta-buttons-wrapper">
             <Link className="btn btn-cta-main btn-lg" to="/login">
-              <span>Đăng nhập hệ thống ngay</span>
+              <span>Access Workspace Now</span>
               <IconArrowRight size={18} />
             </Link>
             <Link className="btn btn-cta-secondary btn-lg" to="/register">
-              <span>Đăng ký tài khoản</span>
+              <span>Create Tenant Account</span>
             </Link>
           </div>
 
           <div className="cta-guarantees">
-            <span>✓ Thiết lập siêu tốc</span>
-            <span>✓ Bảo mật tuyệt đối</span>
-            <span>✓ Hỗ trợ chu đáo</span>
+            <span>✓ Instant Onboarding</span>
+            <span>✓ Bank-Grade Security</span>
+            <span>✓ 24/7 Cloud Availability</span>
           </div>
         </div>
       </section>
