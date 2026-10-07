@@ -4,7 +4,13 @@
 
 :root {
   /* Typography */
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    'Plus Jakarta Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   color: #0f172a;
   background-color: #f8fafc;
   font-synthesis: none;
@@ -118,34 +124,39 @@ body {
   margin: 0;
   background:
     radial-gradient(ellipse at 85% 8%, rgba(16, 185, 129, 0.18), transparent 45rem),
-    radial-gradient(ellipse at 15% 92%, rgba(37, 99, 235, 0.16), transparent 40rem),
-    #f8fafc;
+    radial-gradient(ellipse at 15% 92%, rgba(37, 99, 235, 0.16), transparent 40rem), #f8fafc;
   color: var(--ink);
   font-family: inherit;
   font-size: 14px;
   line-height: 1.5;
-  transition: background-color 200ms ease, color 200ms ease;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
 }
 
 [data-theme='dark'] body {
   background:
     radial-gradient(ellipse at 85% 8%, rgba(16, 185, 129, 0.12), transparent 45rem),
-    radial-gradient(ellipse at 15% 92%, rgba(37, 99, 235, 0.12), transparent 40rem),
-    #0b0f19;
+    radial-gradient(ellipse at 15% 92%, rgba(37, 99, 235, 0.12), transparent 40rem), #0b0f19;
   color: #f8fafc;
 }
 
 a {
   color: var(--brand);
   text-decoration: none;
-  transition: color 150ms ease, opacity 150ms ease;
+  transition:
+    color 150ms ease,
+    opacity 150ms ease;
 }
 
 a:hover {
   color: var(--brand-dark);
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font-family: inherit;
 }
 
@@ -154,15 +165,33 @@ button, input, select, textarea {
   outline-offset: 2px;
 }
 
-.text-emerald { color: var(--success) !important; }
-.text-brand { color: var(--brand) !important; }
-.text-info { color: var(--info) !important; }
-.text-warning { color: var(--warning) !important; }
-.bg-emerald-soft { background-color: var(--success-soft) !important; }
-.bg-warning-soft { background-color: var(--warning-soft) !important; }
-.bg-primary-soft { background-color: var(--brand-soft) !important; }
-.bg-info-soft { background-color: var(--info-soft) !important; }
-.font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.text-emerald {
+  color: var(--success) !important;
+}
+.text-brand {
+  color: var(--brand) !important;
+}
+.text-info {
+  color: var(--info) !important;
+}
+.text-warning {
+  color: var(--warning) !important;
+}
+.bg-emerald-soft {
+  background-color: var(--success-soft) !important;
+}
+.bg-warning-soft {
+  background-color: var(--warning-soft) !important;
+}
+.bg-primary-soft {
+  background-color: var(--brand-soft) !important;
+}
+.bg-info-soft {
+  background-color: var(--info-soft) !important;
+}
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
 
 /* ==========================================================================
    App Layout
@@ -208,7 +237,10 @@ button, input, select, textarea {
   backdrop-filter: blur(14px);
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
-  transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), background-color 200ms ease, border-color 200ms ease;
+  transition:
+    transform 250ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 200ms ease,
+    border-color 200ms ease;
 }
 
 [data-theme='dark'] .sidebar {
@@ -516,7 +548,9 @@ button, input, select, textarea {
   border-bottom: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(16px);
-  transition: background-color 200ms ease, border-color 200ms ease;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease;
 }
 
 [data-theme='dark'] .topbar {
@@ -1242,7 +1276,8 @@ button, input, select, textarea {
   color: var(--danger);
 }
 
-.form-control, .form-select {
+.form-control,
+.form-select {
   width: 100%;
   min-height: 42px;
   padding: 8px 14px;
@@ -1261,7 +1296,8 @@ button, input, select, textarea {
   color: #f8fafc;
 }
 
-.form-control:focus, .form-select:focus {
+.form-control:focus,
+.form-select:focus {
   border-color: var(--brand-light);
   background-color: var(--surface);
   box-shadow: 0 0 0 3px var(--brand-glow);
@@ -1589,7 +1625,12 @@ button, input, select, textarea {
   right: 5%;
   width: 420px;
   height: 420px;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, rgba(6, 182, 212, 0.15) 50%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(16, 185, 129, 0.25) 0%,
+    rgba(6, 182, 212, 0.15) 50%,
+    transparent 70%
+  );
 }
 
 .ambient-glow-2 {
@@ -1597,7 +1638,12 @@ button, input, select, textarea {
   left: -100px;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(37, 99, 235, 0.18) 0%, rgba(99, 102, 241, 0.12) 50%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(37, 99, 235, 0.18) 0%,
+    rgba(99, 102, 241, 0.12) 50%,
+    transparent 70%
+  );
 }
 
 /* Vibrant Hero Section */
@@ -1615,7 +1661,9 @@ button, input, select, textarea {
     radial-gradient(ellipse at 85% 15%, rgba(16, 185, 129, 0.15) 0%, transparent 50%),
     radial-gradient(ellipse at 15% 85%, rgba(37, 99, 235, 0.12) 0%, transparent 50%),
     linear-gradient(135deg, #ffffff 0%, #f0fdfa 45%, #eff6ff 100%);
-  box-shadow: 0 20px 45px -12px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+  box-shadow:
+    0 20px 45px -12px rgba(15, 23, 42, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.8) inset;
   transition: all 200ms ease;
 }
 
@@ -1625,7 +1673,9 @@ button, input, select, textarea {
     radial-gradient(ellipse at 15% 85%, rgba(37, 99, 235, 0.15) 0%, transparent 50%),
     linear-gradient(135deg, #0f172a 0%, #131d33 45%, #0b1329 100%);
   border-color: rgba(16, 185, 129, 0.35);
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  box-shadow:
+    0 25px 60px -15px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
 }
 
 .vibrant-pill-badge {
@@ -1722,7 +1772,9 @@ button, input, select, textarea {
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
   background: linear-gradient(135deg, #059669 0%, #0d9488 45%, #2563eb 100%);
-  box-shadow: 0 10px 25px -4px rgba(5, 150, 105, 0.4), 0 4px 12px rgba(37, 99, 235, 0.25);
+  box-shadow:
+    0 10px 25px -4px rgba(5, 150, 105, 0.4),
+    0 4px 12px rgba(37, 99, 235, 0.25);
   color: #fff;
   font-size: 15px;
   font-weight: 750;
@@ -1731,7 +1783,9 @@ button, input, select, textarea {
 
 .btn-vibrant-primary:hover {
   background: linear-gradient(135deg, #047857 0%, #0f766e 45%, #1d4ed8 100%);
-  box-shadow: 0 14px 30px -4px rgba(5, 150, 105, 0.5), 0 6px 16px rgba(37, 99, 235, 0.35);
+  box-shadow:
+    0 14px 30px -4px rgba(5, 150, 105, 0.5),
+    0 6px 16px rgba(37, 99, 235, 0.35);
   color: #fff;
   transform: translateY(-2px);
 }
@@ -1804,7 +1858,9 @@ button, input, select, textarea {
   border-radius: var(--radius-xl);
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(20px);
-  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15), 0 0 0 1px rgba(226, 232, 240, 0.8);
+  box-shadow:
+    0 25px 50px -12px rgba(15, 23, 42, 0.15),
+    0 0 0 1px rgba(226, 232, 240, 0.8);
   transition: all 200ms ease;
 }
 
@@ -1838,9 +1894,15 @@ button, input, select, textarea {
   border-radius: 50%;
 }
 
-.dot-red { background: #ef4444; }
-.dot-yellow { background: #f59e0b; }
-.dot-green { background: #10b981; }
+.dot-red {
+  background: #ef4444;
+}
+.dot-yellow {
+  background: #f59e0b;
+}
+.dot-green {
+  background: #10b981;
+}
 
 .showcase-window-title {
   color: #0f172a;
@@ -2033,13 +2095,31 @@ button, input, select, textarea {
   font-weight: 800;
 }
 
-.avatar-emerald { background: #d1fae5; color: #047857; }
-.avatar-sapphire { background: #dbeafe; color: #1d4ed8; }
-.avatar-amber { background: #fef3c7; color: #b45309; }
+.avatar-emerald {
+  background: #d1fae5;
+  color: #047857;
+}
+.avatar-sapphire {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.avatar-amber {
+  background: #fef3c7;
+  color: #b45309;
+}
 
-[data-theme='dark'] .avatar-emerald { background: rgba(16, 185, 129, 0.25); color: #34d399; }
-[data-theme='dark'] .avatar-sapphire { background: rgba(37, 99, 235, 0.25); color: #60a5fa; }
-[data-theme='dark'] .avatar-amber { background: rgba(245, 158, 11, 0.25); color: #fbbf24; }
+[data-theme='dark'] .avatar-emerald {
+  background: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+[data-theme='dark'] .avatar-sapphire {
+  background: rgba(37, 99, 235, 0.25);
+  color: #60a5fa;
+}
+[data-theme='dark'] .avatar-amber {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+}
 
 .unit-meta {
   flex: 1;
@@ -2110,8 +2190,13 @@ button, input, select, textarea {
 }
 
 @keyframes floatToast {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 .toast-icon {
@@ -2333,7 +2418,9 @@ button, input, select, textarea {
 }
 
 /* 6 Vibrant Color Schemes */
-.feature-color-emerald:hover { border-color: #a7f3d0; }
+.feature-color-emerald:hover {
+  border-color: #a7f3d0;
+}
 .feature-color-emerald .feature-vibrant-icon {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
@@ -2347,7 +2434,9 @@ button, input, select, textarea {
   color: #34d399;
 }
 
-.feature-color-indigo:hover { border-color: #c7d2fe; }
+.feature-color-indigo:hover {
+  border-color: #c7d2fe;
+}
 .feature-color-indigo .feature-vibrant-icon {
   background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
   box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
@@ -2361,7 +2450,9 @@ button, input, select, textarea {
   color: #a5b4fc;
 }
 
-.feature-color-purple:hover { border-color: #e9d5ff; }
+.feature-color-purple:hover {
+  border-color: #e9d5ff;
+}
 .feature-color-purple .feature-vibrant-icon {
   background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
   box-shadow: 0 6px 16px rgba(168, 85, 247, 0.35);
@@ -2375,7 +2466,9 @@ button, input, select, textarea {
   color: #c084fc;
 }
 
-.feature-color-amber:hover { border-color: #fde68a; }
+.feature-color-amber:hover {
+  border-color: #fde68a;
+}
 .feature-color-amber .feature-vibrant-icon {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   box-shadow: 0 6px 16px rgba(245, 158, 11, 0.35);
@@ -2389,7 +2482,9 @@ button, input, select, textarea {
   color: #fbbf24;
 }
 
-.feature-color-teal:hover { border-color: #99f6e4; }
+.feature-color-teal:hover {
+  border-color: #99f6e4;
+}
 .feature-color-teal .feature-vibrant-icon {
   background: linear-gradient(135deg, #06b6d4 0%, #0d9488 100%);
   box-shadow: 0 6px 16px rgba(6, 182, 212, 0.35);
@@ -2403,7 +2498,9 @@ button, input, select, textarea {
   color: #2dd4bf;
 }
 
-.feature-color-rose:hover { border-color: #fecdd3; }
+.feature-color-rose:hover {
+  border-color: #fecdd3;
+}
 .feature-color-rose .feature-vibrant-icon {
   background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
   box-shadow: 0 6px 16px rgba(244, 63, 94, 0.35);
@@ -2457,7 +2554,9 @@ button, input, select, textarea {
 
 .feature-step-arrow {
   color: #cbd5e1;
-  transition: transform 150ms ease, color 150ms ease;
+  transition:
+    transform 150ms ease,
+    color 150ms ease;
 }
 
 .vibrant-feature-card:hover .feature-step-arrow {
@@ -2816,9 +2915,15 @@ button, input, select, textarea {
   transition: width 400ms ease;
 }
 
-.segment-occupied { background: #10b981; }
-.segment-vacant { background: #0284c7; }
-.segment-maintenance { background: #f59e0b; }
+.segment-occupied {
+  background: #10b981;
+}
+.segment-vacant {
+  background: #0284c7;
+}
+.segment-maintenance {
+  background: #f59e0b;
+}
 
 .status-stat-pill {
   padding: 14px;
@@ -3096,7 +3201,8 @@ button, input, select, textarea {
 }
 
 @keyframes ping {
-  75%, 100% {
+  75%,
+  100% {
     transform: scale(2);
     opacity: 0;
   }
@@ -3219,7 +3325,9 @@ button, input, select, textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;

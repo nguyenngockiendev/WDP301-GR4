@@ -22,6 +22,14 @@ export default entity(
       ],
       validate: v => v.length > 0,
     },
+    adjustments: [
+      {
+        amount: { type: Number, required: true, validate: Number.isSafeInteger },
+        reason: { type: String, required: true, trim: true, maxlength: 500 },
+        adjustedBy: ref('User'),
+        adjustedAt: { type: Date, default: Date.now },
+      },
+    ],
     total: money(),
     paidAmount: { ...money(), default: 0 },
     status: state('DRAFT ISSUED PARTIAL PAID VOID', 'DRAFT'),
@@ -37,7 +45,9 @@ export default entity(
   ],
   schema => {
     schema.pre('validate', function () {
-      const sum = this.lines.reduce((n, l) => n + l.amount, 0);
+      const sum =
+        this.lines.reduce((n, l) => n + l.amount, 0) +
+        this.adjustments.reduce((n, adjustment) => n + adjustment.amount, 0);
       if (sum !== this.total) this.invalidate('total', 'Tổng tiền không khớp các dòng');
       if (this.paidAmount > this.total)
         this.invalidate('paidAmount', 'Tiền VNDã trả vượt tổng hóa VNDơn');

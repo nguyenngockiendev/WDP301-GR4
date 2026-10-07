@@ -408,9 +408,7 @@ export default function Home() {
             <span>ELEVATE YOUR RENTAL OPERATIONS TODAY</span>
           </div>
 
-          <h2 className="cta-heading">
-            Ready to revolutionize your rental property portfolio?
-          </h2>
+          <h2 className="cta-heading">Ready to revolutionize your rental property portfolio?</h2>
 
           <p className="cta-sub">
             Experience smart property management with zero installation required, accessible

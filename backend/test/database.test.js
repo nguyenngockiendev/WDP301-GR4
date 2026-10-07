@@ -40,7 +40,7 @@ const invoiceData = () => ({
   createdBy: id(),
 });
 test('All domain models compile; invalid money, dates and meter readings rejected', async () => {
-  assert.equal(Object.keys(M).length, 20);
+  assert.equal(Object.keys(M).length, 19);
   await assert.rejects(new M.Contract({ ...contractData(), rent: 1.5 }).validate());
   await assert.rejects(
     new M.Contract({ ...contractData(), endDate: new Date('2025-01-01') }).validate(),
@@ -115,4 +115,24 @@ test('Room codes scoped by building; legacy rooms without building remain valid'
   await assert.rejects(M.Room.create(data), { code: 11000 });
   await M.Room.create({ ...data, building: id() });
   await M.Room.create({ title: 'Legacy', description: 'Room', price: 100, owner: id() });
+});
+test('Rental settings and invoice adjustments preserve the documented payment rules', async () => {
+  await assert.rejects(
+    new M.ContractPolicy({
+      building: id(),
+      version: 1,
+      minMonths: 1,
+      noticeDays: 30,
+      paymentDueDay: 32,
+      paymentGraceDays: 3,
+      terms: 'Standard terms',
+      createdBy: id(),
+    }).validate(),
+  );
+  const invoice = new M.Invoice({
+    ...invoiceData(),
+    total: 2490000,
+    adjustments: [{ amount: -10000, reason: 'Approved discount', adjustedBy: id() }],
+  });
+  await invoice.validate();
 });

@@ -41,15 +41,16 @@ export function createApp({ mongoUrl, secret, store, production = false }) {
       cookie: { httpOnly: true, sameSite: 'lax', secure: production, maxAge: 28800000 },
     }),
   );
-  const service = new UserService(new UserDAO()),
-    auth = new AuthController(service),
-    users = new UserController(service);
+  const userService = new UserService(new UserDAO());
+  const auth = new AuthController(userService);
+  const users = new UserController(userService);
+
   app.use('/api', async (req, res, next) => {
     if (req.session.userId) {
       try {
-        req.user = await service.detail(req.session.userId);
-      } catch (e) {
-        if (e.status !== 404) throw e;
+        req.user = await userService.detail(req.session.userId);
+      } catch (error) {
+        if (error.status !== 404) throw error;
         delete req.session.userId;
       }
       if (req.user && !USER_ROLES.includes(req.user.role)) {
@@ -86,7 +87,8 @@ export function createApp({ mongoUrl, secret, store, production = false }) {
   app.post('/api/users', roles('LANDLORD'), users.create);
   app.get('/api/users/:id', roles('LANDLORD'), users.detail);
   app.patch('/api/users/:id/role', roles('LANDLORD'), users.changeRole);
-  const buildingService = new BuildingService(new BuildingDAO(Building, Room), new UserDAO());
+  const buildingDAO = new BuildingDAO(Building, Room);
+  const buildingService = new BuildingService(buildingDAO, new UserDAO());
   const buildings = new BuildingController(buildingService);
   app.get('/api/buildings', roles('LANDLORD'), buildings.list);
   app.post('/api/buildings', roles('LANDLORD'), buildings.create);
@@ -94,27 +96,29 @@ export function createApp({ mongoUrl, secret, store, production = false }) {
   app.patch('/api/buildings/:id', roles('LANDLORD'), buildings.update);
   app.delete('/api/buildings/:id', roles('LANDLORD'), buildings.remove);
   app.patch('/api/buildings/:id/manager', roles('LANDLORD'), buildings.assignManager);
-  const rooms = new ListingController(
-    new ListingService(
-      new ListingDAO(Room),
-      ['LANDLORD', 'MANAGER'],
-      new UserDAO(),
-      buildingService,
-    ),
+  const listingService = new ListingService(
+    new ListingDAO(Room),
+    ['LANDLORD', 'MANAGER'],
+    new UserDAO(),
+    buildingService,
   );
+  const rooms = new ListingController(listingService);
   app.use('/api/rooms', roles('LANDLORD', 'MANAGER'));
   app.get('/api/rooms', rooms.list);
   app.post('/api/rooms', roles('LANDLORD'), rooms.create);
   app.get('/api/rooms/:id', rooms.detail);
   app.patch('/api/rooms/:id/manager', roles('LANDLORD'), rooms.assign);
   app.patch('/api/rooms/:id/building', roles('LANDLORD'), rooms.assignBuilding);
-  const workspace = new WorkspaceController(new WorkspaceService(new WorkspaceDAO()));
-  const reports = new ReportController(new ReportService(new WorkspaceDAO()));
+  const workspaceDAO = new WorkspaceDAO();
+  const workspaceService = new WorkspaceService(workspaceDAO);
+  const reportService = new ReportService(workspaceDAO);
+  const workspace = new WorkspaceController(workspaceService);
+  const reports = new ReportController(reportService);
   app.get('/api/dashboard', workspace.dashboard);
   app.get('/api/reports', roles('LANDLORD'), reports.summary);
   app.get('/api/workspace/:module', workspace.list);
   app.use((req, res) => res.status(404).json({ message: 'Not found.' }));
-  app.use((error, req, res, next) => {
+  app.use((error, req, res, _next) => {
     const status = error.status || 500;
     if (status === 500) console.error(error);
     res.status(status).json({
