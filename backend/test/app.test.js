@@ -162,6 +162,12 @@ test('Landlord can manage buildings and assign rooms to an owned building', asyn
     .expect(201);
   const buildingId = String(building.body.item._id);
   await admin
+    .patch('/api/buildings/' + buildingId + '/status')
+    .set('X-CSRF-Token', csrf)
+    .send({ status: 'INACTIVE' })
+    .expect(200);
+  assert.equal((await admin.get('/api/buildings/' + buildingId)).body.item.status, 'INACTIVE');
+  await admin
     .patch('/api/buildings/' + buildingId)
     .set('X-CSRF-Token', csrf)
     .send({ name: 'Sunrise House', address: '2 Main Street', status: 'INACTIVE' })

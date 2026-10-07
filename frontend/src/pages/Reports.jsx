@@ -10,9 +10,28 @@ import {
 
 const money = value => (value || 0).toLocaleString('en-US') + ' VND';
 
-export default function Reports() {
+const reportViews = {
+  revenue: {
+    eyebrow: 'REVENUE REPORT',
+    title: 'Revenue Report',
+    subtitle: 'Collected payments and current financial performance.',
+  },
+  outstanding: {
+    eyebrow: 'OUTSTANDING BALANCE REPORT',
+    title: 'Outstanding Balance Report',
+    subtitle: 'Issued invoices, receivables and collection progress.',
+  },
+  occupancy: {
+    eyebrow: 'OCCUPANCY REPORT',
+    title: 'Occupancy Report',
+    subtitle: 'Room allocation and vacancy across your properties.',
+  },
+};
+
+export default function Reports({ type = 'revenue' }) {
   const state = useData('/reports');
   const report = state.data;
+  const view = reportViews[type] || reportViews.revenue;
 
   const totalRooms = report?.occupancy?.total || 0;
   const occupiedRooms = report?.occupancy?.occupied || 0;
@@ -25,11 +44,8 @@ export default function Reports() {
 
   return (
     <div className="reports-page">
-      <Heading
-        eyebrow="ANALYTICS & METRICS"
-        subtitle="Live financial health, receivables, and real-time room occupancy analytics."
-      >
-        Business Reports
+      <Heading eyebrow={view.eyebrow} subtitle={view.subtitle}>
+        {view.title}
       </Heading>
 
       <Notice state={state} />
@@ -38,7 +54,7 @@ export default function Reports() {
         <>
           {/* Main KPI Stats */}
           <section className="stats-grid mb-4" aria-label="Financial indicators">
-            <article className="stat-card">
+            <article className={`stat-card ${type === 'outstanding' ? '' : 'd-none'}`}>
               <div className="stat-top">
                 <span className="stat-label">Outstanding Receivables</span>
                 <div className="stat-icon-badge text-warning bg-warning-soft">
@@ -51,7 +67,7 @@ export default function Reports() {
               </div>
             </article>
 
-            <article className="stat-card">
+            <article className={`stat-card ${type === 'revenue' ? '' : 'd-none'}`}>
               <div className="stat-top">
                 <span className="stat-label">Total Realized Revenue</span>
                 <div className="stat-icon-badge text-emerald bg-emerald-soft">
@@ -64,7 +80,7 @@ export default function Reports() {
               </div>
             </article>
 
-            <article className="stat-card">
+            <article className={`stat-card ${type === 'occupancy' ? '' : 'd-none'}`}>
               <div className="stat-top">
                 <span className="stat-label">Average Occupancy Rate</span>
                 <div className="stat-icon-badge text-primary bg-primary-soft">
@@ -84,7 +100,7 @@ export default function Reports() {
           </section>
 
           {/* Occupancy Visual Progress & Breakdown */}
-          <section className="row g-4">
+          <section className={`row g-4 ${type === 'occupancy' ? '' : 'd-none'}`}>
             <div className="col-lg-7">
               <div className="card p-4">
                 <div className="d-flex justify-content-between align-items-center mb-3">

@@ -64,7 +64,9 @@ export default function Sidebar({ isOpen, onClose }) {
     links.push(
       { to: '/buildings', label: 'Buildings', icon: IconBuilding },
       { to: '/users', label: 'Accounts', icon: IconUsers },
-      { to: '/reports', label: 'Business reports', icon: IconReports },
+      { to: '/reports/revenue', label: 'Revenue report', icon: IconReports },
+      { to: '/reports/outstanding', label: 'Outstanding balance', icon: IconInvoice },
+      { to: '/reports/occupancy', label: 'Occupancy report', icon: IconRoom },
     );
   }
 

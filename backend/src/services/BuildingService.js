@@ -67,4 +67,10 @@ export class BuildingService {
     }
     return this.dao.assignManager(id, managerId || null);
   }
+  async setStatus(id, status, user) {
+    await this.detail(id, user);
+    if (!['ACTIVE', 'INACTIVE'].includes(status))
+      throw new AppError('Please select a valid building status.');
+    return this.dao.updateStatus(id, status);
+  }
 }
