@@ -28,4 +28,6 @@ export class BuildingController {
   };
   assignManager = async (req, res) =>
     res.json({ item: await this.service.assignManager(req.params.id, req.body.manager, req.user) });
+  setStatus = async (req, res) =>
+    res.json({ item: await this.service.setStatus(req.params.id, req.body.status, req.user) });
 }

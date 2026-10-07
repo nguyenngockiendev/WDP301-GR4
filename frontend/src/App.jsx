@@ -40,7 +40,10 @@ export default function App() {
             <Route path="buildings/new" element={<BuildingForm />} />
             <Route path="buildings/:id" element={<BuildingDetail />} />
             <Route path="buildings/:id/edit" element={<BuildingForm />} />
-            <Route path="reports" element={<Reports />} />
+            <Route path="reports" element={<Reports type="revenue" />} />
+            <Route path="reports/revenue" element={<Reports type="revenue" />} />
+            <Route path="reports/outstanding" element={<Reports type="outstanding" />} />
+            <Route path="reports/occupancy" element={<Reports type="occupancy" />} />
             <Route path="rooms/new" element={<ManagementForm kind="rooms" />} />
           </Route>
           <Route element={<Protected roles={['LANDLORD', 'MANAGER']} />}>

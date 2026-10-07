@@ -287,6 +287,21 @@ export function BuildingDetail() {
       setBusy(false);
     }
   }
+  async function changeStatus() {
+    setBusy(true);
+    setError('');
+    try {
+      await send(
+        '/buildings/' + id + '/status',
+        { status: item.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' },
+        'PATCH',
+      );
+      window.location.reload();
+    } catch (statusError) {
+      setError(statusError.message);
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="building-detail-page">
@@ -344,6 +359,13 @@ export function BuildingDetail() {
               </dl>
 
               <div className="danger-zone mt-4 pt-3 border-top">
+                <button
+                  className="btn btn-outline-secondary btn-sm me-2"
+                  onClick={changeStatus}
+                  disabled={busy}
+                >
+                  {item.status === 'ACTIVE' ? 'Deactivate building' : 'Activate building'}
+                </button>
                 <h3 className="h6 text-danger mb-2">Danger Zone</h3>
                 <p className="text-muted small mb-3">
                   Permanently remove this property from the system. Cannot be undone.

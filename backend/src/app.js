@@ -96,6 +96,7 @@ export function createApp({ mongoUrl, secret, store, production = false }) {
   app.patch('/api/buildings/:id', roles('LANDLORD'), buildings.update);
   app.delete('/api/buildings/:id', roles('LANDLORD'), buildings.remove);
   app.patch('/api/buildings/:id/manager', roles('LANDLORD'), buildings.assignManager);
+  app.patch('/api/buildings/:id/status', roles('LANDLORD'), buildings.setStatus);
   const listingService = new ListingService(
     new ListingDAO(Room),
     ['LANDLORD', 'MANAGER'],
