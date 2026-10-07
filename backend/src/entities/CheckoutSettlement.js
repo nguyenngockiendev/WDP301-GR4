@@ -14,8 +14,10 @@ export default entity(
     depositApplied: money(),
     refundAmount: money(),
     remainingDue: money(),
-    status: state('DRAFT FINALIZED', 'DRAFT'),
+    status: state('DRAFT FINALIZED REFUNDED', 'DRAFT'),
     finalizedAt: Date,
+    refundedBy: ref('User', false),
+    refundedAt: Date,
   },
   [
     [{ request: 1 }, { unique: true }],

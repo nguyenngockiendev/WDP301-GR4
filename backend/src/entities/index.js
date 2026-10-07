@@ -17,4 +17,3 @@ export { default as DepositTransaction } from './DepositTransaction.js';
 export { default as Notification } from './Notification.js';
 export { default as OtpChallenge } from './OtpChallenge.js';
 export { default as EmailDelivery } from './EmailDelivery.js';
-export { default as AuditLog } from './AuditLog.js';
