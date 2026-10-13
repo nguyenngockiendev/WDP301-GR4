@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import { createApp } from './app.js';
-import User from './entities/User.js';
+import User from './modules/users/User.js';
 
 const mongoUrl = process.env.MONGODB_URI;
 if (!mongoUrl) throw new Error('Chưa cấu hình MONGODB_URI trong .env');

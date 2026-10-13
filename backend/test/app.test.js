@@ -5,11 +5,11 @@ import session from 'express-session';
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { createApp } from '../src/app.js';
-import User from '../src/entities/User.js';
-import Notification from '../src/entities/Notification.js';
-import { UserDAO } from '../src/dao/UserDAO.js';
-import { UserService } from '../src/services/UserService.js';
-import { CreateUserDTO } from '../src/dto/UserDTO.js';
+import User from '../src/modules/users/User.js';
+import Notification from '../src/modules/notifications/Notification.js';
+import { UserDAO } from '../src/modules/users/UserDAO.js';
+import { UserService } from '../src/modules/users/UserService.js';
+import { CreateUserDTO } from '../src/modules/users/UserDTO.js';
 let mongo, app;
 const password = 'TestingPassword123!';
 async function token(agent) {

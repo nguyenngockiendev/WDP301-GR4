@@ -2,7 +2,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import * as M from '../src/entities/index.js';
+import * as M from '../src/models.js';
 let mongo;
 const id = () => new mongoose.Types.ObjectId();
 before(async () => {

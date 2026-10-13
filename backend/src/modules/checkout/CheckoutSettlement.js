@@ -1,0 +1,25 @@
+import { entity, ref, money, state } from '../../common/models/fields.js';
+export default entity(
+  'CheckoutSettlement',
+  {
+    request: ref('CheckoutRequest'),
+    contract: ref('Contract'),
+    inspectedBy: ref('User'),
+    inspectedAt: { type: Date, required: true },
+    roomCondition: state('GOOD DAMAGED', 'GOOD'),
+    damageNotes: String,
+    outstandingDebt: money(),
+    damageCharge: money(),
+    depositApplied: money(),
+    refundAmount: money(),
+    remainingDue: money(),
+    status: state('DRAFT FINALIZED REFUNDED', 'DRAFT'),
+    finalizedAt: Date,
+    refundedBy: ref('User', false),
+    refundedAt: Date,
+  },
+  [
+    [{ request: 1 }, { unique: true }],
+    [{ contract: 1 }, { unique: true }],
+  ],
+);

@@ -5,7 +5,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles.css';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
-import App from './App';
+import App from './routes/AppRoutes';
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>

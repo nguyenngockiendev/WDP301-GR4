@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import * as models from '../src/entities/index.js';
+import * as models from '../src/models.js';
 try {
   if (!process.env.MONGODB_URI) throw new Error('Thiếu MONGODB_URI');
   await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });

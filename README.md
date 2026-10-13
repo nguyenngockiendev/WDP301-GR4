@@ -5,14 +5,9 @@ Dự án làm việc: `E:\Giáo trình WDP301\WDP301`. Cấu trúc tách FE/BE t
 ```text
 backend/
   src/
-    config/
-    controllers/
-    services/
-    dao/
-    entities/
-    dto/
-    middleware/
-    utils/
+    common/       constants, middleware, models and utilities shared by features
+    modules/      auth, users, buildings, rooms, contracts, billing, reports, etc.
+    models.js     exports all Mongoose models for database startup
     app.js
     server.js
   scripts/
@@ -25,7 +20,8 @@ frontend/
   src/
     components/    Header, Footer, Sidebar, Layout
     context/       AuthContext
-    pages/         Auth, Dashboard, Profile, Management, Records
+    modules/       feature pages and UI logic grouped by feature
+    routes/        application routes
     services/      JSON API client
     App.jsx
     main.jsx
@@ -36,7 +32,7 @@ frontend/
 docs/MONGODB.md
 ```
 
-Backend giữ kiến trúc controller → service → DAO → entity và DTO. Frontend không truy cập MongoDB; chỉ gọi `/api`. Header/Footer/Sidebar là React components dùng chung.
+Backend đặt controller, service, DAO, DTO và model cạnh nhau trong từng feature ở `modules/`. Phần dùng chung nằm trong `common/`. Frontend gom màn hình theo feature trong `modules/`, còn Header/Footer/Sidebar là React components dùng chung. Frontend không truy cập MongoDB; chỉ gọi `/api`.
 
 ## Chạy dự án
 

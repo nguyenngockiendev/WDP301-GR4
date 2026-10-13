@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import User from '../src/entities/User.js';
-import { UserDAO } from '../src/dao/UserDAO.js';
-import { UserService } from '../src/services/UserService.js';
-import { CreateUserDTO } from '../src/dto/UserDTO.js';
+import User from '../src/modules/users/User.js';
+import { UserDAO } from '../src/modules/users/UserDAO.js';
+import { UserService } from '../src/modules/users/UserService.js';
+import { CreateUserDTO } from '../src/modules/users/UserDTO.js';
 
 if (!process.env.MONGODB_URI) throw new Error('Thiếu MONGODB_URI trong file .env.');
 
