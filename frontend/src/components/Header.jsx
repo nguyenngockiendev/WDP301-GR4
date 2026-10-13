@@ -5,7 +5,6 @@ import { useTheme } from '../context/ThemeContext';
 import {
   IconMenu,
   IconBell,
-  IconSearch,
   IconChevronRight,
   IconHome,
   IconLogout,
@@ -51,20 +50,6 @@ export default function Header({ onToggleMobileMenu }) {
             </>
           )}
         </nav>
-      </div>
-
-      <div className="topbar-center d-none d-lg-flex">
-        <div className="topbar-search">
-          <IconSearch size={15} className="topbar-search-icon" />
-          <input
-            type="text"
-            className="topbar-search-input"
-            placeholder="Search rooms, tenants, contracts... (Press / to search)"
-            readOnly
-            onClick={() => {}}
-          />
-          <kbd className="topbar-search-kbd">⌘K</kbd>
-        </div>
       </div>
 
       <div className="topbar-right">

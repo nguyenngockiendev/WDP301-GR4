@@ -1,220 +1,214 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Heading, Notice, useData } from '../../components/Common';
-import {
-  IconTrendingUp,
-  IconInvoice,
-  IconRoom,
-  IconSparkles,
-  IconShieldCheck,
-} from '../../components/Icons';
 
-const money = value => (value || 0).toLocaleString('en-US') + ' VND';
-
-const reportViews = {
-  revenue: {
-    eyebrow: 'REVENUE REPORT',
-    title: 'Revenue Report',
-    subtitle: 'Collected payments and current financial performance.',
-  },
-  outstanding: {
-    eyebrow: 'OUTSTANDING BALANCE REPORT',
-    title: 'Outstanding Balance Report',
-    subtitle: 'Issued invoices, receivables and collection progress.',
-  },
-  occupancy: {
-    eyebrow: 'OCCUPANCY REPORT',
-    title: 'Occupancy Report',
-    subtitle: 'Room allocation and vacancy across your properties.',
-  },
+const money = value => `${(value || 0).toLocaleString('en-US')} VND`;
+const views = {
+  revenue: ['Revenue report', 'Track payments received across your portfolio.'],
+  outstanding: ['Outstanding balance', 'See how much has been billed and remains unpaid.'],
+  occupancy: ['Occupancy report', 'Understand how your rooms are being used.'],
 };
+
+function ReportTabs({ active }) {
+  const tabs = [
+    ['revenue', 'Revenue'],
+    ['outstanding', 'Receivables'],
+    ['occupancy', 'Occupancy'],
+  ];
+  return (
+    <nav className="report-tabs" aria-label="Report type">
+      {tabs.map(([key, label]) => (
+        <Link
+          key={key}
+          to={`/reports/${key}`}
+          className={`report-tab ${active === key ? 'active' : ''}`}
+          aria-current={active === key ? 'page' : undefined}
+        >
+          {label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+function Metric({ label, value, note, tone }) {
+  return (
+    <article className="report-metric">
+      <span className={`report-metric-mark ${tone}`} />
+      <div className="report-metric-copy">
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{note}</small>
+      </div>
+    </article>
+  );
+}
 
 export default function Reports({ type = 'revenue' }) {
   const state = useData('/reports');
   const report = state.data;
-  const view = reportViews[type] || reportViews.revenue;
-
-  const totalRooms = report?.occupancy?.total || 0;
-  const occupiedRooms = report?.occupancy?.occupied || 0;
-  const vacantRooms = report?.occupancy?.vacant || 0;
-  const maintenanceRooms = report?.occupancy?.maintenance || 0;
-
-  const occupiedPct = totalRooms ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
-  const vacantPct = totalRooms ? Math.round((vacantRooms / totalRooms) * 100) : 0;
-  const maintenancePct = totalRooms ? Math.round((maintenanceRooms / totalRooms) * 100) : 0;
+  const active = views[type] ? type : 'revenue';
+  const [title, subtitle] = views[active];
+  const total = report?.occupancy?.total || 0;
+  const occupied = report?.occupancy?.occupied || 0;
+  const vacant = report?.occupancy?.vacant || 0;
+  const maintenance = report?.occupancy?.maintenance || 0;
+  const other = Math.max(0, total - occupied - vacant - maintenance);
+  const occupancyRate = total ? Math.round((occupied / total) * 100) : 0;
+  const billed = (report?.revenue || 0) + (report?.outstandingBalance || 0);
+  const paidRate = billed ? Math.round((report.revenue / billed) * 100) : 0;
+  const dueRate = billed ? 100 - paidRate : 0;
+  const occupancyChart = `conic-gradient(#10b981 0 ${total ? (occupied / total) * 100 : 0}%, #0ea5e9 ${total ? (occupied / total) * 100 : 0}% ${total ? ((occupied + vacant) / total) * 100 : 0}%, #f59e0b ${total ? ((occupied + vacant) / total) * 100 : 0}% ${total ? ((occupied + vacant + maintenance) / total) * 100 : 0}%, #94a3b8 ${total ? ((occupied + vacant + maintenance) / total) * 100 : 0}% 100%)`;
 
   return (
     <div className="reports-page">
-      <Heading eyebrow={view.eyebrow} subtitle={view.subtitle}>
-        {view.title}
+      <Heading
+        eyebrow="PORTFOLIO ANALYTICS"
+        subtitle={subtitle}
+        action={<ReportTabs active={active} />}
+      >
+        {title}
       </Heading>
-
       <Notice state={state} />
 
       {report && (
         <>
-          {/* Main KPI Stats */}
-          <section className="stats-grid mb-4" aria-label="Financial indicators">
-            <article className={`stat-card ${type === 'outstanding' ? '' : 'd-none'}`}>
-              <div className="stat-top">
-                <span className="stat-label">Outstanding Receivables</span>
-                <div className="stat-icon-badge text-warning bg-warning-soft">
-                  <IconInvoice size={18} />
-                </div>
-              </div>
-              <div className="stat-value text-dark">{money(report.outstandingBalance)}</div>
-              <div className="stat-bottom">
-                <span className="stat-hint">Issued invoices not yet settled</span>
-              </div>
-            </article>
-
-            <article className={`stat-card ${type === 'revenue' ? '' : 'd-none'}`}>
-              <div className="stat-top">
-                <span className="stat-label">Total Realized Revenue</span>
-                <div className="stat-icon-badge text-emerald bg-emerald-soft">
-                  <IconTrendingUp size={18} />
-                </div>
-              </div>
-              <div className="stat-value text-emerald">{money(report.revenue)}</div>
-              <div className="stat-bottom">
-                <span className="stat-hint">Payments verified in current fiscal period</span>
-              </div>
-            </article>
-
-            <article className={`stat-card ${type === 'occupancy' ? '' : 'd-none'}`}>
-              <div className="stat-top">
-                <span className="stat-label">Average Occupancy Rate</span>
-                <div className="stat-icon-badge text-primary bg-primary-soft">
-                  <IconRoom size={18} />
-                </div>
-              </div>
-              <div className="stat-value">
-                {occupiedPct}
-                <small className="stat-currency">%</small>
-              </div>
-              <div className="stat-bottom">
-                <span className="stat-hint">
-                  {occupiedRooms} of {totalRooms} rooms active
-                </span>
-              </div>
-            </article>
+          <section className="report-metrics" aria-label="Portfolio summary">
+            <Metric
+              label="Payments received"
+              value={money(report.revenue)}
+              note="Verified payments"
+              tone="green"
+            />
+            <Metric
+              label="Outstanding balance"
+              value={money(report.outstandingBalance)}
+              note="Still to be collected"
+              tone="amber"
+            />
+            <Metric
+              label="Room occupancy"
+              value={`${occupancyRate}%`}
+              note={`${occupied} of ${total} rooms occupied`}
+              tone="blue"
+            />
           </section>
 
-          {/* Occupancy Visual Progress & Breakdown */}
-          <section className={`row g-4 ${type === 'occupancy' ? '' : 'd-none'}`}>
-            <div className="col-lg-7">
-              <div className="card p-4">
-                <div className="d-flex justify-content-between align-items-center mb-3">
+          <section className="report-panels">
+            {active === 'occupancy' ? (
+              <article className="report-panel report-chart-panel">
+                <div className="report-panel-heading">
                   <div>
-                    <h2 className="h5 mb-1">Room Allocation Distribution</h2>
-                    <p className="text-muted small mb-0">
-                      Live status breakdown across all properties ({totalRooms} total units)
-                    </p>
+                    <span className="report-kicker">ROOM STATUS</span>
+                    <h2>Portfolio occupancy</h2>
+                    <p>Current room count by status</p>
                   </div>
-                  <span className="badge bg-light text-dark border px-3 py-2">
-                    {totalRooms} Total Units
-                  </span>
+                  <span className="report-total-chip">{total} rooms</span>
                 </div>
-
-                {/* Multi-segment progress bar */}
-                <div className="occupancy-progress-bar mb-4" role="progressbar">
+                <div className="occupancy-chart-layout">
                   <div
-                    className="progress-segment segment-occupied"
-                    style={{ width: `${occupiedPct}%` }}
-                    title={`Occupied: ${occupiedRooms} (${occupiedPct}%)`}
-                  />
-                  <div
-                    className="progress-segment segment-vacant"
-                    style={{ width: `${vacantPct}%` }}
-                    title={`Vacant: ${vacantRooms} (${vacantPct}%)`}
-                  />
-                  <div
-                    className="progress-segment segment-maintenance"
-                    style={{ width: `${maintenancePct}%` }}
-                    title={`Maintenance: ${maintenanceRooms} (${maintenancePct}%)`}
-                  />
-                </div>
-
-                {/* Legend list */}
-                <div className="row g-3">
-                  <div className="col-sm-4">
-                    <div className="status-stat-pill status-pill-success">
-                      <div className="d-flex align-items-center gap-2 mb-1">
-                        <span className="legend-dot bg-success" />
-                        <span className="small fw-semibold">Occupied</span>
-                      </div>
-                      <div className="h4 mb-0 text-success">{occupiedRooms}</div>
-                      <small className="text-muted">{occupiedPct}% of total</small>
+                    className="occupancy-donut"
+                    style={{ background: occupancyChart }}
+                    role="img"
+                    aria-label={`${occupied} occupied, ${vacant} vacant, ${maintenance} under maintenance, ${other} other`}
+                  >
+                    <div className="occupancy-donut-center">
+                      <strong>{occupancyRate}%</strong>
+                      <span>occupied</span>
                     </div>
                   </div>
-
-                  <div className="col-sm-4">
-                    <div className="status-stat-pill status-pill-info">
-                      <div className="d-flex align-items-center gap-2 mb-1">
-                        <span className="legend-dot bg-info" />
-                        <span className="small fw-semibold">Vacant</span>
+                  <div className="occupancy-legend">
+                    {[
+                      ['Occupied', occupied, 'green'],
+                      ['Vacant', vacant, 'blue'],
+                      ['Maintenance', maintenance, 'amber'],
+                      ['Other', other, 'slate'],
+                    ].map(([label, value, tone]) => (
+                      <div className="occupancy-legend-row" key={label}>
+                        <span className={`report-legend-dot ${tone}`} />
+                        <span>{label}</span>
+                        <strong>{value}</strong>
+                        <small>{total ? Math.round((value / total) * 100) : 0}%</small>
                       </div>
-                      <div className="h4 mb-0 text-info">{vacantRooms}</div>
-                      <small className="text-muted">{vacantPct}% ready to rent</small>
-                    </div>
+                    ))}
                   </div>
-
-                  <div className="col-sm-4">
-                    <div className="status-stat-pill status-pill-warning">
-                      <div className="d-flex align-items-center gap-2 mb-1">
-                        <span className="legend-dot bg-warning" />
-                        <span className="small fw-semibold">Maintenance</span>
-                      </div>
-                      <div className="h4 mb-0 text-warning">{maintenanceRooms}</div>
-                      <small className="text-muted">{maintenancePct}% offline</small>
+                </div>
+                <div className="report-note">
+                  The chart uses the current room statuses recorded in your properties.
+                </div>
+              </article>
+            ) : (
+              <article className="report-panel report-chart-panel">
+                <div className="report-panel-heading">
+                  <div>
+                    <span className="report-kicker">BILLING OVERVIEW</span>
+                    <h2>
+                      {active === 'revenue' ? 'Collection progress' : 'Receivables breakdown'}
+                    </h2>
+                    <p>Paid amount compared with issued invoice balances</p>
+                  </div>
+                  <span className="report-total-chip">{money(billed)} billed</span>
+                </div>
+                <div className="collection-summary">
+                  <div className="collection-summary-value">
+                    <strong>{paidRate}%</strong>
+                    <span>collected</span>
+                  </div>
+                  <div
+                    className="collection-bar"
+                    role="img"
+                    aria-label={`${paidRate}% collected, ${dueRate}% outstanding`}
+                  >
+                    <span className="collection-bar-paid" style={{ width: `${paidRate}%` }} />
+                    <span className="collection-bar-due" style={{ width: `${dueRate}%` }} />
+                  </div>
+                  <div className="collection-legend">
+                    <div>
+                      <span className="report-legend-dot green" />
+                      <span>Received</span>
+                      <strong>{money(report.revenue)}</strong>
+                    </div>
+                    <div>
+                      <span className="report-legend-dot amber" />
+                      <span>Outstanding</span>
+                      <strong>{money(report.outstandingBalance)}</strong>
                     </div>
                   </div>
                 </div>
+                <div className="report-note">
+                  Portfolio totals from issued invoices and verified payments.
+                </div>
+              </article>
+            )}
+
+            <aside className="report-panel report-insight-panel">
+              <span className="report-kicker">PORTFOLIO SNAPSHOT</span>
+              <h2>{active === 'occupancy' ? 'Room availability' : 'Collection health'}</h2>
+              <p>
+                {active === 'occupancy'
+                  ? `${vacant} ${vacant === 1 ? 'room is' : 'rooms are'} currently vacant and ready to review.`
+                  : `${money(report.outstandingBalance)} remains unpaid across issued invoices.`}
+              </p>
+              <div className="insight-divider" />
+              <div className="insight-stat">
+                <span>{active === 'occupancy' ? 'Under maintenance' : 'Collection rate'}</span>
+                <strong>
+                  {active === 'occupancy' ? maintenance : `${paidRate}%`}
+                  {active === 'occupancy' && ' rooms'}
+                </strong>
               </div>
-            </div>
-
-            <div className="col-lg-5">
-              <div className="card p-4">
-                <div className="d-flex align-items-center gap-2 mb-2">
-                  <IconSparkles size={18} className="text-emerald" />
-                  <h2 className="h5 mb-0">Portfolio Health Summary</h2>
-                </div>
-                <p className="text-muted small">
-                  Automated financial ratio review based on recent invoices and collection rates.
-                </p>
-
-                <div className="health-check-list mt-3">
-                  <div className="health-item d-flex align-items-center justify-content-between p-2 rounded bg-light mb-2">
-                    <div className="d-flex align-items-center gap-2">
-                      <IconShieldCheck size={16} className="text-emerald" />
-                      <span className="small fw-semibold">Collection Ratio</span>
-                    </div>
-                    <span className="badge bg-success-soft text-success">
-                      {report.revenue > 0 ? 'Healthy' : 'Pending Invoices'}
-                    </span>
-                  </div>
-
-                  <div className="health-item d-flex align-items-center justify-content-between p-2 rounded bg-light mb-2">
-                    <div className="d-flex align-items-center gap-2">
-                      <IconShieldCheck size={16} className="text-emerald" />
-                      <span className="small fw-semibold">Occupancy Rate</span>
-                    </div>
-                    <span
-                      className={`badge ${occupiedPct >= 80 ? 'bg-success-soft text-success' : 'bg-warning-soft text-warning'}`}
-                    >
-                      {occupiedPct >= 80 ? 'Optimal (80%+)' : 'Rooms Available'}
-                    </span>
-                  </div>
-
-                  <div className="health-item d-flex align-items-center justify-content-between p-2 rounded bg-light">
-                    <div className="d-flex align-items-center gap-2">
-                      <IconShieldCheck size={16} className="text-emerald" />
-                      <span className="small fw-semibold">Audit Status</span>
-                    </div>
-                    <span className="badge bg-info-soft text-info">Up to Date</span>
-                  </div>
-                </div>
+              <div className="insight-stat">
+                <span>{active === 'occupancy' ? 'Other statuses' : 'Total invoiced'}</span>
+                <strong>{active === 'occupancy' ? other : money(billed)}</strong>
               </div>
-            </div>
+              <Link
+                className="report-insight-link"
+                to={active === 'occupancy' ? '/buildings' : '/workspace/invoices'}
+              >
+                {active === 'occupancy' ? 'View properties' : 'Review invoices'}{' '}
+                <span aria-hidden="true">→</span>
+              </Link>
+            </aside>
           </section>
         </>
       )}
