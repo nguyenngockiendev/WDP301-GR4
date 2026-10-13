@@ -7,30 +7,44 @@ export class WorkspaceService {
   }
   async scope(user) {
     const uid = new mongoose.Types.ObjectId(user.id);
-    if (user.role === 'LANDLORD') return { uid };
-    const roomIds = user.role === 'MANAGER' ? await this.dao.ids('Room', { manager: uid }) : [];
+    const buildingIds =
+      user.role === 'LANDLORD' ? await this.dao.ids('Building', { owner: uid }) : [];
+    let roomFilter = {};
+    if (user.role === 'LANDLORD') {
+      roomFilter = { $or: [{ owner: uid }, { building: { $in: buildingIds } }] };
+    } else if (user.role === 'MANAGER') {
+      roomFilter = { manager: uid };
+    }
+    const roomIds = user.role === 'TENANT' ? [] : await this.dao.ids('Room', roomFilter);
     const contractFilter = user.role === 'TENANT' ? { tenant: uid } : { room: { $in: roomIds } };
     const contractIds = await this.dao.ids('Contract', contractFilter);
-    return { uid, roomIds, contractIds };
+    const invoiceFilter = user.role === 'TENANT' ? { tenant: uid } : { room: { $in: roomIds } };
+    const invoiceIds = await this.dao.ids('Invoice', invoiceFilter);
+    return { uid, buildingIds, roomIds, contractIds, invoiceIds };
   }
   filter(model, user, s) {
     if (model === 'Notification') return { recipient: s.uid };
-    if (user.role === 'LANDLORD') return {};
-    if (model === 'Building') return { manager: s.uid };
+    if (model === 'Building')
+      return user.role === 'LANDLORD' ? { owner: s.uid } : { manager: s.uid };
     if (model === 'Room') return { _id: { $in: s.roomIds } };
-    if (['DepositTransaction', 'CheckoutRequest'].includes(model))
+    if (['DepositTransaction', 'CheckoutRequest', 'CheckoutSettlement'].includes(model))
       return { contract: { $in: s.contractIds } };
-    if (user.role === 'TENANT') return { tenant: s.uid };
-    if (model === 'Payment') return { invoice: { $in: s.invoiceIds || [] } };
-    return { room: { $in: s.roomIds } };
+    if (model === 'Payment') return { invoice: { $in: s.invoiceIds } };
+    if (['UtilityRate', 'ServiceFee', 'ContractPolicy'].includes(model))
+      return { building: { $in: s.buildingIds } };
+    if (model === 'Contract') return { _id: { $in: s.contractIds } };
+    if (model === 'RentalRequest' && user.role === 'TENANT') return { tenant: s.uid };
+    if (model === 'RentalRequest' || model === 'UtilityReading')
+      return { room: { $in: s.roomIds } };
+    if (model === 'Invoice')
+      return user.role === 'TENANT' ? { tenant: s.uid } : { room: { $in: s.roomIds } };
+    return {};
   }
   async list(key, user, page) {
     const config = modules[key];
     if (!config || !config.roles.includes(user.role))
       throw new AppError('You do not have access to this page.', 403);
     const scope = await this.scope(user);
-    if (config.model === 'Payment' && user.role === 'MANAGER')
-      scope.invoiceIds = await this.dao.ids('Invoice', { room: { $in: scope.roomIds } });
     const filter = this.filter(config.model, user, scope);
     return {
       config,

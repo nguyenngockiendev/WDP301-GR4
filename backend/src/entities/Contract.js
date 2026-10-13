@@ -1,5 +1,4 @@
-import mongoose from 'mongoose';
-import { entity, ref, money, quantity, state, shortText } from './fields.js';
+import { entity, ref, money, state, shortText } from './fields.js';
 export default entity(
   'Contract',
   {
@@ -8,6 +7,7 @@ export default entity(
     building: ref('Building'),
     tenant: ref('User'),
     occupants: [ref('User')],
+    occupantCount: { type: Number, min: 1, default: 1, validate: Number.isInteger },
     rentalRequest: ref('RentalRequest', false),
     previousContract: ref('Contract', false),
     startDate: { type: Date, required: true },
@@ -15,13 +15,22 @@ export default entity(
     rent: money(),
     deposit: money(),
     policySnapshot: {
+      minMonths: Number,
       version: Number,
       terms: String,
       noticeDays: Number,
       paymentDueDay: Number,
       paymentGraceDays: Number,
     },
-    feesSnapshot: [{ name: shortText, unit: state('MONTH PERSON USAGE', 'MONTH'), price: money() }],
+    feesSnapshot: [
+      {
+        code: shortText,
+        name: shortText,
+        unit: state('MONTH PERSON USAGE', 'MONTH'),
+        usageUnit: String,
+        price: money(),
+      },
+    ],
     status: state('DRAFT PENDING APPROVED ACTIVE REJECTED ENDED CANCELLED', 'DRAFT'),
     occupiesRoom: { type: Boolean, default: false },
     createdBy: ref('User'),
@@ -37,7 +46,7 @@ export default entity(
   schema => {
     schema.pre('validate', function () {
       if (this.endDate <= this.startDate)
-        this.invalidate('endDate', 'Ngày kết thúc phải sau ngày bắt VNDầu');
+        this.invalidate('endDate', 'Ngày kết thúc phải sau ngày bắt đầu.');
       this.occupiesRoom = ['APPROVED', 'ACTIVE'].includes(this.status);
     });
   },

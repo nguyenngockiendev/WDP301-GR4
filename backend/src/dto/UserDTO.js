@@ -28,16 +28,10 @@ export class LoginDTO {
   }
 }
 export class CreateUserDTO extends LoginDTO {
-  constructor(body, landlord = false) {
+  constructor(body, role = 'TENANT') {
     super(body);
     Object.assign(this, new ProfileDTO(body));
-    this.role = landlord ? body.role : 'TENANT';
-    if (!USER_ROLES.includes(this.role)) throw new AppError('Invalid role.');
-  }
-}
-export class ChangeRoleDTO {
-  constructor(body) {
-    this.role = body.role;
+    this.role = role;
     if (!USER_ROLES.includes(this.role)) throw new AppError('Invalid role.');
   }
 }

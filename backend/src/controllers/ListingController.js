@@ -1,5 +1,5 @@
 import { ListingDTO } from '../dto/ListingDTO.js';
-import { pageNumber } from './UserController.js';
+import { pageNumber } from '../utils/pagination.js';
 export class ListingController {
   constructor(service) {
     this.service = service;
@@ -27,6 +27,12 @@ export class ListingController {
 
     res.status(201).json({ item });
   };
+  createMany = async (req, res) => {
+    const items = await this.service.createMany(new ListingDTO(req.body), req.user);
+    res.status(201).json({ items });
+  };
+  rentRates = async (req, res) =>
+    res.json({ items: await this.service.rentRates(req.params.id, req.user) });
 
   assign = async (req, res) => {
     const item = await this.service.assign(req.params.id, req.body.manager, req.user);
@@ -35,6 +41,15 @@ export class ListingController {
   };
   assignBuilding = async (req, res) => {
     const item = await this.service.assignBuilding(req.params.id, req.body.building, req.user);
+    res.json({ item });
+  };
+  updatePrice = async (req, res) => {
+    const item = await this.service.updatePrice(
+      req.params.id,
+      req.body.price,
+      req.body.effectiveFrom,
+      req.user,
+    );
     res.json({ item });
   };
 }

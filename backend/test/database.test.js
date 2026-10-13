@@ -40,7 +40,7 @@ const invoiceData = () => ({
   createdBy: id(),
 });
 test('All domain models compile; invalid money, dates and meter readings rejected', async () => {
-  assert.equal(Object.keys(M).length, 19);
+  assert.equal(Object.keys(M).length, 20);
   await assert.rejects(new M.Contract({ ...contractData(), rent: 1.5 }).validate());
   await assert.rejects(
     new M.Contract({ ...contractData(), endDate: new Date('2025-01-01') }).validate(),

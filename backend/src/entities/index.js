@@ -1,5 +1,6 @@
 export { default as User } from './User.js';
 export { default as Room } from './Room.js';
+export { default as RentRate } from './RentRate.js';
 export { default as Building } from './Building.js';
 export { default as TenantProfile } from './TenantProfile.js';
 export { default as RentalRequest } from './RentalRequest.js';

@@ -13,4 +13,5 @@ const schema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+schema.index({ role: 1 }, { unique: true, partialFilterExpression: { role: 'LANDLORD' } });
 export default mongoose.model('User', schema);

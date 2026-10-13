@@ -1,8 +1,5 @@
-import { ChangeRoleDTO, CreateUserDTO } from '../dto/UserDTO.js';
-export function pageNumber(value) {
-  const n = Number(value);
-  return Number.isSafeInteger(n) && n > 0 ? Math.min(n, 10000) : 1;
-}
+import { CreateUserDTO } from '../dto/UserDTO.js';
+import { pageNumber } from '../utils/pagination.js';
 export class UserController {
   constructor(service) {
     this.service = service;
@@ -22,16 +19,8 @@ export class UserController {
   };
 
   create = async (req, res) => {
-    const user = await this.service.create(new CreateUserDTO(req.body, true));
+    const user = await this.service.create(new CreateUserDTO(req.body, 'MANAGER'));
 
     res.status(201).json({ user });
-  };
-  changeRole = async (req, res) => {
-    const user = await this.service.changeRole(
-      req.params.id,
-      new ChangeRoleDTO(req.body),
-      req.user,
-    );
-    res.json({ user });
   };
 }

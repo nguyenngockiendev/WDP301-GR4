@@ -64,6 +64,7 @@ export default function Sidebar({ isOpen, onClose }) {
     links.push(
       { to: '/buildings', label: 'Buildings', icon: IconBuilding },
       { to: '/users', label: 'Accounts', icon: IconUsers },
+      { to: '/settings', label: 'Rental settings', icon: IconSettings },
       { to: '/reports/revenue', label: 'Revenue report', icon: IconReports },
       { to: '/reports/outstanding', label: 'Outstanding balance', icon: IconInvoice },
       { to: '/reports/occupancy', label: 'Occupancy report', icon: IconRoom },
@@ -71,7 +72,10 @@ export default function Sidebar({ isOpen, onClose }) {
   }
 
   if (['LANDLORD', 'MANAGER'].includes(user?.role)) {
-    links.push({ to: '/rooms', label: 'Rooms', icon: IconRoom });
+    links.push(
+      { to: '/rooms', label: 'Rooms', icon: IconRoom },
+      { to: '/billing', label: 'Billing', icon: IconInvoice },
+    );
   }
 
   return (
@@ -122,7 +126,11 @@ export default function Sidebar({ isOpen, onClose }) {
           ))}
 
           {['PROPERTY', 'OPERATIONS', 'FINANCE', 'SETTINGS', 'ACCOUNT'].map(group => {
-            const entries = Object.entries(modules || {}).filter(([, m]) => m.group === group);
+            const entries = Object.entries(modules || {}).filter(
+              ([key, m]) =>
+                m.group === group &&
+                !(user?.role === 'LANDLORD' && ['rates', 'fees', 'policies'].includes(key)),
+            );
             if (!entries.length) return null;
 
             return (

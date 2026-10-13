@@ -1,5 +1,5 @@
 import { BuildingDTO } from '../dto/BuildingDTO.js';
-import { pageNumber } from './UserController.js';
+import { pageNumber } from '../utils/pagination.js';
 
 export class BuildingController {
   constructor(service) {

@@ -40,7 +40,7 @@ export function ManagementList({ kind }) {
         eyebrow={isUsers ? 'USER DIRECTORY' : 'ROOM INVENTORY'}
         subtitle={
           isUsers
-            ? 'Manage landlords, property managers, and tenant accounts.'
+            ? 'Manage property manager accounts. Tenants create their own accounts.'
             : 'Track unit vacancy, rental pricing, and property assignments.'
         }
         action={
@@ -180,6 +180,7 @@ export function ManagementForm({ kind }) {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [bulk, setBulk] = useState(false);
   const buildings = useData('/buildings?page=1');
   const isUsers = kind === 'users';
 
@@ -188,7 +189,18 @@ export function ManagementForm({ kind }) {
     setBusy(true);
     setError('');
     try {
-      const data = await send('/' + kind, Object.fromEntries(new FormData(e.currentTarget)));
+      const values = Object.fromEntries(new FormData(e.currentTarget));
+      if (!isUsers && bulk) {
+        values.codes = String(values.codes || '')
+          .split(/[\n,]+/)
+          .map(code => code.trim())
+          .filter(Boolean);
+      }
+      const data = await send(!isUsers && bulk ? '/rooms/bulk' : '/' + kind, values);
+      if (!isUsers && bulk) {
+        navigate('/rooms');
+        return;
+      }
       navigate('/' + kind + '/' + (data.user?.id || data.item._id));
     } catch (e) {
       setError(e.message);
@@ -203,7 +215,7 @@ export function ManagementForm({ kind }) {
         eyebrow={isUsers ? 'USER MANAGEMENT' : 'ROOM SETUP'}
         subtitle={
           isUsers
-            ? 'Provision a new tenant, manager, or landlord profile.'
+            ? 'Create a property manager account for your buildings.'
             : 'Configure a new rentable unit and assign it to a building.'
         }
       >
@@ -248,29 +260,54 @@ export function ManagementForm({ kind }) {
                 helperText="Must be at least 8 characters long."
               />
               <div className="form-field-group mb-4">
-                <label className="form-label" htmlFor="role">
-                  System Role
-                </label>
-                <select id="role" name="role" className="form-select">
-                  <option value="TENANT">Tenant (View leases, invoices, and payments)</option>
-                  <option value="MANAGER">
-                    Property Manager (Manage rooms, utilities, reports)
-                  </option>
-                  <option value="LANDLORD">
-                    Landlord (Full operational and financial control)
-                  </option>
-                </select>
+                <span className="form-label d-block">Account Role</span>
+                <span className="role-chip role-chip-manager">Property Manager</span>
+                <p className="form-text mt-2 mb-0">
+                  Tenants register their own accounts. Only one Landlord account is allowed.
+                </p>
               </div>
             </>
           ) : (
             <>
-              <Field
-                name="title"
-                label="Room Designation / Title"
-                placeholder="e.g. Room 201 - Studio, Penthouse 502"
-                minLength="2"
-                maxLength="150"
-              />
+              <div className="form-check mb-3">
+                <input
+                  className="form-check-input"
+                  id="bulk-rooms"
+                  type="checkbox"
+                  checked={bulk}
+                  onChange={event => setBulk(event.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="bulk-rooms">
+                  Add several rooms with the same price and features
+                </label>
+              </div>
+              {bulk ? (
+                <div className="form-field-group mb-3">
+                  <label className="form-label" htmlFor="codes">
+                    Room codes
+                  </label>
+                  <textarea
+                    id="codes"
+                    name="codes"
+                    className="form-control"
+                    rows="4"
+                    required
+                    placeholder={'A101\nA102\nA103'}
+                  />
+                  <small className="form-helper-text">One code per line, up to 100 rooms.</small>
+                </div>
+              ) : (
+                <Field
+                  name="title"
+                  label="Room Designation / Title"
+                  placeholder="e.g. Room 201 - Studio, Penthouse 502"
+                  minLength="2"
+                  maxLength="150"
+                />
+              )}
+              {!bulk && (
+                <Field name="code" label="Room code" placeholder="e.g. A101" maxLength="50" />
+              )}
               <div className="form-field-group mb-3">
                 <label className="form-label" htmlFor="building">
                   Associated Building
@@ -287,9 +324,38 @@ export function ManagementForm({ kind }) {
                 </select>
               </div>
 
+              <div className="row">
+                <div className="col-md-6">
+                  <Field
+                    name="area"
+                    label="Area (m²)"
+                    type="number"
+                    min="0.1"
+                    max="10000"
+                    step="0.1"
+                  />
+                </div>
+                <div className="col-md-6">
+                  <Field
+                    name="capacity"
+                    label="Capacity (people)"
+                    type="number"
+                    min="1"
+                    max="100"
+                    step="1"
+                  />
+                </div>
+              </div>
+              <Field
+                name="amenities"
+                label="Amenities"
+                placeholder="Air conditioner, bed, wardrobe"
+                required={false}
+              />
+
               <div className="form-field-group mb-3">
                 <label className="form-label" htmlFor="description">
-                  Room Description & Amenities
+                  Room Description
                 </label>
                 <textarea
                   id="description"
@@ -299,7 +365,7 @@ export function ManagementForm({ kind }) {
                   required
                   minLength="5"
                   maxLength="5000"
-                  placeholder="Detail room area (sqm), furnishings (air conditioner, bed, wardrobe), and policies..."
+                  placeholder="Describe the room and any rental rules..."
                 />
               </div>
 
@@ -373,26 +439,27 @@ export function ManagementDetail({ kind }) {
     }
   }
 
-  async function changeRole(e) {
+  async function updatePrice(e) {
     e.preventDefault();
     setBusy(true);
     setMessage('');
     try {
       await send(
-        '/users/' + id + '/role',
+        '/rooms/' + id + '/price',
         Object.fromEntries(new FormData(e.currentTarget)),
         'PATCH',
       );
-      setMessage('Account role updated successfully.');
-      window.setTimeout(() => window.location.reload(), 600);
-    } catch (e) {
-      setMessage(e.message);
+      setMessage('Monthly rental price updated successfully.');
+      window.setTimeout(() => window.location.reload(), 500);
+    } catch (error) {
+      setMessage(error.message);
     } finally {
       setBusy(false);
     }
   }
 
   const item = state.data?.user || state.data?.item;
+  const rentHistory = useData(!isUsers ? `/rooms/${id}/rent-rates` : '/rooms');
 
   return (
     <div className="management-detail-page">
@@ -488,6 +555,34 @@ export function ManagementDetail({ kind }) {
                   <div className="description p-3 bg-light rounded-3 small">
                     {item.description || 'No description provided.'}
                   </div>
+                  <dl className="property-meta-list mt-3">
+                    <div className="meta-row">
+                      <dt>Room code</dt>
+                      <dd>{item.code || '—'}</dd>
+                    </div>
+                    <div className="meta-row">
+                      <dt>Area</dt>
+                      <dd>{item.area ? `${item.area} m²` : '—'}</dd>
+                    </div>
+                    <div className="meta-row">
+                      <dt>Capacity</dt>
+                      <dd>{item.capacity || '—'}</dd>
+                    </div>
+                    <div className="meta-row">
+                      <dt>Amenities</dt>
+                      <dd>{item.amenities?.join(', ') || '—'}</dd>
+                    </div>
+                  </dl>
+                  <h3 className="h6 fw-bold mt-3">Rent price history</h3>
+                  {rentHistory.data?.items?.map(rate => (
+                    <div
+                      className="d-flex justify-content-between border-bottom py-2"
+                      key={rate._id}
+                    >
+                      <span>{new Date(rate.effectiveFrom).toLocaleDateString()}</span>
+                      <strong>{format(rate.amount, 'price')}</strong>
+                    </div>
+                  ))}
                 </>
               )}
             </div>
@@ -495,43 +590,43 @@ export function ManagementDetail({ kind }) {
 
           <div className="col-lg-5">
             {isUsers
-              ? user.role === 'LANDLORD' &&
-                user.id !== item.id && (
-                  <div className="card role-editor-card p-4">
+              ? user.role === 'LANDLORD' && (
+                  <div className="card p-4">
                     <div className="d-flex align-items-center gap-2 mb-2">
                       <IconShieldCheck size={18} className="text-emerald" />
-                      <h3 className="h5 mb-0">Modify Account Role</h3>
+                      <h3 className="h5 mb-0">Account role</h3>
                     </div>
-                    <p className="text-muted small">
-                      Adjust this user's administrative clearance. Changes will apply on their next
-                      request.
+                    <p className="text-muted small mb-0">
+                      Roles are assigned when accounts are created. Tenants register themselves;
+                      Landlords create Property Manager accounts.
                     </p>
-
-                    <form onSubmit={changeRole}>
-                      <div className="mb-3">
-                        <label htmlFor="role" className="form-label small fw-semibold">
-                          Select Role
-                        </label>
-                        <select
-                          id="role"
-                          name="role"
-                          className="form-select"
-                          defaultValue={item.role}
-                        >
-                          <option value="TENANT">Tenant (Lease & Billing Access)</option>
-                          <option value="MANAGER">Property Manager (Operational Control)</option>
-                          <option value="LANDLORD">Landlord (Master Admin)</option>
-                        </select>
-                      </div>
-
-                      <button className="btn btn-primary w-100" disabled={busy}>
-                        {busy ? 'Saving…' : 'Update User Role'}
-                      </button>
-                    </form>
                   </div>
                 )
               : user.role === 'LANDLORD' && (
                   <div className="d-flex flex-column gap-3">
+                    <div className="card p-4">
+                      <h3 className="h6 fw-bold mb-2">Configure Room Rental Price</h3>
+                      <form onSubmit={updatePrice}>
+                        <Field
+                          label="Effective date"
+                          name="effectiveFrom"
+                          type="date"
+                          defaultValue={new Date().toISOString().slice(0, 10)}
+                        />
+                        <Field
+                          label="Monthly rent (VND)"
+                          name="price"
+                          type="number"
+                          min="0"
+                          max="1000000000"
+                          step="1"
+                          defaultValue={item.price}
+                        />
+                        <button className="btn btn-primary w-100" disabled={busy}>
+                          {busy ? 'Saving…' : 'Update Rental Price'}
+                        </button>
+                      </form>
+                    </div>
                     {/* Manager assignment card */}
                     <div className="card p-4">
                       <h3 className="h6 fw-bold mb-2">Assign Property Manager</h3>

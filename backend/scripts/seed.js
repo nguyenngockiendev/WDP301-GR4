@@ -4,6 +4,9 @@ import User from '../src/entities/User.js';
 import { UserDAO } from '../src/dao/UserDAO.js';
 import { UserService } from '../src/services/UserService.js';
 import { CreateUserDTO } from '../src/dto/UserDTO.js';
+
+if (!process.env.MONGODB_URI) throw new Error('Thiếu MONGODB_URI trong file .env.');
+
 try {
   const dto = new CreateUserDTO(
     {
@@ -12,7 +15,7 @@ try {
       password: process.env.SEED_LANDLORD_PASSWORD,
       role: 'LANDLORD',
     },
-    true,
+    'LANDLORD',
   );
   await mongoose.connect(process.env.MONGODB_URI);
   await User.init();

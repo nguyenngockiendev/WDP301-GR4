@@ -35,6 +35,8 @@ export class BuildingService {
   }
   async update(id, dto, user) {
     await this.detail(id, user);
+    if (dto.status === 'INACTIVE' && (await this.dao.hasActiveContracts(id)))
+      throw new AppError('End or move active contracts before deactivating this building.', 409);
     try {
       return await this.dao.update(id, dto);
     } catch (error) {
@@ -65,12 +67,16 @@ export class BuildingService {
       if (!manager || manager.role !== 'MANAGER')
         throw new AppError('The assigned account must be a property manager.');
     }
-    return this.dao.assignManager(id, managerId || null);
+    const building = await this.dao.assignManager(id, managerId || null);
+    await this.dao.assignRoomManagers(id, managerId || null);
+    return building;
   }
   async setStatus(id, status, user) {
     await this.detail(id, user);
     if (!['ACTIVE', 'INACTIVE'].includes(status))
       throw new AppError('Please select a valid building status.');
+    if (status === 'INACTIVE' && (await this.dao.hasActiveContracts(id)))
+      throw new AppError('End or move active contracts before deactivating this building.', 409);
     return this.dao.updateStatus(id, status);
   }
 }

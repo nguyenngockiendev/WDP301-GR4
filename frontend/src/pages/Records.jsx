@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useData, Heading, Notice, Pager, format } from '../components/Common';
 import { IconSearch, IconSparkles, IconShieldCheck, IconContract } from '../components/Icons';
 
@@ -15,6 +17,7 @@ function RecordsPage({ module }) {
 
   const items = state.data?.items || [];
   const fields = state.data?.config?.fields || [];
+  const { user } = useAuth();
 
   const filteredItems = filterQuery
     ? items.filter(item => {
@@ -30,6 +33,13 @@ function RecordsPage({ module }) {
       <Heading
         eyebrow="WORKSPACE RECORDS"
         subtitle={state.data?.config?.description || 'Browse records in this workspace module.'}
+        action={
+          module === 'contracts' && user?.role === 'LANDLORD' ? (
+            <Link className="btn btn-primary" to="/contracts/new">
+              New contract
+            </Link>
+          ) : null
+        }
       >
         {state.data?.config?.title || 'Records'}
       </Heading>
@@ -85,7 +95,21 @@ function RecordsPage({ module }) {
                   {filteredItems.map(item => (
                     <tr key={item._id}>
                       {fields.map(f => (
-                        <td key={f}>{format(item[f], f)}</td>
+                        <td key={f}>
+                          {f === 'lines' && module === 'invoices' ? (
+                            <div className="small">
+                              {(item[f] || []).map((line, index) => (
+                                <div key={`${line.description}-${index}`}>
+                                  {line.description}: {Number(line.quantity).toLocaleString()} ×{' '}
+                                  {Number(line.unitPrice).toLocaleString()} ={' '}
+                                  <strong>{Number(line.amount).toLocaleString()} VND</strong>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            format(item[f], f)
+                          )}
+                        </td>
                       ))}
                     </tr>
                   ))}

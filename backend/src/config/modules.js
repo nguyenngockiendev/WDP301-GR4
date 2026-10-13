@@ -42,7 +42,7 @@ export const modules = {
     model: 'Invoice',
     group: 'FINANCE',
     roles: ['LANDLORD', 'MANAGER', 'TENANT'],
-    fields: ['code', 'period', 'total', 'paidAmount', 'dueDate', 'status'],
+    fields: ['code', 'period', 'lines', 'total', 'paidAmount', 'dueDate', 'status'],
     description: 'Monthly bills, due dates and payment progress.',
   },
   payments: {
@@ -82,7 +82,7 @@ export const modules = {
     model: 'UtilityRate',
     group: 'SETTINGS',
     roles: ['LANDLORD'],
-    fields: ['effectiveFrom', 'electricityPrice', 'waterPrice'],
+    fields: ['building', 'effectiveFrom', 'electricityPrice', 'waterPrice'],
     description: 'Electricity and water prices by effective date.',
   },
   fees: {
@@ -90,7 +90,7 @@ export const modules = {
     model: 'ServiceFee',
     group: 'SETTINGS',
     roles: ['LANDLORD'],
-    fields: ['name', 'code', 'unit', 'price', 'active'],
+    fields: ['building', 'name', 'code', 'unit', 'price', 'active'],
     description: 'Recurring service charges across your properties.',
   },
   policies: {
@@ -98,7 +98,15 @@ export const modules = {
     model: 'ContractPolicy',
     group: 'SETTINGS',
     roles: ['LANDLORD'],
-    fields: ['version', 'minMonths', 'noticeDays', 'terms'],
+    fields: [
+      'building',
+      'version',
+      'minMonths',
+      'noticeDays',
+      'paymentDueDay',
+      'paymentGraceDays',
+      'terms',
+    ],
     description: 'Lease policies and minimum rental periods.',
   },
 };

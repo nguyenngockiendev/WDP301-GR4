@@ -19,6 +19,8 @@ export class UserService {
         }),
       );
     } catch (error) {
+      if (error.code === 11000 && error.keyPattern?.role)
+        throw new AppError('A Landlord account already exists.', 409);
       if (error.code === 11000) throw new AppError('This email is already registered.', 409);
       throw error;
     }
@@ -45,12 +47,5 @@ export class UserService {
   }
   async profile(id, dto) {
     return new UserDTO(await this.dao.updateProfile(id, { name: dto.name, phone: dto.phone }));
-  }
-  async changeRole(id, dto, actor) {
-    if (actor.role !== 'LANDLORD')
-      throw new AppError('Only landlords can edit account roles.', 403);
-    const user = await this.detail(id);
-    if (user.id === actor.id) throw new AppError('You cannot change your own role.', 400);
-    return new UserDTO(await this.dao.updateRole(id, dto.role));
   }
 }

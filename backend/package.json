@@ -6,9 +6,9 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "seed": "node create-landlord.js",
+    "seed": "node scripts/seed.js",
     "test": "node --test",
-    "db:init": "node create-indexes.js"
+    "db:init": "node scripts/db-init.js"
   },
   "engines": {
     "node": ">=22"

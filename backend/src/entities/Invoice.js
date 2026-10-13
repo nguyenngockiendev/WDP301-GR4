@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import { entity, ref, money, quantity, state, shortText } from './fields.js';
 export default entity(
   'Invoice',
@@ -48,12 +47,15 @@ export default entity(
       const sum =
         this.lines.reduce((n, l) => n + l.amount, 0) +
         this.adjustments.reduce((n, adjustment) => n + adjustment.amount, 0);
-      if (sum !== this.total) this.invalidate('total', 'Tổng tiền không khớp các dòng');
+      if (sum !== this.total) this.invalidate('total', 'Tổng tiền không khớp các dòng.');
       if (this.paidAmount > this.total)
-        this.invalidate('paidAmount', 'Tiền VNDã trả vượt tổng hóa VNDơn');
+        this.invalidate('paidAmount', 'Tiền đã trả vượt tổng hóa đơn.');
       for (const line of this.lines)
         if (line.amount !== Math.round(line.quantity * line.unitPrice))
-          this.invalidate('lines', 'Thành tiền phải bằng số lượng nhân VNDơn giá, làm tròn VNĐ');
+          this.invalidate(
+            'lines',
+            'Thành tiền phải bằng số lượng nhân đơn giá, làm tròn đến đồng.',
+          );
     });
   },
 );

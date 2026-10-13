@@ -1,4 +1,4 @@
-import { pageNumber } from './UserController.js';
+import { pageNumber } from '../utils/pagination.js';
 export class WorkspaceController {
   constructor(service) {
     this.service = service;

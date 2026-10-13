@@ -1,5 +1,4 @@
-import mongoose from 'mongoose';
-import { entity, ref, money, quantity, state, shortText } from './fields.js';
+import { entity, ref, quantity } from './fields.js';
 export default entity(
   'UtilityReading',
   {

@@ -1,5 +1,4 @@
-import mongoose from 'mongoose';
-import { entity, ref, money, quantity, state, shortText } from './fields.js';
+import { entity, ref, money, state, shortText } from './fields.js';
 export default entity(
   'ServiceFee',
   {
@@ -7,6 +6,7 @@ export default entity(
     code: shortText,
     name: shortText,
     unit: state('MONTH PERSON USAGE', 'MONTH'),
+    usageUnit: { type: String, trim: true, maxlength: 30 },
     price: money(),
     active: { type: Boolean, default: true },
   },

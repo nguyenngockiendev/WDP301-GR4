@@ -7,21 +7,31 @@ import { UserDAO } from './dao/UserDAO.js';
 import { ListingDAO } from './dao/ListingDAO.js';
 import { BuildingDAO } from './dao/BuildingDAO.js';
 import { WorkspaceDAO } from './dao/WorkspaceDAO.js';
+import { RentalSettingsDAO } from './dao/RentalSettingsDAO.js';
 import { UserService } from './services/UserService.js';
 import { ListingService } from './services/ListingService.js';
 import { BuildingService } from './services/BuildingService.js';
 import { ReportService } from './services/ReportService.js';
 import { WorkspaceService } from './services/WorkspaceService.js';
+import { RentalSettingsService } from './services/RentalSettingsService.js';
+import { ContractService } from './services/ContractService.js';
+import { BillingService } from './services/BillingService.js';
 import { AuthController } from './controllers/AuthController.js';
 import { UserController } from './controllers/UserController.js';
 import { ListingController } from './controllers/ListingController.js';
 import { BuildingController } from './controllers/BuildingController.js';
 import { ReportController } from './controllers/ReportController.js';
 import { WorkspaceController } from './controllers/WorkspaceController.js';
+import { RentalSettingsController } from './controllers/RentalSettingsController.js';
+import { ContractController } from './controllers/ContractController.js';
+import { BillingController } from './controllers/BillingController.js';
+import { BillingDAO } from './dao/BillingDAO.js';
 import { USER_ROLES } from './config/roles.js';
 import { modules } from './config/modules.js';
 import Room from './entities/Room.js';
 import Building from './entities/Building.js';
+import Contract from './entities/Contract.js';
+import RentRate from './entities/RentRate.js';
 import { csrf, requireAuth, roles } from './middleware/security.js';
 export function createApp({ mongoUrl, secret, store, production = false }) {
   if (!secret || secret.length < 32)
@@ -86,8 +96,7 @@ export function createApp({ mongoUrl, secret, store, production = false }) {
   app.get('/api/users', roles('LANDLORD'), users.list);
   app.post('/api/users', roles('LANDLORD'), users.create);
   app.get('/api/users/:id', roles('LANDLORD'), users.detail);
-  app.patch('/api/users/:id/role', roles('LANDLORD'), users.changeRole);
-  const buildingDAO = new BuildingDAO(Building, Room);
+  const buildingDAO = new BuildingDAO(Building, Room, Contract);
   const buildingService = new BuildingService(buildingDAO, new UserDAO());
   const buildings = new BuildingController(buildingService);
   app.get('/api/buildings', roles('LANDLORD'), buildings.list);
@@ -98,7 +107,7 @@ export function createApp({ mongoUrl, secret, store, production = false }) {
   app.patch('/api/buildings/:id/manager', roles('LANDLORD'), buildings.assignManager);
   app.patch('/api/buildings/:id/status', roles('LANDLORD'), buildings.setStatus);
   const listingService = new ListingService(
-    new ListingDAO(Room),
+    new ListingDAO(Room, RentRate),
     ['LANDLORD', 'MANAGER'],
     new UserDAO(),
     buildingService,
@@ -107,9 +116,24 @@ export function createApp({ mongoUrl, secret, store, production = false }) {
   app.use('/api/rooms', roles('LANDLORD', 'MANAGER'));
   app.get('/api/rooms', rooms.list);
   app.post('/api/rooms', roles('LANDLORD'), rooms.create);
+  app.post('/api/rooms/bulk', roles('LANDLORD'), rooms.createMany);
   app.get('/api/rooms/:id', rooms.detail);
+  app.get('/api/rooms/:id/rent-rates', rooms.rentRates);
   app.patch('/api/rooms/:id/manager', roles('LANDLORD'), rooms.assign);
   app.patch('/api/rooms/:id/building', roles('LANDLORD'), rooms.assignBuilding);
+  app.patch('/api/rooms/:id/price', roles('LANDLORD'), rooms.updatePrice);
+  const rentalSettings = new RentalSettingsController(
+    new RentalSettingsService(new RentalSettingsDAO(), buildingService),
+  );
+  const contracts = new ContractController(new ContractService());
+  app.get('/api/contracts/options', roles('LANDLORD'), contracts.options);
+  app.post('/api/contracts', roles('LANDLORD'), contracts.create);
+  const billing = new BillingController(new BillingService(new BillingDAO()));
+  app.post('/api/billing/readings', roles('LANDLORD', 'MANAGER'), billing.reading);
+  app.post('/api/billing/invoices', roles('LANDLORD', 'MANAGER'), billing.invoice);
+  app.get('/api/settings/:kind', roles('LANDLORD'), rentalSettings.list);
+  app.post('/api/settings/:kind', roles('LANDLORD'), rentalSettings.create);
+  app.patch('/api/settings/:kind/:id', roles('LANDLORD'), rentalSettings.update);
   const workspaceDAO = new WorkspaceDAO();
   const workspaceService = new WorkspaceService(workspaceDAO);
   const reportService = new ReportService(workspaceDAO);

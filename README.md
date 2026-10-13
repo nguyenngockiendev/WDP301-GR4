@@ -12,13 +12,12 @@ backend/
     entities/
     dto/
     middleware/
+    utils/
     app.js
     server.js
   scripts/
   test/
   uploads/
-  create-landlord.js
-  create-indexes.js
   package.json
   .env.example
 frontend/
@@ -84,7 +83,10 @@ Seed không ghi đè tài khoản đã có. Build React tạo `frontend/dist`. P
 - POST `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`.
 - PATCH `/api/profile`.
 - GET/POST `/api/users`; GET `/api/users/:id` (Landlord).
-- GET/POST `/api/rooms`; GET `/api/rooms/:id`; PATCH `/api/rooms/:id/manager`.
+- GET/POST `/api/rooms`; POST `/api/rooms/bulk`; GET `/api/rooms/:id` and `/api/rooms/:id/rent-rates`; PATCH `/api/rooms/:id/manager`, `/building`, `/price`.
+- GET/POST/PATCH `/api/buildings` and `/api/settings/:kind` (Landlord).
+- GET `/api/contracts/options`, POST `/api/contracts` (Landlord); new contracts capture the effective rent rate, current policy and service fees.
+- POST `/api/billing/readings`, `/api/billing/invoices` (Landlord/Manager). Invoice lines show rent, electricity, water and service fees.
 - GET `/api/dashboard`, `/api/workspace/:module`.
 
 Requests ghi gửi JSON và header `X-CSRF-Token`, cookie cùng phiên. Refresh `/api/session` sau đăng nhập vì session/token được xoay.
@@ -93,4 +95,4 @@ Requests ghi gửi JSON và header `X-CSRF-Token`, cookie cùng phiên. Refresh 
 
 Đã hoạt động: đăng ký, đăng nhập, đăng xuất, hồ sơ, danh sách/thêm/chi tiết người dùng, danh sách/thêm/chi tiết phòng và phân công quản lý, dashboard và các trang xem dữ liệu phân quyền.
 
-Role: LANDLORD, MANAGER (Property Manager), TENANT (Tenant). Các trang hợp đồng, hóa đơn, thanh toán, tiền cọc, yêu cầu, điện nước và cấu hình vẫn chỉ xem dữ liệu. Chưa thực hiện các workflow tạo/duyệt hợp đồng, thanh toán, gửi OTP. Xem `docs/MONGODB.md` và `ROLE_PERMISSIONS.md`.
+Role: LANDLORD, MANAGER (Property Manager), TENANT (Tenant). Chủ trọ có thể tạo hợp đồng hiệu lực ngay; quản lý ghi chỉ số và tạo hóa đơn theo hợp đồng. Luồng thanh toán trực tuyến, duyệt yêu cầu thuê và gửi OTP chưa được triển khai. Xem `docs/MONGODB.md` và `ROLE_PERMISSIONS.md`.

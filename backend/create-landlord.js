@@ -1,1 +1,0 @@
-import './scripts/seed.js';

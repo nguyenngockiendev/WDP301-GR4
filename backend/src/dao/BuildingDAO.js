@@ -1,7 +1,8 @@
 export class BuildingDAO {
-  constructor(model, roomModel) {
+  constructor(model, roomModel, contractModel) {
     this.model = model;
     this.roomModel = roomModel;
+    this.contractModel = contractModel;
   }
   create(data) {
     return this.model.create(data);
@@ -30,6 +31,9 @@ export class BuildingDAO {
       .findByIdAndUpdate(id, { $set: { manager } }, { new: true, runValidators: true })
       .lean();
   }
+  assignRoomManagers(building, manager) {
+    return this.roomModel.updateMany({ building }, { $set: { manager } });
+  }
   updateStatus(id, status) {
     return this.model
       .findByIdAndUpdate(id, { $set: { status } }, { new: true, runValidators: true })
@@ -40,6 +44,15 @@ export class BuildingDAO {
   }
   roomCount(id) {
     return this.roomModel.countDocuments({ building: id });
+  }
+  async hasActiveContracts(id) {
+    const roomIds = await this.roomModel.distinct('_id', { building: id });
+    return this.contractModel.exists({
+      room: { $in: roomIds },
+      status: { $in: ['APPROVED', 'ACTIVE'] },
+      startDate: { $lte: new Date() },
+      endDate: { $gt: new Date() },
+    });
   }
   available(owner) {
     return this.model.find({ owner, status: 'ACTIVE' }).sort({ name: 1 }).lean();
