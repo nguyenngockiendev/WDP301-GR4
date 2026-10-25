@@ -1,94 +1,151 @@
-# Smart Rental Management System — React frontend + Node.js backend
+# 🏢 HỆ THỐNG QUẢN LÝ NHÀ TRỌ & CĂN HỘ (HAVEN STAY) — WDP301_GR4
 
-Dự án làm việc: `E:\Giáo trình WDP301\WDP301`. Cấu trúc tách FE/BE theo code mẫu. Frontend React dùng Vite để build; backend Express cung cấp JSON API, không render EJS. Giao diện tiếng Anh.
+> **Tài liệu hướng dẫn quy chuẩn kiến trúc dự án dành cho tất cả thành viên trong nhóm.**  
+> Vui lòng đọc kỹ tài liệu này trước khi bắt đầu tạo module/tính năng mới để tránh xung đột mã nguồn (Git Conflict) và giữ code đồng bộ 100%.
+
+---
+
+## 📌 1. TỔNG QUAN KIẾN TRÚC (FULLSTACK MODULAR ARCHITECTURE)
+
+Dự án được phân tách độc lập 2 phần **`client/` (Frontend)** và **`server/` (Backend)** theo mô hình **Feature/Module-based**:
 
 ```text
-backend/
-  src/
-    common/       constants, middleware, models and utilities shared by features
-    modules/      auth, users, buildings, rooms, contracts, billing, reports, etc.
-    models.js     exports all Mongoose models for database startup
-    app.js
-    server.js
-  scripts/
-  test/
-  uploads/
-  package.json
-  .env.example
-frontend/
-  public/
-  src/
-    components/    Header, Footer, Sidebar, Layout
-    context/       AuthContext
-    modules/       feature pages and UI logic grouped by feature
-    routes/        application routes
-    services/      JSON API client
-    App.jsx
-    main.jsx
-    styles.css
-  index.html
-  vite.config.js
-  package.json
-docs/MONGODB.md
+WDP301-GR4/
+├── client/                     # Mã nguồn Frontend (React + Vite + Tailwind CSS)
+│   └── src/
+│       ├── app/                # Gom Routes tổng của toàn bộ ứng dụng
+│       ├── assets/             # Hình ảnh, fonts, styles toàn cục
+│       ├── features/           # ★ NƠI MỖI THÀNH VIÊN TẠO MODULE CỦA MÌNH (Mẫu: auth/)
+│       ├── layouts/            # Các khung giao diện chung (DashboardLayout...)
+│       └── shared/             # Dùng chung toàn Client (axiosClient, hooks, components...)
+│
+├── server/                     # Mã nguồn Backend (Node.js + Express + MongoDB Mongoose)
+│   └── src/
+│       ├── app/                # app.js & routes.js (Trạm phân luồng API tổng /api)
+│       ├── config/             # Cấu hình Database & biến môi trường
+│       ├── models/             # ★ TẤT CẢ CÁC BẢNG DATABASE DÙNG CHUNG (Users, Rooms...)
+│       ├── modules/            # ★ NƠI MỖI THÀNH VIÊN TẠO MODULE CỦA MÌNH (Mẫu: auth/)
+│       └── shared/             # Dùng chung toàn Server (middlewares, utils response.js...)
+│
+├── .gitignore                  # Chặn node_modules và .env đẩy lên Git
+├── .prettierrc.json            # Quy tắc format code chung cho cả nhóm
+└── README.md                   # Hướng dẫn này
 ```
 
-Backend đặt controller, service, DAO, DTO và model cạnh nhau trong từng feature ở `modules/`. Phần dùng chung nằm trong `common/`. Frontend gom màn hình theo feature trong `modules/`, còn Header/Footer/Sidebar là React components dùng chung. Frontend không truy cập MongoDB; chỉ gọi `/api`.
+---
 
-## Chạy dự án
+## ☁️ 2. HƯỚNG DẪN KẾT NỐI & XEM DATABASE CLOUD (MONGODB ATLAS)
 
-Cần Node.js 22.12+. Mỗi thư mục có package.json và package-lock.json riêng.
+Dự án dùng chung **1 Database đám mây duy nhất trên MongoDB Atlas** theo thời gian thực (ai thêm/sửa/xoá dữ liệu thì tất cả thành viên khác đều nhìn thấy ngay lập tức).
 
-```powershell
-npm ci --prefix backend
-npm ci --prefix frontend
+### Bước 1: Cấu hình kết nối trên máy cá nhân
+Tạo file `server/.env` và dán chuỗi kết nối của nhóm:
+```env
+PORT=4000
+MONGODB_URI=mongodb+srv://kien34217_db_user:omSZsdQsiF1hgbXK@nexoracluster.ijcoacr.mongodb.net/WDP301_GR4?retryWrites=true&w=majority
+JWT_SECRET=wdp301_gr4_jwt_secret_key_2026
 ```
 
-Mỗi thành viên tạo `backend/.env` từ `backend/.env.example`. Để cả nhóm dùng chung dữ liệu, điền cùng một MongoDB Atlas connection string vào `MONGODB_URI`; chuỗi kết nối không được commit hoặc gửi trong chat nhóm. Hướng dẫn tạo và phân quyền database nằm tại [docs/TEAM_MONGODB.md](docs/TEAM_MONGODB.md). `SESSION_SECRET` phải giống nhau giữa các máy khi cần chia sẻ session, nhưng không được đưa vào Git.
+### Bước 2: Tải công cụ xem và quản lý Database trực quan (MongoDB Compass)
+Để xem các bảng và dữ liệu trong Database như một bảng tính Excel:
+1. Tải phần mềm **MongoDB Compass** (miễn phí): [https://www.mongodb.com/try/download/compass](https://www.mongodb.com/try/download/compass)
+2. Mở MongoDB Compass lên $\rightarrow$ Dán nguyên chuỗi `MONGODB_URI` ở trên vào ô **New Connection**.
+3. Bấm nút **Connect**.
+4. Bạn sẽ thấy database tên là **`WDP301_GR4`** hiển thị đầy đủ các collection: `users`, `rooms`, `contracts`, `invoices`, `utilityreadings`... Bạn có thể xem, tìm kiếm, sửa hoặc thêm dữ liệu test trực tiếp tại đây!
 
-Terminal 1 tại thư mục gốc:
+> ⚠️ **LƯU Ý QUAN TRỌNG VỀ LỖI TIMEOUT KHI KẾT NỐI:**  
+> Nếu bạn kết nối bị báo lỗi timeout, hãy báo Leader vào MongoDB Atlas $\rightarrow$ Mục **Network Access** $\rightarrow$ Kiểm tra IP đã được mở **`0.0.0.0/0` (Allow Access from Anywhere)** hay chưa.
 
-```powershell
-npm run dev:backend
-```
+---
 
-Terminal 2 tại thư mục gốc:
+## 🚀 3. HƯỚNG DẪN KHỞI CHẠY DỰ ÁN
 
-```powershell
-npm run dev:frontend
-```
+Mở 2 tab Terminal riêng biệt trong VS Code:
 
-Frontend: http://localhost:3000. Backend: http://127.0.0.1:4000/api. Vite proxy `/api` sang backend, cookie session HttpOnly và CSRF token bảo vệ các thao tác ghi; không lưu JWT trong localStorage. Không cần mở CORS cho mọi origin.
+- **Terminal 1 — Chạy Backend (Port 4000):**
+  ```bash
+  cd server
+  npm install
+  npm run dev
+  ```
+- **Terminal 2 — Chạy Frontend (Port 3000):**
+  ```bash
+  cd client
+  npm install
+  npm run dev
+  ```
+👉 Mở trình duyệt tại: `http://localhost:3000/login`
 
-Các lệnh khác:
+---
 
-```powershell
-npm --prefix backend run db:init
-npm --prefix backend run seed
-npm test
-npm run build
-npm run format:check
-```
+## 🛠️ 4. QUY TRÌNH TẠO MỘT TÍNH NĂNG MỚI (VÍ DỤ: LÀM MODULE `rooms`)
 
-Code style is enforced by Prettier for every source, JSON, CSS and Markdown file. Run `npm run format` before committing; it keeps imports, objects, functions and JSX consistently spaced and split into readable lines.
+Khi được phân công làm một tính năng (ví dụ: Quản lý phòng trọ `rooms`), thành viên thực hiện theo chuẩn sau:
 
-Seed không ghi đè tài khoản đã có. Build React tạo `frontend/dist`. Production cần web server phục vụ dist, fallback index.html cho React routes và reverse proxy `/api` về backend, dùng HTTPS và cấu hình trust proxy phù hợp; Vite dev proxy không phải cấu hình production.
+### PHẦN 1: BÊN SERVER (`server/src/`)
 
-## API
+1. **Sử dụng bảng DB:** Bảng đã có sẵn trong `server/src/models/Rooms.js` (hoặc tạo mới nếu chưa có).
+2. **Tạo thư mục module:** Tạo `server/src/modules/rooms/` gồm đúng **3 file cốt lõi**:
+   - `rooms.service.js`: Viết các hàm xử lý logic, gọi DB. Kiểm tra điều kiện và `throw { status: 400, message: "..." }`.
+   - `rooms.controller.js`: Nhận `(req, res)`, gom `data`, gọi hàm từ service và trả kết quả qua `sendSuccess` / `sendError`.
+   - `rooms.route.js`: Khai báo các đường dẫn con (`/`, `/:id`, `/create`...).
+3. **Đăng ký vào Route Tổng:** Mở `server/src/app/routes.js` và thêm đúng 2 dòng:
+   ```javascript
+   import roomRoutes from '../modules/rooms/rooms.route.js';
+   // ...
+   router.use('/rooms', roomRoutes); // -> API sẽ là: /api/rooms/...
+   ```
 
-- GET `/api/session`: người dùng hiện tại, CSRF token, menu được phép.
-- POST `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`.
-- PATCH `/api/profile`.
-- GET/POST `/api/users`; GET `/api/users/:id` (Landlord).
-- GET/POST `/api/rooms`; POST `/api/rooms/bulk`; GET `/api/rooms/:id` and `/api/rooms/:id/rent-rates`; PATCH `/api/rooms/:id/manager`, `/building`, `/price`.
-- GET/POST/PATCH `/api/buildings` and `/api/settings/:kind` (Landlord).
-- GET `/api/contracts/options`, POST `/api/contracts` (Landlord); new contracts capture the effective rent rate, current policy and service fees.
-- POST `/api/billing/readings`, `/api/billing/invoices` (Landlord/Manager). Invoice lines show rent, electricity, water and service fees.
-- GET `/api/dashboard`, `/api/workspace/:module`.
+---
 
-Requests ghi gửi JSON và header `X-CSRF-Token`, cookie cùng phiên. Refresh `/api/session` sau đăng nhập vì session/token được xoay.
+### PHẦN 2: BÊN CLIENT (`client/src/`)
 
-## Phạm vi
+1. **Tạo thư mục feature:** Tạo `client/src/features/rooms/` gồm các thư mục con theo chuẩn:
+   ```text
+   features/rooms/
+   ├── api/             # rooms-api.jsx (Gọi api.get('/rooms'), api.post('/rooms')...)
+   ├── components/      # RoomCard.jsx, RoomFormModal.jsx...
+   ├── hooks/           # useRooms.jsx (Xử lý state, gọi api, loading...)
+   ├── pages/           # RoomListPage.jsx, RoomDetailPage.jsx...
+   └── routes/          # roomRoutes.jsx
+   ```
+2. **Khai báo routes của feature:** Trong `features/rooms/routes/roomRoutes.jsx`:
+   ```javascript
+   import RoomListPage from '../pages/RoomListPage';
 
-Đã hoạt động: đăng ký, đăng nhập, đăng xuất, hồ sơ, danh sách/thêm/chi tiết người dùng, danh sách/thêm/chi tiết phòng và phân công quản lý, dashboard và các trang xem dữ liệu phân quyền.
+   const roomRoutes = [
+     { path: '/rooms', element: <RoomListPage /> }
+   ];
+   export default roomRoutes;
+   ```
+3. **Nối vào AppRoutes:** Mở `client/src/app/routes/AppRoutes.jsx` và nối mảng routes vào hệ thống.
 
-Role: LANDLORD, MANAGER (Property Manager), TENANT (Tenant). Chủ trọ có thể tạo hợp đồng hiệu lực ngay; quản lý ghi chỉ số và tạo hóa đơn theo hợp đồng. Luồng thanh toán trực tuyến, duyệt yêu cầu thuê và gửi OTP chưa được triển khai. Xem `docs/MONGODB.md` và `ROLE_PERMISSIONS.md`.
+---
+
+## 🎨 5. QUY CHUẨN MÀU SẮC & GIAO DIỆN (TAILWIND CSS)
+
+Dự án sử dụng tông màu chủ đạo **Xanh lục ngọc bảo hiện đại (Emerald Green)**.  
+**TUYỆT ĐỐI KHÔNG TỰ BỊA MÃ MÀU HEX!** Tất cả thành viên bắt buộc sử dụng các class quy ước sẵn trong `tailwind.config.js`:
+
+- **Nút chính / Điểm nhấn:** `bg-primary`, `hover:bg-primary-dark`, `text-primary`
+- **Nút Gradient sang trọng:** `bg-gradient-emerald`
+- **Nền toàn app:** `bg-surface-bg`
+- **Nền thẻ Card / Modal / Bảng:** `bg-surface-card border border-surface-border`
+- **Chữ chính / Giá tiền / Tiêu đề:** `text-content-main`
+- **Chữ phụ / Ngày tháng / Mô tả:** `text-content-sub`
+- **Huy hiệu trạng thái (Badge):**
+  - Đã thanh toán / Còn phòng: `text-status-success`
+  - Chờ duyệt / Sắp hết hạn: `text-status-warning`
+  - Quá hạn / Báo hỏng / Huỷ: `text-status-danger`
+  - Thông báo / Ghi chú: `text-status-info`
+
+---
+
+## ⚠️ 6. QUY TẮC LÀM VIỆC VỚI GIT ĐỂ KHÔNG BỊ CONFLICT
+
+1. **Luôn kéo code mới nhất trước khi làm việc:**
+   ```bash
+   git pull origin main
+   ```
+2. **Không commit file cấu hình cá nhân:** Tuyệt đối không xóa dòng trong `.gitignore`. File `.env` không bao giờ được đẩy lên Git.
+3. **Mỗi người làm việc trên Module của mình:** Hạn chế chỉnh sửa các file ở thư mục `shared/` hoặc `app/` nếu không có sự thống nhất của cả nhóm.
