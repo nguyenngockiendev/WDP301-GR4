@@ -1,6 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout/DashboardLayout';
 import authRoutes from '../../features/auth/routes/authRoutes';
+import roomsRoutes from '../../features/rooms/routes/RoomsRoutes';
+import contractsRoutes from '../../features/contracts/routes/ContractsRoutes';
+import rentalsRoutes from '../../features/rentals/routes/RentalsRoutes';
+import tenantsRoutes from '../../features/tenants/routes/TenantsRoutes';
 
 export default function AppRoutes() {
   return (
@@ -25,6 +29,22 @@ export default function AppRoutes() {
               </div>
             }
           />
+
+          {roomsRoutes.map(route => (
+            <Route key={route.path} path={route.path} element={route.element} />
+          ))}
+
+          {contractsRoutes.map(route => (
+            <Route key={route.path} path={route.path} element={route.element} />
+          ))}
+
+          {rentalsRoutes.map(route => (
+            <Route key={route.path} path={route.path} element={route.element} />
+          ))}
+
+          {tenantsRoutes.map(route => (
+            <Route key={route.path} path={route.path} element={route.element} />
+          ))}
         </Route>
 
         <Route path="*" element={<h3>404 - Không tìm thấy trang</h3>} />
