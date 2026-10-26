@@ -1,5 +1,14 @@
-import { loginUser } from './auth.service.js';
+import { registerUser, loginUser } from './auth.service.js';
 import { sendSuccess, sendError } from '../../shared/utils/response.js';
+
+const register = async (req, res) => {
+  try {
+    const result = await registerUser(req.body);
+    return sendSuccess(res, 201, 'Đăng ký tài khoản thành công!', { user: result });
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
 
 const login = async (req, res) => {
   try {
@@ -15,4 +24,4 @@ const login = async (req, res) => {
   }
 };
 
-export { login };
+export { register, login };

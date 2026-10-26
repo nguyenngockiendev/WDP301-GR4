@@ -1,5 +1,8 @@
 export function validateRegister(body) {
-  if (!body?.name || String(body.name).trim().length < 2) {
+  if (!body?.username || String(body.username).trim().length < 2) {
+    return 'Username phải có ít nhất 2 ký tự';
+  }
+  if (!body?.fullName || String(body.fullName).trim().length < 2) {
     return 'Họ và tên phải có ít nhất 2 ký tự';
   }
   if (!body?.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.email))) {
