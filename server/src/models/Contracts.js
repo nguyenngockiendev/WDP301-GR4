@@ -1,20 +1,5 @@
 import mongoose from 'mongoose';
 
-const contractMemberSchema = new mongoose.Schema(
-  {
-    tenant: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-    isRepresentative: {
-      type: Boolean,
-      default: false,
-    },
-  },
-  { _id: false },
-);
-
 const contractSchema = new mongoose.Schema(
   {
     room: {
@@ -30,7 +15,17 @@ const contractSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ContractTemplate',
     },
-    members: [contractMemberSchema],
+    representative: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    otherMembers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     startDate: {
       type: Date,
       required: true,
