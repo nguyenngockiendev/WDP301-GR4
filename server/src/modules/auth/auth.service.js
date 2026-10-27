@@ -8,7 +8,9 @@ const registerUser = async data => {
       throw { status: 400, message: 'Vui lòng điền đầy đủ thông tin!' };
     }
 
-    const existingUser = await Users.findOne({ $or: [{ email: data.email }, { username: data.username }] });
+    const existingUser = await Users.findOne({
+      $or: [{ email: data.email }, { username: data.username }],
+    });
     if (existingUser) {
       throw { status: 400, message: 'Email hoặc username đã tồn tại!' };
     }
@@ -53,14 +55,10 @@ const loginUser = async data => {
     if (!isMatch) {
       throw { status: 401, message: 'Email hoặc mật khẩu không chính xác!' };
     }
-
-    return {
-      userId: user._id,
-      username: user.username,
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role,
-    };
+    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, {
+      expiresIn: '1h',
+    });
+    return token;
   } catch (error) {
     console.log(error);
     throw error;
