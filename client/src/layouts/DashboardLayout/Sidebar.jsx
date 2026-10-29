@@ -15,6 +15,7 @@ export default function Sidebar() {
           Dashboard
         </NavLink>
       </nav>
+      <NavLink to="/notifications" className={({ isActive }) => `mt-2 block rounded-xl px-4 py-2 text-sm font-semibold ${isActive ? 'bg-primary text-white' : 'text-content-sub hover:bg-primary-50'}`}>Thông báo</NavLink>
     </aside>
   );
 }

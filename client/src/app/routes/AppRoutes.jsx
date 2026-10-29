@@ -5,6 +5,7 @@ import roomsRoutes from '../../features/rooms/routes/RoomsRoutes';
 import contractsRoutes from '../../features/contracts/routes/ContractsRoutes';
 import rentalsRoutes from '../../features/rentals/routes/RentalsRoutes';
 import tenantsRoutes from '../../features/tenants/routes/TenantsRoutes';
+import notificationsRoutes from '../../features/notifications/routes/NotificationsRoutes';
 
 export default function AppRoutes() {
   return (
@@ -43,6 +44,9 @@ export default function AppRoutes() {
           ))}
 
           {tenantsRoutes.map(route => (
+            <Route key={route.path} path={route.path} element={route.element} />
+          ))}
+          {notificationsRoutes.map(route => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}
         </Route>

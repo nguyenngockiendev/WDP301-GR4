@@ -3,10 +3,11 @@ import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
+import { NotificationsProvider } from '../../features/notifications/hooks/useNotifications';
 
 export default function DashboardLayout() {
   return (
-    <div className="dashboard-shell">
+    <NotificationsProvider><div className="dashboard-shell">
       <Header />
       <div className="dashboard-body">
         <Sidebar />
@@ -15,6 +16,6 @@ export default function DashboardLayout() {
         </main>
       </div>
       <Footer />
-    </div>
+    </div></NotificationsProvider>
   );
 }

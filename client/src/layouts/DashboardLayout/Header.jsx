@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import NotificationBell from '../../features/notifications/components/NotificationBell';
 
 export default function Header() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function Header() {
         WDP301 App
       </Link>
       <div className="d-flex align-items-center gap-3">
+        {token && <NotificationBell />}
         {token ? (
           <button type="button" className="btn btn-outline-danger btn-sm" onClick={handleLogout}>
             Đăng xuất

@@ -27,8 +27,8 @@ const Login = () => {
     try {
       const result = await login(data);
 
-      if (result) {
-        localStorage.setItem('token', result);
+      if (typeof result?.data?.user === 'string') {
+        localStorage.setItem('token', result.data.user);
         navigate('/dashboard');
       }
     } catch (err) {
