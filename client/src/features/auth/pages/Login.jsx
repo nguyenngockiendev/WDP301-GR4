@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import useLogin from '../hooks/uselogin';
 import LoginForm from '../components/LoginForm';
 
-
 const Login = () => {
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -26,9 +25,7 @@ const Login = () => {
   const onSubmit = async data => {
     try {
       const result = await login(data);
-
       if (result) {
-        localStorage.setItem('token', result);
         navigate('/dashboard');
       }
     } catch (err) {

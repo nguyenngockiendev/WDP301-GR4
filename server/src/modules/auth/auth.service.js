@@ -55,10 +55,14 @@ const loginUser = async data => {
     if (!isMatch) {
       throw { status: 401, message: 'Email hoặc mật khẩu không chính xác!' };
     }
-    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
-    });
-    return token;
+
+    return {
+      userId: user._id,
+      username: user.username,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+    };
   } catch (error) {
     console.log(error);
     throw error;
