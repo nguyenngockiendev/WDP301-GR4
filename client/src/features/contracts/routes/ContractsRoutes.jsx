@@ -1,10 +1,11 @@
 import React from 'react';
-import ManageContracts from '../pages/ManageContracts';
+import NewContract from '../pages/NewContract';
 
 const contractsRoutes = [
   {
-    path: '/properties/:propertyId/contracts',
-    element: <ManageContracts />,
+    path: '/contracts/new',
+    element: <NewContract />,
+    roles: ['LANDLORD'],
   },
 ];
 

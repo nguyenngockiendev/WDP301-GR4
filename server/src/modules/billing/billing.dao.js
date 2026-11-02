@@ -1,8 +1,8 @@
-import Room from '../../models/Room.js';
-import Contract from '../../models/Contract.js';
-import UtilityReading from '../../models/UtilityReading.js';
+import Room from '../../models/Rooms.js';
+import Contract from '../../models/Contracts.js';
+import UtilityReading from '../../models/UtilityReadings.js';
 import UtilityRate from '../../models/UtilityRate.js';
-import Invoice from '../../models/Invoice.js';
+import Invoice from '../../models/Invoices.js';
 
 export class BillingDAO {
   findRoom(id, user) {
@@ -14,7 +14,7 @@ export class BillingDAO {
   activeContract(room, start, end) {
     return Contract.findOne({
       room,
-      status: { $in: ['APPROVED', 'ACTIVE'] },
+      status: { $in: ['APPROVED', 'ACTIVE', 'active'] },
       startDate: { $lt: end },
       endDate: { $gte: start },
     }).lean();

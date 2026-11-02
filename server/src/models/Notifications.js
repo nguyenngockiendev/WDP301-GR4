@@ -1,44 +1,39 @@
 import mongoose from 'mongoose';
 
-const notificationSchema = new mongoose.Schema(
+const reference = model => ({ type: mongoose.Schema.Types.ObjectId, ref: model });
+const schema = new mongoose.Schema(
   {
-    recipient: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
+    recipient: { ...reference('User'), required: true },
     type: {
       type: String,
-      default: 'general',
+      enum: ['GENERAL', 'INVOICE', 'REMINDER', 'CONTRACT', 'CHECKOUT', 'general'],
+      default: 'GENERAL',
     },
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    content: {
-      type: String,
-      required: true,
-    },
+    title: { type: String, required: true, trim: true, maxlength: 100 },
+    content: { type: String, trim: true },
+    body: { type: String, trim: true, maxlength: 5000 },
     related: {
-      entityType: {
-        type: String,
-        trim: true,
-      },
-      entityId: {
-        type: mongoose.Schema.Types.ObjectId,
-      },
+      entityType: { type: String, trim: true },
+      entityId: mongoose.Schema.Types.ObjectId,
     },
-    isRead: {
-      type: Boolean,
-      default: false,
-    },
+    invoice: reference('Invoice'),
+    contract: reference('Contract'),
+    isRead: { type: Boolean, default: false },
+    readAt: Date,
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true },
 );
 
-const Notifications = mongoose.model('Notification', notificationSchema);
+schema.pre('validate', function () {
+  this.body ||= this.content;
+  this.content ||= this.body;
+  if (this.readAt) this.isRead = true;
+  if (this.isRead && !this.readAt) this.readAt = new Date();
+});
 
-export default Notifications;
+schema.path('body').validate(function () {
+  return Boolean(this.body || this.content);
+}, 'Notification content is required.');
+schema.index({ recipient: 1, readAt: 1, createdAt: -1 });
+
+export default mongoose.models.Notification || mongoose.model('Notification', schema);

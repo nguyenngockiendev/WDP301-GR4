@@ -25,9 +25,9 @@ import { ContractController } from '../modules/contracts/contracts.controller.js
 import { BillingController } from '../modules/billing/billing.controller.js';
 import { USER_ROLES } from '../shared/constants/roles.js';
 import { modules } from '../config/modules.js';
-import Room from '../models/Room.js';
+import Room from '../models/Rooms.js';
 import Building from '../models/Building.js';
-import Contract from '../models/Contract.js';
+import Contract from '../models/Contracts.js';
 import RentRate from '../models/RentRate.js';
 import { csrf, requireAuth } from '../shared/middlewares/security.js';
 import authRoutes from '../modules/auth/auth.route.js';

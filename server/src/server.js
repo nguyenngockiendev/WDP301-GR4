@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { createApp } from './app/app.js';
 import { connectDatabase } from './config/db.config.js';
 import './models/index.js';
-import User from './models/User.js';
+import User from './models/Users.js';
 
 await connectDatabase();
 await User.init();

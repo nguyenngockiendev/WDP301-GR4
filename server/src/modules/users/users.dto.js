@@ -38,10 +38,10 @@ export class CreateUserDTO extends LoginDTO {
 export class UserDTO {
   constructor(user) {
     this.id = String(user._id);
-    this.name = user.name;
+    this.name = user.name || user.fullName;
     this.email = user.email;
     this.phone = user.phone;
-    this.role = user.role;
+    this.role = user.role?.toUpperCase();
     this.createdAt = user.createdAt;
     this.roleLabel = ROLE_LABELS[user.role] ?? 'Unsupported legacy role';
   }

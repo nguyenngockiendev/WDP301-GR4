@@ -1,51 +1,53 @@
 import mongoose from 'mongoose';
 
-const paymentSchema = new mongoose.Schema(
+const reference = (model, required = false) => ({
+  type: mongoose.Schema.Types.ObjectId,
+  ref: model,
+  required,
+});
+const schema = new mongoose.Schema(
   {
-    invoice: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Invoice',
-      required: true,
-    },
-    payer: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
+    invoice: reference('Invoice', true),
+    payer: reference('User'),
+    tenant: reference('User'),
     method: {
       type: String,
-      enum: ['cash', 'transfer', 'gateway'],
-      default: 'transfer',
+      enum: ['CASH', 'BANK', 'GATEWAY', 'cash', 'transfer', 'gateway'],
+      default: 'CASH',
     },
-    amount: {
-      type: Number,
-      required: true,
-    },
+    amount: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
     status: {
       type: String,
-      enum: ['pending', 'success', 'failed', 'cancelled'],
-      default: 'pending',
+      enum: ['PENDING', 'SUCCEEDED', 'FAILED', 'REFUNDED', 'pending', 'success', 'failed', 'cancelled'],
+      default: 'PENDING',
     },
-    gatewayTransactionId: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-    recordedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null,
-    },
-    paidAt: {
-      type: Date,
-      default: Date.now,
-    },
+    gatewayTransactionId: { type: String, trim: true, default: null },
+    provider: { type: String, trim: true },
+    providerTransactionId: { type: String, trim: true },
+    idempotencyKey: { type: String, trim: true, maxlength: 100 },
+    recordedBy: reference('User'),
+    paidAt: { type: Date, default: Date.now },
+    note: String,
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true },
 );
 
-const Payments = mongoose.model('Payment', paymentSchema);
+schema.pre('validate', function () {
+  this.tenant ||= this.payer;
+  this.payer ||= this.tenant;
+  this.gatewayTransactionId ||= this.providerTransactionId;
+  this.providerTransactionId ||= this.gatewayTransactionId;
+});
 
-export default Payments;
+schema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
+schema.index(
+  { provider: 1, providerTransactionId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { providerTransactionId: { $type: 'string' } },
+  },
+);
+schema.index({ invoice: 1, status: 1 });
+schema.index({ status: 1, paidAt: 1 });
+
+export default mongoose.models.Payment || mongoose.model('Payment', schema);

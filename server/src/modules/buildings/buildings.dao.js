@@ -49,7 +49,7 @@ export class BuildingDAO {
     const roomIds = await this.roomModel.distinct('_id', { building: id });
     return this.contractModel.exists({
       room: { $in: roomIds },
-      status: { $in: ['APPROVED', 'ACTIVE'] },
+      status: { $in: ['APPROVED', 'ACTIVE', 'active'] },
       startDate: { $lte: new Date() },
       endDate: { $gt: new Date() },
     });

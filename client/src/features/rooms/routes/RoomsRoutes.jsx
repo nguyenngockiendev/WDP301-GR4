@@ -1,16 +1,14 @@
 import React from 'react';
-import ManageRooms from '../pages/ManageRooms';
-import BrowseRooms from '../pages/BrowseRooms';
+import {
+  ManagementDetail,
+  ManagementForm,
+  ManagementList,
+} from '../pages/Management';
 
 const roomsRoutes = [
-  {
-    path: '/properties/:propertyId/rooms',
-    element: <ManageRooms />,
-  },
-  {
-    path: '/browse-rooms',
-    element: <BrowseRooms />,
-  },
+  { path: '/rooms', element: <ManagementList kind="rooms" />, roles: ['LANDLORD', 'MANAGER'] },
+  { path: '/rooms/new', element: <ManagementForm kind="rooms" />, roles: ['LANDLORD'] },
+  { path: '/rooms/:id', element: <ManagementDetail kind="rooms" />, roles: ['LANDLORD', 'MANAGER'] },
 ];
 
 export default roomsRoutes;

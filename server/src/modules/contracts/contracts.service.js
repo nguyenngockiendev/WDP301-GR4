@@ -1,8 +1,8 @@
 import { AppError } from '../../shared/utils/errors.js';
-import Room from '../../models/Room.js';
-import User from '../../models/User.js';
+import Room from '../../models/Rooms.js';
+import User from '../../models/Users.js';
 import Building from '../../models/Building.js';
-import Contract from '../../models/Contract.js';
+import Contract from '../../models/Contracts.js';
 import RentRate from '../../models/RentRate.js';
 import ServiceFee from '../../models/ServiceFee.js';
 import ContractPolicy from '../../models/ContractPolicy.js';
@@ -20,8 +20,14 @@ const asDate = value => {
 export class ContractService {
   async options(user) {
     if (user.role !== 'LANDLORD') throw new AppError('Only landlords can create contracts.', 403);
-    const rooms = await Room.find({ owner: user.id, status: 'VACANT' }).sort({ title: 1 }).lean();
-    const tenants = await User.find({ role: 'TENANT', active: true })
+    const rooms = await Room.find({
+      owner: user.id,
+      status: { $in: ['VACANT', 'available'] },
+    }).sort({ title: 1 }).lean();
+    const tenants = await User.find({
+      role: { $in: ['TENANT', 'tenant'] },
+      $or: [{ active: true }, { active: { $exists: false }, status: 'active' }],
+    })
       .sort({ name: 1 })
       .select('name email')
       .lean();
@@ -34,9 +40,14 @@ export class ContractService {
       throw new AppError('Choose a room and tenant.');
     const [room, tenant] = await Promise.all([
       Room.findOne({ _id: body.room, owner: user.id }).lean(),
-      User.findOne({ _id: body.tenant, role: 'TENANT', active: true }).lean(),
+      User.findOne({
+        _id: body.tenant,
+        role: { $in: ['TENANT', 'tenant'] },
+        $or: [{ active: true }, { active: { $exists: false }, status: 'active' }],
+      }).lean(),
     ]);
-    if (!room || room.status !== 'VACANT') throw new AppError('The room is not available.', 409);
+    if (!room || !['VACANT', 'available'].includes(room.status))
+      throw new AppError('The room is not available.', 409);
     if (!tenant) throw new AppError('Tenant account not found.');
     if (!room.building)
       throw new AppError('Assign this room to a building before creating a contract.');

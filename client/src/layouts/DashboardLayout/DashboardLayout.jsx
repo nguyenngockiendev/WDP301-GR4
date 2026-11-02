@@ -7,7 +7,7 @@ export default function DashboardLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden text-slate-800 relative select-none">
+    <div className="relative flex h-screen w-screen overflow-hidden text-slate-800">
       {/* NỀN MESH GRAPHIC XANH NGỌC (MINT & EMERALD AMBIENT) */}
       <div className="fixed inset-0 pointer-events-none -z-10 bg-[#f8fafc]">
         {/* Vệt ánh sáng xanh ngọc bích phía trên trái */}

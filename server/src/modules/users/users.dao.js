@@ -1,10 +1,10 @@
-import User from '../../models/User.js';
+import User from '../../models/Users.js';
 export class UserDAO {
   managers() {
-    return User.find({ role: 'MANAGER' }).sort({ name: 1 });
+    return User.find({ role: { $in: ['MANAGER', 'manager'] } }).sort({ name: 1 });
   }
   findByEmail(email) {
-    return User.findOne({ email }).select('+passwordHash');
+    return User.findOne({ email }).select('+passwordHash +password');
   }
   findById(id) {
     return User.findById(id);

@@ -1,11 +1,9 @@
 import React from 'react';
-import Login from '../pages/Login';
+import Auth from '../pages/Auth';
 
 const authRoutes = [
-  {
-    path: '/login',
-    element: <Login />,
-  },
+  { path: '/login', element: <Auth /> },
+  { path: '/register', element: <Auth register /> },
 ];
 
 export default authRoutes;

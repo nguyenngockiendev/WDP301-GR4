@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import User from '../src/models/User.js';
+import User from '../src/models/Users.js';
 import { UserDAO } from '../src/modules/users/users.dao.js';
 import { UserService } from '../src/modules/users/users.service.js';
 import { CreateUserDTO } from '../src/modules/users/users.dto.js';

@@ -27,11 +27,14 @@ export class UserService {
   }
   async login(dto) {
     const user = await this.dao.findByEmail(dto.email);
-    if (!user || !(await bcrypt.compare(dto.password, user.passwordHash)))
+    const passwordHash = user?.passwordHash || user?.password;
+    if (!user || !passwordHash || !(await bcrypt.compare(dto.password, passwordHash)))
       throw new AppError('Incorrect email or password.', 401);
-    if (!USER_ROLES.includes(user.role))
+    if (user.active === false || user.status === 'inactive')
+      throw new AppError('Your account is inactive. Contact your landlord.', 403);
+    if (!USER_ROLES.includes(user.role?.toUpperCase()))
       throw new AppError('Your account role is no longer supported. Contact your landlord.', 403);
-    return new UserDTO(user);
+    return new UserDTO({ ...user.toObject(), role: user.role.toUpperCase() });
   }
   async detail(id) {
     if (!/^[a-f\d]{24}$/i.test(id)) throw new AppError('User not found.', 404);
