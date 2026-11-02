@@ -4,6 +4,6 @@ dist/
 .env.*
 !.env.example
 coverage/
-backend/uploads/*
-!backend/uploads/.gitkeep
+server/uploads/*
+!server/uploads/.gitkeep
 .mongodb-atlas-uri.txt

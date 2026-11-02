@@ -1,6 +1,6 @@
 # Thiết kế MongoDB — quản lý trọ
 
-Database local: `boarding_house`. Chạy `npm --prefix backend run db:init` để tạo collection và index; script không xóa dữ liệu, không reset mật khẩu, không drop index. Các model nằm trong `backend/src/entities`, được export tại `backend/src/entities/index.js`.
+Database local: `boarding_house`. Chạy `npm --prefix server run db:init` để tạo collection và index; script không xóa dữ liệu, không reset mật khẩu, không drop index. Các model nằm trong `server/src/models` và được export tại `server/src/models/index.js`.
 
 ## Collection và use case
 

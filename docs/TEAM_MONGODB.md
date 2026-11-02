@@ -1,6 +1,6 @@
 # Shared MongoDB Atlas setup for the team
 
-The application supports one shared development database through MongoDB Atlas. Every team member connects with a local `backend/.env`; this file is ignored by Git.
+The application supports one shared development database through MongoDB Atlas. Every team member connects with a local `server/.env`; this file is ignored by Git.
 
 ## One-time setup by the database owner
 
@@ -15,10 +15,10 @@ The application supports one shared development database through MongoDB Atlas. 
 In the repository root:
 
 ```powershell
-Copy-Item backend/.env.example backend/.env
+Copy-Item server/.env.example server/.env
 ```
 
-Edit `backend/.env` and set:
+Edit `server/.env` and set:
 
 ```dotenv
 MONGODB_URI=mongodb+srv://<db_username>:<db_password>@<cluster>.mongodb.net/boarding_house?retryWrites=true&w=majority
@@ -30,15 +30,15 @@ Use URL encoding for special characters in the MongoDB password. Example: `@` be
 Then initialize indexes once, after the connection string is configured:
 
 ```powershell
-npm ci --prefix backend
-npm --prefix backend run db:init
+npm ci --prefix server
+npm --prefix server run db:init
 ```
 
-Only one designated teammate should run `npm --prefix backend run seed` against the shared database. The seed script does not overwrite an existing landlord account.
+Only one designated teammate should run `npm --prefix server run seed` against the shared database. The seed script does not overwrite an existing landlord account.
 
 ## Working safely as a team
 
-- All members run their own backend on port `4000` and frontend on port `3000`; they share Atlas data, not local sessions.
+- All members run their own server on port `4000` and client on port `3000`; they share Atlas data, not local sessions.
 - Use a shared test/development Atlas database only. Create a separate production database later.
 - Do not run scripts that clear collections against the shared database.
 - Before testing destructive workflows, use unique test records and agree who cleans them up.
@@ -47,4 +47,4 @@ Only one designated teammate should run `npm --prefix backend run seed` against 
 
 ## Verify the shared connection
 
-Run the backend and sign in at `http://127.0.0.1:3000`. A room created by one member should appear for authorized teammates after refresh. If it does not, compare the database name at the end of `MONGODB_URI` and confirm both IP addresses are allowed in Atlas.
+Run the client and sign in at `http://127.0.0.1:3000`. A room created by one member should appear for authorized teammates after refresh. If it does not, compare the database name at the end of `MONGODB_URI` and confirm both IP addresses are allowed in Atlas.
