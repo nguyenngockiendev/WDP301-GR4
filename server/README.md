@@ -1,6 +1,6 @@
 # Backend
 
-Express JSON API on port 4000. Run `npm ci`, `npm run dev`. Configure `.env` from `.env.example`. See the root README for API, security and database setup. Tests use isolated temporary MongoDB.
+Express JSON API on port 4000. Run `npm ci`, `npm run dev`. Configure `.env` from `.env.example`. The shared database name from the original group setup is `WDP301_GR4`; use the current cluster host and rotated credentials from Atlas. Do not reuse credentials committed in older Git history. Tests use isolated temporary MongoDB.
 
 ## Email OTP
 
