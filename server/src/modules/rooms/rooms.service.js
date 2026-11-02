@@ -85,7 +85,7 @@ export class ListingService {
       throw new AppError('Please select a valid manager.');
     if (managerId) {
       const manager = await this.userDAO.findById(managerId);
-      if (!manager || manager.role?.toUpperCase() !== 'MANAGER')
+      if (!manager || manager.role?.toUpperCase() !== 'MANAGER' || manager.active === false || manager.status === 'inactive')
         throw new AppError('The assigned account must be a property manager.');
     }
     return this.dao.assignManager(id, managerId || null);

@@ -133,11 +133,12 @@ export function ManagementList({ kind }) {
                       </td>
                       <td>
                         {isUsers ? (
-                          <span
-                            className={`role-chip role-chip-${(item.role || '').toLowerCase()}`}
-                          >
-                            {item.roleLabel || item.role}
-                          </span>
+                          <div className="d-flex flex-column align-items-start gap-1">
+                            <span className={`role-chip role-chip-${(item.role || '').toLowerCase()}`}>
+                              {item.roleLabel || item.role}
+                            </span>
+                            <StatusBadge status={item.status} />
+                          </div>
                         ) : (
                           <StatusBadge status={item.status} />
                         )}
@@ -466,6 +467,18 @@ export function ManagementDetail({ kind }) {
     }
   }
 
+  async function updateManagerStatus() {
+    setBusy(true);
+    setMessage('');
+    try {
+      await send('/users/' + id + '/status', { active: item.status !== 'active' }, 'PATCH');
+      window.location.reload();
+    } catch (e) {
+      setMessage(e.message);
+      setBusy(false);
+    }
+  }
+
   const item = state.data?.user || state.data?.item;
   const rentHistory = useData(!isUsers ? `/rooms/${id}/rent-rates` : '/rooms');
 
@@ -608,6 +621,14 @@ export function ManagementDetail({ kind }) {
                       Roles are assigned when accounts are created. Tenants register themselves;
                       Landlords create Property Manager accounts.
                     </p>
+                    {item?.role === 'MANAGER' && (
+                      <div className="mt-3 d-flex align-items-center justify-content-between gap-3">
+                        <StatusBadge status={item.status} />
+                        <button className={`btn btn-sm ${item.status === 'active' ? 'btn-outline-danger' : 'btn-outline-success'}`} onClick={updateManagerStatus} disabled={busy}>
+                          {busy ? 'Đang cập nhật…' : item.status === 'active' ? 'Khóa tài khoản' : 'Mở tài khoản'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )
               : user.role === 'LANDLORD' && (

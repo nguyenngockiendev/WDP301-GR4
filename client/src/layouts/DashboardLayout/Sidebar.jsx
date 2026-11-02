@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import {
   IconBuilding,
+  IconBell,
   IconContract,
   IconDashboard,
   IconInvoice,
@@ -16,6 +17,7 @@ import {
 const baseLinks = [
   { to: '/dashboard', label: 'Tổng quan', icon: IconDashboard },
   { to: '/profile', label: 'Tài khoản', icon: IconUser },
+  { to: '/notifications', label: 'Thông báo', icon: IconBell },
 ];
 
 export default function Sidebar({ isCollapsed }) {
@@ -30,6 +32,10 @@ export default function Sidebar({ isCollapsed }) {
       { to: '/reports/revenue', label: 'Báo cáo', icon: IconReports },
       { to: '/contracts/new', label: 'Tạo hợp đồng', icon: IconContract },
     );
+  }
+
+  if (user?.role === 'MANAGER') {
+    links.push({ to: '/reports/occupancy', label: 'Báo cáo', icon: IconReports });
   }
 
   if (['LANDLORD', 'MANAGER'].includes(user?.role)) {

@@ -39,6 +39,7 @@ import billingRoutes from '../modules/billing/billing.route.js';
 import settingsRoutes from '../modules/settings/settings.route.js';
 import reportRoutes from '../modules/reports/reports.route.js';
 import workspaceRoutes from '../modules/workspace/workspace.route.js';
+import notificationRoutes from '../modules/notifications/notifications.route.js';
 
 export function createApiRouter() {
   const router = express.Router();
@@ -84,6 +85,7 @@ export function createApiRouter() {
 
   const users = new UserController(userService);
   router.use('/users', userRoutes(users));
+  router.use('/notifications', notificationRoutes());
 
   const buildingService = new BuildingService(
     new BuildingDAO(Building, Room, Contract),

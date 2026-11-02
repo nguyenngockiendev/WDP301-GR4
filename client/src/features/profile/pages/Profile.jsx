@@ -9,6 +9,9 @@ export default function Profile() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
@@ -23,6 +26,23 @@ export default function Profile() {
       setError(e.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function changePassword(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    setPasswordBusy(true);
+    setPasswordMessage('');
+    setPasswordError('');
+    try {
+      await send('/auth/password', Object.fromEntries(new FormData(form)));
+      form.reset();
+      setPasswordMessage('Mật khẩu đã được cập nhật.');
+    } catch (e) {
+      setPasswordError(e.message);
+    } finally {
+      setPasswordBusy(false);
     }
   }
 
@@ -104,6 +124,17 @@ export default function Profile() {
 
         {/* Right Column: Identity Card & Role Privileges */}
         <div className="col-lg-5">
+          <div className="card p-4 mb-4">
+            <h2 className="h5 mb-1">Đổi mật khẩu</h2>
+            <p className="text-muted small mb-3">Xác nhận mật khẩu hiện tại trước khi lưu mật khẩu mới.</p>
+            {passwordMessage && <div className="alert alert-success py-2 small" role="status">{passwordMessage}</div>}
+            {passwordError && <div className="alert alert-danger py-2 small" role="alert">{passwordError}</div>}
+            <form onSubmit={changePassword}>
+              <Field label="Mật khẩu hiện tại" name="currentPassword" type="password" autoComplete="current-password" minLength="8" />
+              <Field label="Mật khẩu mới" name="newPassword" type="password" autoComplete="new-password" minLength="8" helperText="Tối thiểu 8 ký tự." />
+              <button className="btn btn-primary" disabled={passwordBusy}>{passwordBusy ? 'Đang lưu…' : 'Cập nhật mật khẩu'}</button>
+            </form>
+          </div>
           <div className="card profile-badge-card p-4 mb-4">
             <div className="d-flex align-items-center gap-3 mb-3">
               <div className="profile-large-avatar">

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heading, Notice, useData } from '../../../shared/components/Common';
 
@@ -45,7 +45,11 @@ function Metric({ label, value, note, tone }) {
 }
 
 export default function Reports({ type = 'revenue' }) {
-  const state = useData('/reports');
+  const month = new Date().toISOString().slice(0, 7);
+  const [from, setFrom] = useState(month);
+  const [to, setTo] = useState(month);
+  const [range, setRange] = useState({ from: month, to: month });
+  const state = useData(`/reports?from=${range.from}&to=${range.to}`);
   const report = state.data;
   const active = views[type] ? type : 'revenue';
   const [title, subtitle] = views[active];
@@ -70,6 +74,18 @@ export default function Reports({ type = 'revenue' }) {
         {title}
       </Heading>
       <Notice state={state} />
+
+      <form
+        className="card p-3 mb-4 d-flex flex-row flex-wrap align-items-end gap-3"
+        onSubmit={event => {
+          event.preventDefault();
+          setRange({ from, to });
+        }}
+      >
+        <label className="small text-muted">Từ tháng<input className="form-control mt-1" type="month" value={from} onChange={event => setFrom(event.target.value)} /></label>
+        <label className="small text-muted">Đến tháng<input className="form-control mt-1" type="month" value={to} onChange={event => setTo(event.target.value)} /></label>
+        <button className="btn btn-primary">Lọc báo cáo</button>
+      </form>
 
       {report && (
         <>

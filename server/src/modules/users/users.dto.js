@@ -42,6 +42,7 @@ export class UserDTO {
     this.email = user.email;
     this.phone = user.phone;
     this.role = user.role?.toUpperCase();
+    this.status = user.active === false || user.status === 'inactive' ? 'inactive' : 'active';
     this.createdAt = user.createdAt;
     this.roleLabel = ROLE_LABELS[user.role] ?? 'Unsupported legacy role';
   }

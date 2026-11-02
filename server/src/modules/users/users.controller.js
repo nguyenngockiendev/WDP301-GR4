@@ -23,4 +23,9 @@ export class UserController {
 
     res.status(201).json({ user });
   };
+
+  setStatus = async (req, res) => {
+    const user = await this.service.setManagerStatus(req.params.id, req.body.active);
+    res.json({ user });
+  };
 }

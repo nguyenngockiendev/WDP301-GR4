@@ -15,6 +15,7 @@ const schema = new mongoose.Schema(
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     active: { type: Boolean, default: true },
     emailVerifiedAt: { type: Date, default: null },
+    verificationRequired: { type: Boolean, default: false },
     passwordChangedAt: Date,
   },
   { timestamps: true },

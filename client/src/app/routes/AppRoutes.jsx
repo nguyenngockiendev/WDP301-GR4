@@ -14,6 +14,7 @@ import billingRoutes from '../../features/billing/routes/BillingRoutes';
 import rentalSettingsRoutes from '../../features/rental-settings/routes/RentalSettingsRoutes';
 import reportsRoutes from '../../features/reports/routes/ReportsRoutes';
 import workspaceRoutes from '../../features/workspace/routes/WorkspaceRoutes';
+import notificationsRoutes from '../../features/notifications/routes/NotificationsRoutes';
 
 const featureRoutes = [
   ...dashboardRoutes,
@@ -26,6 +27,7 @@ const featureRoutes = [
   ...rentalSettingsRoutes,
   ...reportsRoutes,
   ...workspaceRoutes,
+  ...notificationsRoutes,
 ];
 
 export default function AppRoutes() {

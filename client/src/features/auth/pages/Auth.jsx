@@ -26,9 +26,13 @@ export default function Auth({ register = false }) {
     setError('');
     try {
       const data = Object.fromEntries(new FormData(e.currentTarget));
-      await send(register ? '/auth/register' : '/auth/login', data);
-      await refresh();
-      navigate(register ? '/login?registered=1' : '/dashboard');
+      const result = await send(register ? '/auth/register' : '/auth/login', data);
+      if (register) {
+        navigate(`/verify-email?email=${encodeURIComponent(result.email || data.email)}`);
+      } else {
+        await refresh();
+        navigate('/dashboard');
+      }
     } catch (e) {
       setError(e.message);
     } finally {
@@ -58,6 +62,12 @@ export default function Auth({ register = false }) {
             <div className="alert alert-success d-flex align-items-center gap-2 mb-4 py-2 small">
               <IconShieldCheck size={16} />
               <span>Account created successfully! Please sign in with your credentials.</span>
+            </div>
+          )}
+          {location.search.includes('verified=1') && (
+            <div className="alert alert-success d-flex align-items-center gap-2 mb-4 py-2 small">
+              <IconShieldCheck size={16} />
+              <span>Email đã được xác nhận. Bạn có thể đăng nhập.</span>
             </div>
           )}
 
@@ -99,6 +109,7 @@ export default function Auth({ register = false }) {
                 <label className="form-label mb-0" htmlFor="password">
                   Password <span className="required-star">*</span>
                 </label>
+                {!register && <Link className="small text-decoration-none" to="/forgot-password">Quên mật khẩu?</Link>}
               </div>
               <div className="password-input-group position-relative">
                 <input
