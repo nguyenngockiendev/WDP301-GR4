@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import './assets/styles/global.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './assets/styles/legacy.css';
 import { ThemeProvider } from './shared/context/ThemeContext';

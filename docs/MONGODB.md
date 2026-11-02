@@ -62,26 +62,18 @@ ObjectId/ref không phải khóa ngoại được MongoDB tự kiểm tra. Servi
 - OTP chỉ lưu hash, mặc định không đưa hash vào query result. TTL index dọn bản ghi hết hạn; TTL không xóa ngay lập tức nên service vẫn phải kiểm tra expiresAt, consumedAt và attempts. Cần hash/HMAC với secret, giới hạn gửi/thử OTP, và consume nguyên tử; schema không tự thực hiện các bước này.
 - Không lưu mật khẩu rõ, OTP rõ, số thẻ hoặc secret cổng thanh toán trong collection. EmailDelivery chỉ chứa dữ liệu gửi tối thiểu, không chứa mã OTP.
 
-## Phạm vi đã hoàn thành và phần backend tiếp theo
+## Phạm vi dữ liệu và nghiệp vụ
 
-Đã tạo model Mongoose, validation create/save, collection và index trên MongoDB local. Chưa tạo API/UI hoặc service thực thi các use case mới. `active`, `emailVerifiedAt` là trường dữ liệu mới; luồng đăng nhập hiện tại chưa dùng chúng để bắt buộc xác thực/khóa tài khoản.
+API hiện dùng các model cho người dùng, dãy trọ, phòng, lịch sử giá, hợp đồng, chính sách/phí, chỉ số điện nước, hóa đơn, dashboard và báo cáo. Room.manager vẫn được dùng để kiểm soát quyền theo phòng; Building.manager dùng để quản lý phân công ở cấp dãy.
 
-Validation trong model là validation phía Mongoose, không phải JSON Schema validator phía MongoDB. Ghi trực tiếp bằng Compass/raw driver có thể bỏ qua validation ứng dụng, nhưng vẫn chịu unique index. Middleware pre('validate') không tự chạy trên updateOne/findOneAndUpdate: nghiệp vụ tương lai cần tải document rồi validate/save hoặc cập nhật có kiểm tra rõ ràng.
+Các model về giao dịch thanh toán, trả phòng, OTP, notification và email được giữ trong registry dữ liệu. Luồng thanh toán trực tuyến, quyết toán trả phòng và gửi email nền cần tích hợp dịch vụ riêng trước khi dùng thực tế.
 
-Building.manager là nguồn phân công theo dãy cho nghiệp vụ mới. Ứng dụng hiện tại vẫn dùng Room.manager theo từng phòng. Chưa thay quyền route sang Building.manager; không được giả định thêm dãy đã tự cấp quyền cho toàn bộ phòng.
+Validation trong model chạy qua Mongoose; ghi trực tiếp bằng Compass/raw driver có thể bỏ qua validation ứng dụng nhưng vẫn chịu unique index. Hook `pre('validate')` không chạy trên `updateOne`/`findOneAndUpdate`; các cập nhật nghiệp vụ cần kiểm tra dữ liệu trong service hoặc tải document rồi gọi `save()`.
 
-Các thao tác sau cần service và transaction khi triển khai:
+Giao dịch nhiều document cần MongoDB replica set (hoặc Atlas). Nếu triển khai các luồng giữ phòng, ghi thanh toán hoặc quyết toán cọc theo transaction, cần xác nhận môi trường database đã hỗ trợ replica set.
 
-1. Duyệt hợp đồng: kiểm tra phòng trống, ngày thuê và role; giữ phòng, cập nhật hợp đồng và trạng thái phòng cùng transaction.
-2. Lập hóa đơn: lấy giá/chỉ số/chính sách đúng kỳ, chụp đơn giá vào lines; không nhận tổng tiền đáng tin từ client.
-3. Thanh toán: xác thực callback, đối chiếu số tiền/đơn vị tiền/mã hóa đơn, chống lặp; ghi Payment và cập nhật paidAmount/status hóa đơn nguyên tử.
-4. Trả phòng: kiểm tra công nợ và tiền cọc thực nhận; ghi quyết toán/sổ cọc, kết thúc hợp đồng và đổi trạng thái phòng cùng transaction.
-5. Notification/EmailDelivery: gửi bằng worker có retry và deduplication; chưa có dịch vụ gửi mail thật.
+Chạy bộ kiểm thử tách biệt với database local:
 
-MongoDB transaction nhiều document cần replica set (hoặc Atlas). Cấu hình local hiện tại chưa được chuyển sang replica set; không chạy transaction nghiệp vụ chỉ bằng standalone server.
-
-Công nợ được tính từ tổng (total - paidAmount) của hóa đơn ISSUED/PARTIAL quá hạn hoặc chưa trả. Doanh thu tiền thực thu lấy Payment SUCCEEDED theo paidAt, tách riêng tiền cọc. Báo cáo tổng hợp từ hóa đơn, thanh toán và sổ cọc; chưa tạo collection doanh thu để tránh dữ liệu tổng hợp lệch nguồn. Hoàn tiền một phần cần mở rộng sổ refund khi triển khai; status REFUNDED hiện chỉ biểu diễn hoàn toàn giao dịch.
-
-## Kiểm thử
-
-`npm test` chạy trên MongoDB tạm, tách biệt database local. Có test tiền/ngày/chỉ số không hợp lệ, hợp đồng giữ phòng trùng, hóa đơn trùng tháng, tổng hóa đơn sai, giao dịch/event trùng, OTP TTL/ẩn hash và mã phòng theo dãy, cùng các kiểm thử phân quyền hiện có.
+```powershell
+npm --prefix server test
+```
