@@ -3,12 +3,8 @@ import mongoose from 'mongoose';
 import { createApp } from './app/app.js';
 import { connectDatabase } from './config/db.config.js';
 import './models/index.js';
-import User from './models/Users.js';
-import OtpChallenge from './models/OtpChallenge.js';
 
 await connectDatabase();
-await User.init();
-await OtpChallenge.init();
 const app = createApp({
   mongoUrl: process.env.MONGODB_URI,
   secret: process.env.SESSION_SECRET,

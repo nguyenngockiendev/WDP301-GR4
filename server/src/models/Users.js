@@ -4,7 +4,7 @@ import { USER_ROLES } from '../shared/constants/roles.js';
 const roles = [...USER_ROLES, 'landlord', 'manager', 'tenant'];
 const schema = new mongoose.Schema(
   {
-    username: { type: String, trim: true, lowercase: true, unique: true, sparse: true },
+    username: { type: String, trim: true, lowercase: true, unique: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, select: false },
     passwordHash: { type: String, select: false },
