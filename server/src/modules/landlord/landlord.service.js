@@ -34,7 +34,27 @@ export async function createProperty(userId, data) {
   const name = String(data.name || '').trim();
   const address = String(data.address || '').trim();
   if (name.length < 2 || address.length < 5) fail(400, 'Tên nhà trọ hoặc địa chỉ chưa hợp lệ.');
-  return Properties.create({ owner: userId, name, address, description: String(data.description || '').trim() });
+  const electricityPrice = data.electricityPrice === undefined || data.electricityPrice === '' ? 0 : Number(data.electricityPrice);
+  const waterPrice = data.waterPrice === undefined || data.waterPrice === '' ? 0 : Number(data.waterPrice);
+  const paymentDueDay = data.paymentDueDay === undefined || data.paymentDueDay === '' ? 5 : Number(data.paymentDueDay);
+  const paymentGraceDays = data.paymentGraceDays === undefined || data.paymentGraceDays === '' ? 3 : Number(data.paymentGraceDays);
+  const depositMonths = data.depositMonths === undefined || data.depositMonths === '' ? 1 : Number(data.depositMonths);
+  if (!Number.isFinite(electricityPrice) || electricityPrice < 0 || !Number.isFinite(waterPrice) || waterPrice < 0) {
+    fail(400, 'Đơn giá điện và nước phải là số không âm.');
+  }
+  if (!Number.isInteger(paymentDueDay) || paymentDueDay < 1 || paymentDueDay > 28) fail(400, 'Ngày đến hạn phải từ ngày 1 đến ngày 28.');
+  if (!Number.isInteger(paymentGraceDays) || paymentGraceDays < 0 || paymentGraceDays > 60) fail(400, 'Thời gian gia hạn phải từ 0 đến 60 ngày.');
+  if (!Number.isFinite(depositMonths) || depositMonths < 0 || depositMonths > 12) fail(400, 'Số tháng tiền cọc phải từ 0 đến 12.');
+  const effectiveFrom = data.effectiveFrom ? new Date(data.effectiveFrom) : new Date();
+  if (Number.isNaN(effectiveFrom.getTime())) fail(400, 'Ngày bắt đầu áp dụng không hợp lệ.');
+  return Properties.create({
+    owner: userId, name, address, description: String(data.description || '').trim(),
+    utilityRate: { electricityPrice, waterPrice, effectiveFrom },
+    contractPolicy: {
+      paymentDueDay, paymentGraceDays, depositMonths,
+      policyNote: String(data.policyNote || '').trim().slice(0, 2000),
+    },
+  });
 }
 
 export async function updateProperty(userId, propertyId, data) {
