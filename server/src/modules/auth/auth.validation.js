@@ -8,15 +8,15 @@ export function validateRegister(body) {
   if (!body?.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.email))) {
     return 'Email không hợp lệ';
   }
-  if (!body?.password || String(body.password).length < 6) {
-    return 'Mật khẩu phải có ít nhất 6 ký tự';
+  if (!body?.password || String(body.password).length < 8) {
+    return 'Mật khẩu phải có ít nhất 8 ký tự';
   }
   return null;
 }
 
 export function validateLogin(body) {
-  if (!body?.email || !body?.password) {
-    return 'Vui lòng nhập đầy đủ email và mật khẩu';
+  if (!(body?.email || body?.identifier) || !body?.password) {
+    return 'Vui lòng nhập username/email và mật khẩu';
   }
   return null;
 }

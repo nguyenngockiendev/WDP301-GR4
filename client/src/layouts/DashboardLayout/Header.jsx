@@ -1,23 +1,22 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Plus, ChevronDown, Bell, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../shared/api/axiosClient';
 
 export default function Header() {
   const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  useEffect(() => { api.get('/auth/me').then(r => setUser(r.data.user)).catch(() => {}); }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userId');
-    navigate('/login');
+  const handleLogout = async () => {
+    try { await api.post('/auth/logout'); } finally { navigate('/login', { replace: true }); }
   };
 
   return (
     <header className="h-20 bg-white/40 backdrop-blur-md px-8 flex items-center justify-between shrink-0 sticky top-0 z-20 border-b border-emerald-100/40">
       {/* Khối chọn tòa nhà */}
       <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/80 backdrop-blur-md border border-emerald-100/80 shadow-xs cursor-pointer hover:border-emerald-300 transition">
-        <span className="text-xs font-bold text-slate-800">
-          Tòa Nhà Bình An — 123 Nguyễn Trãi
-        </span>
+        <span className="text-xs font-bold text-slate-800">Xin chào, {user?.fullName || 'tài khoản'}</span>
         <ChevronDown size={14} className="text-slate-400" />
       </div>
 

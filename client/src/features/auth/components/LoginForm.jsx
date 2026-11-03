@@ -69,23 +69,23 @@ const LoginForm = ({
             {/* Email */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-content-main">
-                  Địa chỉ Email
+                  Username hoặc email
                 </label>
               <div className="relative rounded-xl bg-surface-bg border border-surface-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-50 transition-all">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-content-muted">
                   <Mail size={16} />
                   </div>
                   <input
-                    type="email"
+                    type="text"
                     required
-                  placeholder="chu_tro@example.com"
-                  {...register('email')}
+                  placeholder="username hoặc email"
+                  {...register('identifier')}
                   className="w-full pl-10 pr-4 py-2.5 text-xs font-medium text-content-main placeholder-content-muted bg-transparent outline-none rounded-xl"
                   />
                 </div>
-              {errors?.email && (
+              {errors?.identifier && (
                 <span className="text-[11px] text-status-danger font-medium">
-                  {errors.email.message}
+                  {errors.identifier.message}
                 </span>
               )}
               </div>

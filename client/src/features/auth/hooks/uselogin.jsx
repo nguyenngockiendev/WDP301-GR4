@@ -4,15 +4,18 @@ import { toast } from 'react-toastify';
 
 const useLogin = () => {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const login = async data => {
     try {
       setLoading(true);
+      setError('');
 
-      const res = await loginUser(data.email, data.password);
+      const res = await loginUser(data.identifier || data.email, data.password);
       return res;
     } catch (err) {
       const message = err.response?.data?.message || 'Login failed';
+      setError(message);
       toast.error(message);
       return null;
     } finally {
@@ -20,7 +23,7 @@ const useLogin = () => {
     }
   };
 
-  return { login};
+  return { login, loading, error };
 };
 
 export default useLogin;

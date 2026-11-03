@@ -28,6 +28,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    isVerified: {
+      // Existing accounts predate OTP and remain usable; public registration sets false explicitly.
+      type: Boolean,
+      default: true,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     role: {
       type: String,
       enum: ['landlord', 'manager', 'tenant'],

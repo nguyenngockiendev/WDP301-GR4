@@ -11,7 +11,7 @@ const otpSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    otpCode: {
+    otpHash: {
       type: String,
       required: true,
     },
@@ -33,6 +33,10 @@ const otpSchema = new mongoose.Schema(
     attemptCount: {
       type: Number,
       default: 0,
+    },
+    expiresAt: {
+      type: Date,
+      required: true,
     },
   },
   {

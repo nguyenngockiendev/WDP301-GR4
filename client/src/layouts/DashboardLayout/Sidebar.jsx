@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   Building2,
   Sparkles,
+  Settings,
 } from 'lucide-react';
 
 export default function Sidebar({ isCollapsed, setIsCollapsed }) {
@@ -24,22 +25,15 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       title: 'QUẢN LÝ CHO THUÊ',
       items: [
-        { to: '/', label: 'Danh sách phòng', icon: DoorOpen },
-        { to: '/', label: 'Hợp đồng thuê', icon: FileSignature },
-        {
-          to: '/',
-          label: 'Yêu cầu đặt phòng',
-          icon: CalendarClock,
-          badge: '2',
-        },
-        { to: '/', label: 'Khách thuê', icon: Users },
+        { to: '/properties', label: 'Nhà trọ', icon: Building2 },
+        { to: '/managers', label: 'Quản lý viên', icon: Users },
+        { to: '/settings', label: 'Giá và chính sách', icon: Settings },
       ],
     },
     {
       title: 'DỊCH VỤ & TÀI CHÍNH',
       items: [
-        { to: '/', label: 'Số điện & nước', icon: Zap },
-        { to: '/', label: 'Hóa đơn tiền phòng', icon: ReceiptText },
+        { to: '/profile', label: 'Hồ sơ & mật khẩu', icon: Sparkles },
       ],
     },
   ];
@@ -206,7 +200,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
           className={`flex items-center gap-2.5 p-1.5 rounded-2xl hover:bg-slate-50/80 transition cursor-pointer group ${
             isCollapsed ? 'justify-center' : 'px-2'
           }`}
-          title="Tài khoản Quản lý Tòa nhà"
+          title="Hồ sơ cá nhân"
         >
           <div className="relative shrink-0">
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-700 to-slate-900 text-white font-black text-xs flex items-center justify-center border-2 border-white shadow-xs">
@@ -218,10 +212,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
           {!isCollapsed && (
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-xs font-extrabold text-slate-800 truncate">
-                Ban Quản Lý
+                Chủ trọ
               </span>
               <span className="text-[10px] font-medium text-slate-400 truncate">
-                admin@havenstay.vn
+                Quản lý tài khoản
               </span>
             </div>
           )}
