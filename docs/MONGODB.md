@@ -1,6 +1,6 @@
 # Thiết kế MongoDB — quản lý trọ
 
-Database local: `boarding_house`. Chạy `npm --prefix server run db:init` để tạo collection và index; script không xóa dữ liệu, không reset mật khẩu, không drop index. Các model nằm trong `server/src/models` và được export tại `server/src/models/index.js`.
+Database dùng chung trên MongoDB Atlas: `WDP301_GR4` (đặt trong `server/.env` qua `MONGODB_URI`). Chạy `npm --prefix server run db:init` để tạo collection và index còn thiếu; script không xóa collection hoặc index hiện có. Các model nằm trong `server/src/models` và được export tại `server/src/models/index.js`.
 
 ## Collection và use case
 

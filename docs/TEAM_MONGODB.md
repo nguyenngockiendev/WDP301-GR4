@@ -5,7 +5,7 @@ The application supports one shared development database through MongoDB Atlas. 
 ## One-time setup by the database owner
 
 1. Create a MongoDB Atlas organization/project for the team and a free or paid cluster.
-2. In **Database Access**, create a database user with a strong password. For development, grant `readWrite` only on the `boarding_house` database. Do not use the Atlas account password as the database password.
+2. In **Database Access**, create a database user with a strong password. For development, grant `readWrite` only on the `WDP301_GR4` database. Do not use the Atlas account password as the database password.
 3. In **Network Access**, add each team member's current IP address. Use the temporary `0.0.0.0/0` rule only for short-lived classroom development, then remove it. Atlas access remains protected by the database username/password.
 4. Obtain the Driver connection string and replace `<db_username>`, `<db_password>`, and `<cluster>` locally.
 5. Send the completed connection string only through a private channel approved by the team. Never commit it, place it in README, or expose it in a screenshot.
@@ -21,7 +21,7 @@ Copy-Item server/.env.example server/.env
 Edit `server/.env` and set:
 
 ```dotenv
-MONGODB_URI=mongodb+srv://<db_username>:<db_password>@<cluster>.mongodb.net/boarding_house?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://<db_username>:<db_password>@<cluster>.mongodb.net/WDP301_GR4?retryWrites=true&w=majority
 SESSION_SECRET=<shared-development-secret-at-least-32-characters>
 ```
 
@@ -34,7 +34,7 @@ npm ci --prefix server
 npm --prefix server run db:init
 ```
 
-Only one designated teammate should run `npm --prefix server run seed` against the shared database. The seed script does not overwrite an existing landlord account.
+Only one designated teammate should run `npm --prefix server run seed` against the shared database. The seed script does not overwrite an existing landlord account. `db:init` creates missing indexes but does not remove existing indexes.
 
 ## Working safely as a team
 
