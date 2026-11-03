@@ -1,16 +1,16 @@
 import { Router } from 'express';
-import { roles } from '../../shared/middlewares/security.js';
+import * as roomsController from './rooms.controller.js';
+import { validate } from '../../shared/middlewares/validate.middleware.js';
+import { validateCreateRoom, validateUpdateRoom, validateUpdateRoomStatus } from './rooms.validation.js';
 
-export default function roomRoutes(controller) {
-  const router = Router();
-  router.use(roles('LANDLORD', 'MANAGER'));
-  router.get('/', controller.list);
-  router.post('/', roles('LANDLORD'), controller.create);
-  router.post('/bulk', roles('LANDLORD'), controller.createMany);
-  router.get('/:id', controller.detail);
-  router.get('/:id/rent-rates', controller.rentRates);
-  router.patch('/:id/manager', roles('LANDLORD'), controller.assign);
-  router.patch('/:id/building', roles('LANDLORD'), controller.assignBuilding);
-  router.patch('/:id/price', roles('LANDLORD'), controller.updatePrice);
-  return router;
-}
+const router = Router();
+
+router.get('/search', roomsController.searchAvailableRooms);
+router.get('/property/:propertyId', roomsController.getRoomsByProperty);
+router.get('/:roomId', roomsController.getRoomById);
+router.post('/', validate(validateCreateRoom), roomsController.createRoom);
+router.put('/:roomId', validate(validateUpdateRoom), roomsController.updateRoom);
+router.patch('/:roomId/status', validate(validateUpdateRoomStatus), roomsController.updateRoomStatus);
+router.patch('/:roomId/deactivate', roomsController.deactivateRoom);
+
+export default router;

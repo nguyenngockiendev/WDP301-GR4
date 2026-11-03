@@ -1,24 +1,32 @@
-import 'dotenv/config';
-import mongoose from 'mongoose';
-import { createApp } from './app/app.js';
+import app from './app/app.js';
 import { connectDatabase } from './config/db.config.js';
-import './models/index.js';
+import dotenv from 'dotenv';
 
-await connectDatabase();
-const app = createApp({
-  mongoUrl: process.env.MONGODB_URI,
-  secret: process.env.SESSION_SECRET,
-  production: process.env.NODE_ENV === 'production',
-});
-const port = Number(process.env.PORT || 4000);
-const server = app.listen(port, () => console.log(`Backend API: http://localhost:${port}`));
+// Import all models to register schemas
+import './models/Users.js';
+import './models/Properties.js';
+import './models/Rooms.js';
+import './models/RentalRequests.js';
+import './models/Contracts.js';
+import './models/Invoices.js';
+import './models/Services.js';
+import './models/ContractTemplates.js';
+import './models/UtilityReadings.js';
+import './models/Payments.js';
+import './models/TerminationRequests.js';
+import './models/ManagerAssignments.js';
+import './models/Notifications.js';
+import './models/Otps.js';
+import './models/PropertyServices.js';
 
-async function shutDown() {
-  server.close(async () => {
-    await mongoose.disconnect();
-    process.exit(0);
+const PORT = process.env.PORT || 9999;
+dotenv.config();
+
+async function bootstrap() {
+  await connectDatabase();
+  app.listen(PORT, () => {
+    console.log(`[Server] Đang chạy tại :${PORT}`);
   });
 }
 
-process.on('SIGINT', shutDown);
-process.on('SIGTERM', shutDown);
+bootstrap();

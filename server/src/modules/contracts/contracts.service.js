@@ -1,130 +1,177 @@
-import { AppError } from '../../shared/utils/errors.js';
-import Room from '../../models/Rooms.js';
-import User from '../../models/Users.js';
-import Building from '../../models/Building.js';
-import Contract from '../../models/Contracts.js';
-import RentRate from '../../models/RentRate.js';
-import ServiceFee from '../../models/ServiceFee.js';
-import ContractPolicy from '../../models/ContractPolicy.js';
+import Contracts from '../../models/Contracts.js';
+import RentalRequests from '../../models/RentalRequests.js';
+import Rooms from '../../models/Rooms.js';
 
-const validId = value => typeof value === 'string' && /^[a-f\d]{24}$/i.test(value);
-const asDate = value => {
-  const date =
-    typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
-      ? new Date(`${value}T00:00:00`)
-      : new Date(value);
-  if (Number.isNaN(date.getTime())) throw new AppError('Enter valid contract dates.');
-  return date;
+export const getContractsByProperty = async (propertyId) => {
+  const contracts = await Contracts.find()
+    .populate({
+      path: 'room',
+      match: { property: propertyId },
+    })
+    .populate('representative', 'fullName email phone')
+    .populate('otherMembers', 'fullName email phone')
+    .populate('rentalRequest')
+    .populate('template')
+    .populate('createdBy', 'fullName email');
+
+  return contracts.filter(contract => contract.room !== null);
 };
 
-export class ContractService {
-  async options(user) {
-    if (user.role !== 'LANDLORD') throw new AppError('Only landlords can create contracts.', 403);
-    const rooms = await Room.find({
-      owner: user.id,
-      status: { $in: ['VACANT', 'available'] },
-    }).sort({ title: 1 }).lean();
-    const tenants = await User.find({
-      role: { $in: ['TENANT', 'tenant'] },
-      $or: [{ active: true }, { active: { $exists: false }, status: 'active' }],
-    })
-      .sort({ name: 1 })
-      .select('name email')
-      .lean();
-    return { rooms, tenants };
+export const getContractById = async (contractId) => {
+  const contract = await Contracts.findById(contractId)
+    .populate('room')
+    .populate('representative', 'fullName email phone')
+    .populate('otherMembers', 'fullName email phone')
+    .populate('rentalRequest')
+    .populate('template')
+    .populate('createdBy', 'fullName email');
+
+  if (!contract) {
+    throw { status: 404, message: 'Hợp đồng không tồn tại' };
+  }
+  return contract;
+};
+
+export const createContract = async (data) => {
+  const room = await Rooms.findById(data.room);
+  if (!room) {
+    throw { status: 404, message: 'Phòng không tồn tại' };
   }
 
-  async create(body, user) {
-    if (user.role !== 'LANDLORD') throw new AppError('Only landlords can create contracts.', 403);
-    if (!validId(body.room) || !validId(body.tenant))
-      throw new AppError('Choose a room and tenant.');
-    const [room, tenant] = await Promise.all([
-      Room.findOne({ _id: body.room, owner: user.id }).lean(),
-      User.findOne({
-        _id: body.tenant,
-        role: { $in: ['TENANT', 'tenant'] },
-        $or: [{ active: true }, { active: { $exists: false }, status: 'active' }],
-      }).lean(),
-    ]);
-    if (!room || !['VACANT', 'available'].includes(room.status))
-      throw new AppError('The room is not available.', 409);
-    if (!tenant) throw new AppError('Tenant account not found.');
-    if (!room.building)
-      throw new AppError('Assign this room to a building before creating a contract.');
-    const building = await Building.findOne({
-      _id: room.building,
-      owner: user.id,
-      status: 'ACTIVE',
-    }).lean();
-    if (!building) throw new AppError('The room must belong to an active building.');
-    const startDate = asDate(body.startDate),
-      endDate = asDate(body.endDate);
-    if (endDate <= startDate) throw new AppError('The end date must be after the start date.');
-    if (startDate > new Date()) throw new AppError('Contracts can start today or earlier.');
-    if (endDate <= new Date()) throw new AppError('The end date must be in the future.');
-    const [rentRate, policy, fees] = await Promise.all([
-      RentRate.findOne({ room: room._id, effectiveFrom: { $lte: startDate } })
-        .sort({ effectiveFrom: -1 })
-        .lean(),
-      ContractPolicy.findOne({ building: building._id }).sort({ version: -1 }).lean(),
-      ServiceFee.find({ building: building._id, active: true }).sort({ name: 1 }).lean(),
-    ]);
-    const rent = rentRate?.amount ?? room.price;
-    let months =
-      (endDate.getFullYear() - startDate.getFullYear()) * 12 +
-      endDate.getMonth() -
-      startDate.getMonth();
-    const lastDayOfEndMonth = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0).getDate();
-    if (endDate.getDate() < startDate.getDate() && endDate.getDate() < lastDayOfEndMonth)
-      months -= 1;
-    if (policy && months < policy.minMonths)
-      throw new AppError(`Minimum rental term is ${policy.minMonths} months.`);
-    const deposit = Number(body.deposit);
-    if (!Number.isSafeInteger(deposit) || deposit < 0 || deposit > 1000000000)
-      throw new AppError('Deposit must be a whole VND amount between 0 and 1 billion.');
-    const occupantCount = Number(body.occupantCount || 1);
-    if (
-      !Number.isInteger(occupantCount) ||
-      occupantCount < 1 ||
-      occupantCount > (room.capacity || 1)
-    )
-      throw new AppError(`Occupants must be from 1 to ${room.capacity || 1}.`);
-    try {
-      const contract = await Contract.create({
-        code: `HD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-        room: room._id,
-        building: building._id,
-        tenant: tenant._id,
-        occupants: [tenant._id],
-        occupantCount,
-        startDate,
-        endDate,
-        rent,
-        deposit,
-        status: 'ACTIVE',
-        policySnapshot: policy && {
-          version: policy.version,
-          minMonths: policy.minMonths,
-          terms: policy.terms,
-          noticeDays: policy.noticeDays,
-          paymentDueDay: policy.paymentDueDay,
-          paymentGraceDays: policy.paymentGraceDays,
-        },
-        feesSnapshot: fees.map(({ code, name, unit, usageUnit, price }) => ({
-          code,
-          name,
-          unit,
-          usageUnit,
-          price,
-        })),
-        createdBy: user.id,
-      });
-      await Room.updateOne({ _id: room._id }, { $set: { status: 'OCCUPIED' } });
-      return contract;
-    } catch (error) {
-      if (error?.code === 11000)
-        throw new AppError('This room already has an active contract.', 409);
-      throw error;
+  const activeContract = await Contracts.findOne({ room: data.room, status: 'active' });
+  if (activeContract) {
+    throw { status: 400, message: 'Phòng này đã có hợp đồng hoạt động' };
+  }
+
+  if (data.rentalRequest) {
+    const rentalRequest = await RentalRequests.findById(data.rentalRequest);
+    if (!rentalRequest) {
+      throw { status: 404, message: 'Yêu cầu thuê không tồn tại' };
+    }
+    if (rentalRequest.status !== 'approved') {
+      throw { status: 400, message: 'Yêu cầu thuê phải được phê duyệt' };
     }
   }
-}
+
+  const contract = await Contracts.create(data);
+  return contract.populate([
+    'room',
+    { path: 'representative', select: 'fullName email phone' },
+    { path: 'otherMembers', select: 'fullName email phone' },
+    'rentalRequest',
+    'template',
+    { path: 'createdBy', select: 'fullName email' },
+  ]);
+};
+
+export const updateContract = async (contractId, data) => {
+  const contract = await Contracts.findById(contractId);
+  if (!contract) {
+    throw { status: 404, message: 'Hợp đồng không tồn tại' };
+  }
+
+  const lockedFields = ['monthlyRent', 'depositAmount'];
+  for (const field of lockedFields) {
+    if (data[field] && contract.status !== 'draft') {
+      throw { status: 400, message: `Không thể chỉnh sửa ${field} sau khi ký hợp đồng` };
+    }
+  }
+
+  Object.assign(contract, data);
+  await contract.save();
+
+  return contract.populate([
+    'room',
+    { path: 'representative', select: 'fullName email phone' },
+    { path: 'otherMembers', select: 'fullName email phone' },
+    'rentalRequest',
+    'template',
+    { path: 'createdBy', select: 'fullName email' },
+  ]);
+};
+
+export const renewContract = async (contractId, newEndDate) => {
+  const contract = await Contracts.findById(contractId);
+  if (!contract) {
+    throw { status: 404, message: 'Hợp đồng không tồn tại' };
+  }
+
+  if (contract.status !== 'active') {
+    throw { status: 400, message: 'Chỉ có thể gia hạn hợp đồng hoạt động' };
+  }
+
+  const newEndDateObj = new Date(newEndDate);
+  if (newEndDateObj <= contract.endDate) {
+    throw { status: 400, message: 'Ngày kết thúc mới phải sau ngày kết thúc hiện tại' };
+  }
+
+  contract.endDate = newEndDate;
+  await contract.save();
+
+  return contract.populate([
+    'room',
+    { path: 'representative', select: 'fullName email phone' },
+    { path: 'otherMembers', select: 'fullName email phone' },
+    'rentalRequest',
+    'template',
+    { path: 'createdBy', select: 'fullName email' },
+  ]);
+};
+
+export const changeRepresentative = async (contractId, newRepresentativeId) => {
+  const contract = await Contracts.findById(contractId);
+  if (!contract) {
+    throw { status: 404, message: 'Hợp đồng không tồn tại' };
+  }
+
+  const allMembers = [contract.representative, ...contract.otherMembers];
+  const isMember = allMembers.some(member => member.toString() === newRepresentativeId);
+  if (!isMember) {
+    throw { status: 400, message: 'Người đại diện mới phải là thành viên của hợp đồng' };
+  }
+
+  const oldRepresentative = contract.representative;
+  contract.representative = newRepresentativeId;
+
+  if (!contract.otherMembers.includes(oldRepresentative)) {
+    contract.otherMembers.push(oldRepresentative);
+  }
+  contract.otherMembers = contract.otherMembers.filter(
+    member => member.toString() !== newRepresentativeId,
+  );
+
+  await contract.save();
+
+  return contract.populate([
+    'room',
+    { path: 'representative', select: 'fullName email phone' },
+    { path: 'otherMembers', select: 'fullName email phone' },
+    'rentalRequest',
+    'template',
+    { path: 'createdBy', select: 'fullName email' },
+  ]);
+};
+
+export const searchContracts = async (filters) => {
+  const query = {};
+
+  if (filters.status) {
+    query.status = filters.status;
+  }
+
+  if (filters.room) {
+    query.room = filters.room;
+  }
+
+  if (filters.representative) {
+    query.representative = filters.representative;
+  }
+
+  const contracts = await Contracts.find(query)
+    .populate('room')
+    .populate('representative', 'fullName email phone')
+    .populate('otherMembers', 'fullName email phone')
+    .populate('createdBy', 'fullName email');
+
+  return contracts;
+};

@@ -1,9 +1,21 @@
 import { Router } from 'express';
-import { roles } from '../../shared/middlewares/security.js';
+import * as contractsController from './contracts.controller.js';
+import { validate } from '../../shared/middlewares/validate.middleware.js';
+import {
+  validateCreateContract,
+  validateUpdateContract,
+  validateRenewContract,
+  validateChangeRepresentative,
+} from './contracts.validation.js';
 
-export default function contractRoutes(controller) {
-  const router = Router();
-  router.get('/options', roles('LANDLORD'), controller.options);
-  router.post('/', roles('LANDLORD'), controller.create);
-  return router;
-}
+const router = Router();
+
+router.get('/search', contractsController.searchContracts);
+router.get('/property/:propertyId', contractsController.getContractsByProperty);
+router.get('/:contractId', contractsController.getContractById);
+router.post('/', validate(validateCreateContract), contractsController.createContract);
+router.put('/:contractId', validate(validateUpdateContract), contractsController.updateContract);
+router.patch('/:contractId/renew', validate(validateRenewContract), contractsController.renewContract);
+router.patch('/:contractId/change-representative', validate(validateChangeRepresentative), contractsController.changeRepresentative);
+
+export default router;

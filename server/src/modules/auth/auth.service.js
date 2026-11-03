@@ -46,12 +46,12 @@ const loginUser = async data => {
       throw { status: 400, message: 'Vui lòng nhập đầy đủ email và mật khẩu!' };
     }
 
-    const user = await Users.findOne({ email: data.email }).select('+password +passwordHash');
+    const user = await Users.findOne({ email: data.email });
     if (!user) {
       throw { status: 401, message: 'Email hoặc mật khẩu không chính xác!' };
     }
 
-    const isMatch = await bcrypt.compare(data.password, user.password || user.passwordHash);
+    const isMatch = await bcrypt.compare(data.password, user.password);
     if (!isMatch) {
       throw { status: 401, message: 'Email hoặc mật khẩu không chính xác!' };
     }

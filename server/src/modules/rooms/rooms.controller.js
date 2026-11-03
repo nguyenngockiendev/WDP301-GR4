@@ -1,55 +1,71 @@
-import { ListingDTO } from './rooms.dto.js';
-import { pageNumber } from '../../shared/utils/pagination.js';
-export class ListingController {
-  constructor(service) {
-    this.service = service;
+import * as roomsService from './rooms.service.js';
+import { sendSuccess, sendError } from '../../shared/utils/response.js';
+
+export const getRoomsByProperty = async (req, res) => {
+  try {
+    const { propertyId } = req.params;
+    const rooms = await roomsService.getRoomsByProperty(propertyId);
+    return sendSuccess(res, 200, 'Lấy danh sách phòng thành công', rooms);
+  } catch (error) {
+    return sendError(res, error);
   }
+};
 
-  list = async (req, res) => {
-    const page = pageNumber(req.query.page);
-    const result = await this.service.list(req.user, page);
+export const getRoomById = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const room = await roomsService.getRoomById(roomId);
+    return sendSuccess(res, 200, 'Lấy thông tin phòng thành công', room);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
 
-    res.json({ page, ...result });
-  };
+export const createRoom = async (req, res) => {
+  try {
+    const newRoom = await roomsService.createRoom(req.body);
+    return sendSuccess(res, 201, 'Tạo phòng thành công', newRoom);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
 
-  detail = async (req, res) => {
-    const [item, managers, buildings] = await Promise.all([
-      this.service.detail(req.params.id, req.user),
-      this.service.managers(req.user),
-      this.service.buildings(req.user),
-    ]);
+export const updateRoom = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const updatedRoom = await roomsService.updateRoom(roomId, req.body);
+    return sendSuccess(res, 200, 'Cập nhật phòng thành công', updatedRoom);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
 
-    res.json({ item, managers, buildings });
-  };
+export const updateRoomStatus = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const updatedRoom = await roomsService.updateRoomStatus(roomId, req.body.status);
+    return sendSuccess(res, 200, 'Cập nhật trạng thái phòng thành công', updatedRoom);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
 
-  create = async (req, res) => {
-    const item = await this.service.create(new ListingDTO(req.body), req.user);
+export const deactivateRoom = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const deactivatedRoom = await roomsService.deactivateRoom(roomId);
+    return sendSuccess(res, 200, 'Vô hiệu hóa phòng thành công', deactivatedRoom);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
 
-    res.status(201).json({ item });
-  };
-  createMany = async (req, res) => {
-    const items = await this.service.createMany(new ListingDTO(req.body), req.user);
-    res.status(201).json({ items });
-  };
-  rentRates = async (req, res) =>
-    res.json({ items: await this.service.rentRates(req.params.id, req.user) });
-
-  assign = async (req, res) => {
-    const item = await this.service.assign(req.params.id, req.body.manager, req.user);
-
-    res.json({ item });
-  };
-  assignBuilding = async (req, res) => {
-    const item = await this.service.assignBuilding(req.params.id, req.body.building, req.user);
-    res.json({ item });
-  };
-  updatePrice = async (req, res) => {
-    const item = await this.service.updatePrice(
-      req.params.id,
-      req.body.price,
-      req.body.effectiveFrom,
-      req.user,
-    );
-    res.json({ item });
-  };
-}
+export const searchAvailableRooms = async (req, res) => {
+  try {
+    const filters = req.query;
+    const rooms = await roomsService.searchAvailableRooms(filters);
+    return sendSuccess(res, 200, 'Tìm kiếm phòng thành công', rooms);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};

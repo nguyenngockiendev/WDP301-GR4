@@ -1,158 +1,97 @@
-import { AppError } from '../../shared/utils/errors.js';
-export class ListingService {
-  constructor(dao, roles, userDAO, buildingService) {
-    this.dao = dao;
-    this.roles = roles;
-    this.userDAO = userDAO;
-    this.buildingService = buildingService;
+import Rooms from '../../models/Rooms.js';
+import Contracts from '../../models/Contracts.js';
+
+export const getRoomsByProperty = async (propertyId) => {
+  const rooms = await Rooms.find({ property: propertyId }).populate('property');
+  return rooms;
+};
+
+export const getRoomById = async (roomId) => {
+  const room = await Rooms.findById(roomId).populate('property');
+  if (!room) {
+    throw { status: 404, message: 'Phòng không tồn tại' };
   }
-  authorize(user) {
-    if (!user || !this.roles.includes(user.role))
-      throw new AppError('You do not have access to this page.', 403);
+  return room;
+};
+
+export const createRoom = async (data) => {
+  const { property, roomNumber } = data;
+
+  const existingRoom = await Rooms.findOne({ property, roomNumber });
+  if (existingRoom) {
+    throw { status: 400, message: 'Số phòng đã tồn tại trong tòa nhà này' };
   }
-  async create(dto, user) {
-    this.authorize(user);
-    if (user.role !== 'LANDLORD') throw new AppError('Only landlords can create rooms.', 403);
-    const building = dto.building ? await this.buildingService.detail(dto.building, user) : null;
-    if (building?.status === 'INACTIVE')
-      throw new AppError('Rooms cannot be added to an inactive building.', 409);
-    let item;
-    try {
-      item = await this.dao.create({
-        title: dto.title,
-        description: dto.description,
-        price: dto.price,
-        ...(dto.code ? { code: dto.code } : {}),
-        ...(dto.area ? { area: dto.area } : {}),
-        ...(dto.capacity ? { capacity: dto.capacity } : {}),
-        amenities: dto.amenities,
-        owner: user.id,
-        building: dto.building || null,
-        manager: building?.manager || null,
-      });
-    } catch (error) {
-      if (error?.code === 11000)
-        throw new AppError('This room code already exists in the building.', 409);
-      throw error;
+
+  const room = await Rooms.create(data);
+  return room.populate('property');
+};
+
+export const updateRoom = async (roomId, data) => {
+  const room = await Rooms.findById(roomId);
+  if (!room) {
+    throw { status: 404, message: 'Phòng không tồn tại' };
+  }
+
+  const { roomNumber, property } = data;
+  if (roomNumber && roomNumber !== room.roomNumber) {
+    const existingRoom = await Rooms.findOne({ property: property || room.property, roomNumber });
+    if (existingRoom) {
+      throw { status: 400, message: 'Số phòng đã tồn tại trong tòa nhà này' };
     }
-    await this.dao.saveRentRate(item._id, item.price, new Date(), user.id);
-    return item;
   }
-  async createMany(dto, user) {
-    this.authorize(user);
-    if (user.role !== 'LANDLORD') throw new AppError('Only landlords can create rooms.', 403);
-    if (!dto.codes) throw new AppError('Enter a list of room codes.');
-    if (!dto.area || !dto.capacity)
-      throw new AppError('Area and capacity are required for bulk room creation.');
-    const building = dto.building ? await this.buildingService.detail(dto.building, user) : null;
-    if (building?.status === 'INACTIVE')
-      throw new AppError('Rooms cannot be added to an inactive building.', 409);
-    const rooms = dto.codes.map(code => ({
-      title: code,
-      code,
-      description: dto.description,
-      price: dto.price,
-      area: dto.area,
-      capacity: dto.capacity,
-      amenities: dto.amenities,
-      owner: user.id,
-      building: dto.building || null,
-      manager: building?.manager || null,
-    }));
-    let created;
-    try {
-      created = await this.dao.createMany(rooms);
-    } catch (error) {
-      if (error?.code === 11000)
-        throw new AppError('One or more room codes already exist in this building.', 409);
-      throw error;
+
+  Object.assign(room, data);
+  await room.save();
+  return room.populate('property');
+};
+
+export const updateRoomStatus = async (roomId, status) => {
+  const room = await Rooms.findById(roomId);
+  if (!room) {
+    throw { status: 404, message: 'Phòng không tồn tại' };
+  }
+
+  if (status === 'available') {
+    const activeContract = await Contracts.findOne({ room: roomId, status: 'active' });
+    if (activeContract) {
+      throw { status: 400, message: 'Không thể đặt phòng khả dụng khi còn hợp đồng hoạt động' };
     }
-    await Promise.all(
-      created.map(room => this.dao.saveRentRate(room._id, room.price, new Date(), user.id)),
-    );
-    return created;
   }
-  async managers(user) {
-    this.authorize(user);
-    if (user.role !== 'LANDLORD') return [];
-    return this.userDAO.managers();
+
+  room.status = status;
+  await room.save();
+  return room;
+};
+
+export const deactivateRoom = async (roomId) => {
+  const room = await Rooms.findById(roomId);
+  if (!room) {
+    throw { status: 404, message: 'Phòng không tồn tại' };
   }
-  async assign(id, managerId, user) {
-    this.authorize(user);
-    if (user.role !== 'LANDLORD') throw new AppError('Only landlords can assign managers.', 403);
-    await this.detail(id, user);
-    if (typeof managerId !== 'string' || (managerId !== '' && !/^[a-f\d]{24}$/i.test(managerId)))
-      throw new AppError('Please select a valid manager.');
-    if (managerId) {
-      const manager = await this.userDAO.findById(managerId);
-      if (!manager || manager.role?.toUpperCase() !== 'MANAGER' || manager.active === false || manager.status === 'inactive')
-        throw new AppError('The assigned account must be a property manager.');
-    }
-    return this.dao.assignManager(id, managerId || null);
+
+  const activeContract = await Contracts.findOne({ room: roomId, status: 'active' });
+  if (activeContract) {
+    throw { status: 400, message: 'Không thể vô hiệu hóa phòng khi còn hợp đồng hoạt động' };
   }
-  async buildings(user) {
-    return user.role === 'LANDLORD' ? this.buildingService.available(user) : [];
+
+  room.status = 'maintenance';
+  await room.save();
+  return room;
+};
+
+export const searchAvailableRooms = async (filters) => {
+  const query = { status: 'available' };
+
+  if (filters.property) {
+    query.property = filters.property;
   }
-  async assignBuilding(id, buildingId, user) {
-    this.authorize(user);
-    if (user.role !== 'LANDLORD')
-      throw new AppError('Only landlords can assign rooms to buildings.', 403);
-    await this.detail(id, user);
-    if (typeof buildingId !== 'string' || (buildingId && !/^[a-f\d]{24}$/i.test(buildingId)))
-      throw new AppError('Please select a valid building.');
-    const building = buildingId ? await this.buildingService.detail(buildingId, user) : null;
-    if (building?.status === 'INACTIVE')
-      throw new AppError('Rooms cannot be assigned to an inactive building.', 409);
-    return this.dao.assignBuilding(id, buildingId || null, building?.manager || null);
+
+  if (filters.minPrice || filters.maxPrice) {
+    query.price = {};
+    if (filters.minPrice) query.price.$gte = Number(filters.minPrice);
+    if (filters.maxPrice) query.price.$lte = Number(filters.maxPrice);
   }
-  async updatePrice(id, rawPrice, effectiveFrom, user) {
-    this.authorize(user);
-    if (user.role !== 'LANDLORD')
-      throw new AppError('Only landlords can configure room prices.', 403);
-    await this.detail(id, user);
-    const price = Number(rawPrice);
-    if (!Number.isSafeInteger(price) || price < 0 || price > 1000000000)
-      throw new AppError('Room price must be a whole number between 0 and 1 billion VND.');
-    const date = effectiveFrom
-      ? /^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)
-        ? new Date(`${effectiveFrom}T00:00:00`)
-        : new Date(effectiveFrom)
-      : new Date();
-    if (Number.isNaN(date.getTime())) throw new AppError('Enter a valid effective date.');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (date < today) throw new AppError('Choose today or a future effective date.');
-    const selectedDay = new Date(date);
-    selectedDay.setHours(0, 0, 0, 0);
-    if (selectedDay.getTime() === today.getTime()) date.setTime(Date.now());
-    if (await this.dao.rentRateExists(id, date))
-      throw new AppError('A rent price already exists for this effective date.', 409);
-    await this.dao.saveRentRate(id, price, date, user.id);
-    if (date <= new Date()) return this.dao.updatePrice(id, price);
-    return this.dao.findById(id);
-  }
-  async rentRates(id, user) {
-    await this.detail(id, user);
-    return this.dao.rentRates(id);
-  }
-  async list(user, page) {
-    this.authorize(user);
-    const filter = user.role === 'LANDLORD' ? { owner: user.id } : { manager: user.id };
-    return {
-      items: await this.dao.list(filter, (page - 1) * 10, 10),
-      total: await this.dao.count(filter),
-    };
-  }
-  async detail(id, user) {
-    this.authorize(user);
-    if (!/^[a-f\d]{24}$/i.test(id)) throw new AppError('Record not found.', 404);
-    const item = await this.dao.findById(id);
-    if (
-      !item ||
-      (user.role === 'LANDLORD' && String(item.owner) !== user.id) ||
-      (user.role === 'MANAGER' && String(item.manager) !== user.id)
-    )
-      throw new AppError('Record not found.', 404);
-    return item;
-  }
-}
+
+  const rooms = await Rooms.find(query).populate('property');
+  return rooms;
+};

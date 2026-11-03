@@ -1,15 +1,11 @@
 import { Router } from 'express';
-import { requireAuth } from '../../shared/middlewares/security.js';
+import { register, login } from './auth.controller.js';
+import { validate } from '../../shared/middlewares/validate.middleware.js';
+import { validateRegister, validateLogin } from './auth.validation.js';
 
-export default function authRoutes(controller, limiter) {
-  const router = Router();
-  router.post('/register', limiter, controller.register);
-  router.post('/verify-email', limiter, controller.verifyEmail);
-  router.post('/resend-verification', limiter, controller.resendVerification);
-  router.post('/forgot-password', limiter, controller.requestPasswordReset);
-  router.post('/reset-password', limiter, controller.resetPassword);
-  router.post('/login', limiter, controller.login);
-  router.post('/logout', requireAuth, controller.logout);
-  router.post('/password', requireAuth, controller.changePassword);
-  return router;
-}
+const router = Router();
+
+router.post('/register', validate(validateRegister), register);
+router.post('/login', validate(validateLogin), login);
+
+export default router;

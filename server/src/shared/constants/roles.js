@@ -1,6 +1,5 @@
-export const ROLE_LABELS = Object.freeze({
-  LANDLORD: 'Landlord',
-  MANAGER: 'Property Manager',
-  TENANT: 'Tenant',
-});
-export const USER_ROLES = Object.freeze(Object.keys(ROLE_LABELS));
+export const ROLES = {
+  ADMIN: 'ADMIN',
+  INSTRUCTOR: 'INSTRUCTOR',
+  STUDENT: 'STUDENT',
+};

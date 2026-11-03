@@ -1,57 +1,33 @@
-import React from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout/DashboardLayout';
-import ProtectedRoute from './ProtectedRoute';
-import authRoutes from '../../features/auth/routes/AuthRoutes';
-import homeRoutes from '../../features/home/routes/HomeRoutes';
-import dashboardRoutes from '../../features/dashboard/routes/DashboardRoutes';
-import profileRoutes from '../../features/profile/routes/ProfileRoutes';
-import usersRoutes from '../../features/users/routes/UsersRoutes';
-import buildingsRoutes from '../../features/buildings/routes/BuildingsRoutes';
+import authRoutes from '../../features/auth/routes/authRoutes';
 import roomsRoutes from '../../features/rooms/routes/RoomsRoutes';
 import contractsRoutes from '../../features/contracts/routes/ContractsRoutes';
-import billingRoutes from '../../features/billing/routes/BillingRoutes';
-import rentalSettingsRoutes from '../../features/rental-settings/routes/RentalSettingsRoutes';
-import reportsRoutes from '../../features/reports/routes/ReportsRoutes';
-import workspaceRoutes from '../../features/workspace/routes/WorkspaceRoutes';
-import notificationsRoutes from '../../features/notifications/routes/NotificationsRoutes';
-
-const featureRoutes = [
-  ...dashboardRoutes,
-  ...profileRoutes,
-  ...usersRoutes,
-  ...buildingsRoutes,
-  ...roomsRoutes,
-  ...contractsRoutes,
-  ...billingRoutes,
-  ...rentalSettingsRoutes,
-  ...reportsRoutes,
-  ...workspaceRoutes,
-  ...notificationsRoutes,
-];
+import rentalsRoutes from '../../features/rentals/routes/RentalsRoutes';
+import tenantsRoutes from '../../features/tenants/routes/TenantsRoutes';
+import DashboardPage from '../../features/dashboard/pages/DashboardPage';
 
 export default function AppRoutes() {
+  const routes = [...roomsRoutes, ...contractsRoutes, ...rentalsRoutes, ...tenantsRoutes];
   return (
     <Routes>
-      {homeRoutes.map(route => (
-        <Route key={route.path} path={route.path} element={route.element} />
-      ))}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
       {authRoutes.map(route => (
         <Route key={route.path} path={route.path} element={route.element} />
       ))}
 
-      <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-        {featureRoutes.map(route => (
-          <Route
-            key={route.path}
-            path={route.path}
-            element={<ProtectedRoute roles={route.roles}>{route.element}</ProtectedRoute>}
-          />
+      <Route element={<DashboardLayout />}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+
+        <Route path="dashboard" element={<DashboardPage />} />
+
+        {routes.map(route => (
+          <Route key={route.path} path={route.path} element={route.element} />
         ))}
       </Route>
 
-      <Route path="*" element={<h1>Page not found</h1>} />
+      <Route path="*" element={<h3>404 - Không tìm thấy trang</h3>} />
     </Routes>
   );
 }
