@@ -50,16 +50,34 @@ export async function registerUser(data) {
   if (await Users.exists({ $or: [{ email }, { username }] })) {
     throw { status: 409, message: 'Email hoặc username đã được sử dụng.' };
   }
-  const user = await Users.create({
-    username,
-    email,
-    fullName,
-    phone: String(data.phone || '').trim(),
-    password: await bcrypt.hash(data.password, 12),
-    role: 'tenant',
-    status: 'active',
-    isVerified: false,
-  });
+  // The first public account becomes the single landlord; later accounts are tenants.
+  const role = (await Users.exists({ role: 'landlord' })) ? 'tenant' : 'landlord';
+  let user;
+  try {
+    user = await Users.create({
+      username,
+      email,
+      fullName,
+      phone: String(data.phone || '').trim(),
+      password: await bcrypt.hash(data.password, 12),
+      role,
+      status: 'active',
+      isVerified: false,
+    });
+  } catch (error) {
+    // A concurrent first registration can lose the unique-landlord race; retry it as tenant.
+    if (role !== 'landlord' || error?.code !== 11000 || error?.keyPattern?.role !== 1) throw error;
+    user = await Users.create({
+      username,
+      email,
+      fullName,
+      phone: String(data.phone || '').trim(),
+      password: await bcrypt.hash(data.password, 12),
+      role: 'tenant',
+      status: 'active',
+      isVerified: false,
+    });
+  }
   try {
     await issueOtp(user, 'register');
     return { user: publicUser(user), verificationRequired: true, emailSent: true };

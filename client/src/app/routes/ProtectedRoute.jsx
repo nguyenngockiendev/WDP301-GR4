@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import api from '../../shared/api/axiosClient';
 
-export default function ProtectedRoute() {
+export default function ProtectedRoute({ roles }) {
   const [state, setState] = useState({ loading: true, user: null });
   useEffect(() => {
     let active = true;
@@ -14,5 +14,6 @@ export default function ProtectedRoute() {
   }, []);
   if (state.loading) return <div className="min-h-screen grid place-items-center text-slate-500">Đang kiểm tra phiên đăng nhập…</div>;
   if (!state.user) return <Navigate to="/login" replace />;
+  if (roles && !roles.includes(state.user.role)) return <Navigate to="/dashboard" replace />;
   return <Outlet context={{ user: state.user }} />;
 }

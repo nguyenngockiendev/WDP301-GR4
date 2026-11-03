@@ -54,6 +54,16 @@ const userSchema = new mongoose.Schema(
   },
 );
 
+// The application supports one primary landlord account per database.
+userSchema.index(
+  { role: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { role: 'landlord' },
+    name: 'one_primary_landlord',
+  },
+);
+
 const Users = mongoose.model('User', userSchema);
 
 export default Users;

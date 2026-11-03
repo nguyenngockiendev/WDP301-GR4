@@ -8,7 +8,7 @@ import { requirePropertyManager } from '../../shared/middlewares/property-access
 const router = Router();
 
 router.get('/search', roomsController.searchAvailableRooms);
-router.get('/property/:propertyId', roomsController.getRoomsByProperty);
+router.get('/property/:propertyId', requireAuth, requireRole('landlord', 'manager'), requirePropertyManager, roomsController.getRoomsByProperty);
 router.get('/:roomId', roomsController.getRoomById);
 router.post('/', requireAuth, requireRole('landlord', 'manager'), requirePropertyManager, validate(validateCreateRoom), roomsController.createRoom);
 router.put('/:roomId', requireAuth, requireRole('landlord', 'manager'), requirePropertyManager, validate(validateUpdateRoom), roomsController.updateRoom);

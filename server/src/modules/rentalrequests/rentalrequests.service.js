@@ -26,7 +26,7 @@ export const getRentalRequestById = async (requestId) => {
   return request;
 };
 
-export const createRentalRequest = async (data) => {
+export const createRentalRequest = async (data, tenantId) => {
   const room = await Rooms.findById(data.room);
   if (!room) {
     throw { status: 404, message: 'Phòng không tồn tại' };
@@ -36,7 +36,12 @@ export const createRentalRequest = async (data) => {
     throw { status: 400, message: 'Phòng hiện không khả dụng' };
   }
 
-  const request = await RentalRequests.create(data);
+  const request = await RentalRequests.create({
+    tenant: tenantId,
+    room: data.room,
+    expectedDate: data.expectedDate,
+    note: String(data.note || '').trim(),
+  });
   return request.populate([
     { path: 'room' },
     { path: 'tenant', select: 'fullName email phone' },

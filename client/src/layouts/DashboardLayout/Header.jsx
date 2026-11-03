@@ -42,11 +42,11 @@ export default function Header() {
 
         {/* Nút Tạo Hợp Đồng Mới (Xanh Emerald Gradient) */}
         <button
-          onClick={() => navigate('/contracts')}
+          onClick={() => navigate(user?.role === 'manager' ? '/properties' : '/contracts')}
           className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 active:scale-95 text-white text-xs font-extrabold shadow-md shadow-emerald-600/25 transition cursor-pointer"
         >
           <Plus size={16} className="stroke-[3]" />
-          <span>Tạo Hợp Đồng Mới</span>
+          <span>{user?.role === 'manager' ? 'Nhà Trọ Được Giao' : 'Tạo Hợp Đồng Mới'}</span>
         </button>
 
         {/* Nút Đăng xuất */}

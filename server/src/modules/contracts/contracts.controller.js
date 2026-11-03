@@ -23,7 +23,7 @@ export const getContractById = async (req, res) => {
 
 export const createContract = async (req, res) => {
   try {
-    const newContract = await contractsService.createContract(req.body);
+    const newContract = await contractsService.createContract({ ...req.body, createdBy: req.user.userId });
     return sendSuccess(res, 201, 'Tạo hợp đồng thành công', newContract);
   } catch (error) {
     return sendError(res, error);
@@ -68,7 +68,7 @@ export const changeRepresentative = async (req, res) => {
 export const searchContracts = async (req, res) => {
   try {
     const filters = req.query;
-    const contracts = await contractsService.searchContracts(filters);
+    const contracts = await contractsService.searchContracts(filters, req.user);
     return sendSuccess(res, 200, 'Tìm kiếm hợp đồng thành công', contracts);
   } catch (error) {
     return sendError(res, error);

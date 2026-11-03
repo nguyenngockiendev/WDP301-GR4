@@ -14,7 +14,9 @@ import {
   Settings,
 } from 'lucide-react';
 
-export default function Sidebar({ isCollapsed, setIsCollapsed }) {
+export default function Sidebar({ isCollapsed, setIsCollapsed, user }) {
+  const isLandlord = user?.role === 'landlord';
+  const isManager = user?.role === 'manager';
   const menuSections = [
     {
       title: 'TỔNG QUAN',
@@ -25,9 +27,11 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       title: 'QUẢN LÝ CHO THUÊ',
       items: [
-        { to: '/properties', label: 'Nhà trọ', icon: Building2 },
-        { to: '/managers', label: 'Quản lý viên', icon: Users },
-        { to: '/settings', label: 'Giá và chính sách', icon: Settings },
+        ...(isLandlord || isManager ? [{ to: '/properties', label: isManager ? 'Nhà trọ được giao' : 'Nhà trọ', icon: Building2 }] : []),
+        ...(isLandlord ? [
+          { to: '/managers', label: 'Quản lý viên', icon: Users },
+          { to: '/settings', label: 'Giá và chính sách', icon: Settings },
+        ] : []),
       ],
     },
     {

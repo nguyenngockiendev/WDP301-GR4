@@ -13,8 +13,9 @@ export const createProperty = handle(req => service.createProperty(req.user.user
 export const updateProperty = handle(req => service.updateProperty(req.user.userId, req.params.propertyId, req.body), 200, 'Đã cập nhật nhà trọ.');
 export const setPropertyStatus = handle(req => service.setPropertyStatus(req.user.userId, req.params.propertyId, req.body.status));
 export const listManagers = handle(req => service.listManagers(req.user.userId));
+export const listUsers = handle(() => service.listUsers());
+export const promoteUserToManager = handle(req => service.promoteUserToManager(req.user.userId, req.params.userId), 200, 'Đã nâng tài khoản thành Quản lý viên.');
 export const createManager = handle(req => service.createManager(req.user.userId, req.body), 201, 'Đã tạo tài khoản quản lý.');
-export const updateManager = handle(req => service.updateManager(req.user.userId, req.params.managerId, req.body));
 export const setManagerStatus = handle(req => service.setManagerStatus(req.user.userId, req.params.managerId, req.body.status));
 export const listAssignments = handle(req => service.listAssignments(req.user.userId));
 export const assignManager = handle(req => service.assignManager(req.user.userId, req.body.managerId, req.body.propertyIds), 200, 'Đã cập nhật phân công.');

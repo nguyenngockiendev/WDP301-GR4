@@ -1,5 +1,6 @@
 import Contracts from '../../models/Contracts.js';
 import Users from '../../models/Users.js';
+import Rooms from '../../models/Rooms.js';
 
 export const getTenantsByProperty = async (propertyId) => {
   const contracts = await Contracts.find({ status: 'active' })
@@ -55,14 +56,16 @@ export const getTenantsByProperty = async (propertyId) => {
   return Array.from(tenantsMap.values());
 };
 
-export const getTenantById = async (tenantId) => {
-  const tenant = await Users.findById(tenantId);
+export const getTenantById = async (tenantId, propertyIds) => {
+  const tenant = await Users.findById(tenantId).select('-password');
   if (!tenant) {
     throw { status: 404, message: 'Người thuê không tồn tại' };
   }
 
+  const roomIds = await Rooms.distinct('_id', { property: { $in: propertyIds } });
   const contracts = await Contracts.find({
     $or: [{ representative: tenantId }, { otherMembers: tenantId }],
+    room: { $in: roomIds },
   })
     .populate('room')
     .populate('template');

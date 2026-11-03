@@ -18,7 +18,8 @@ router.put('/properties/:propertyId/rates', controller.configureRates);
 router.put('/properties/:propertyId/policy', controller.configurePolicy);
 
 router.route('/managers').get(controller.listManagers).post(controller.createManager);
-router.put('/managers/:managerId', controller.updateManager);
+router.get('/users', controller.listUsers);
+router.patch('/users/:userId/role', controller.promoteUserToManager);
 router.patch('/managers/:managerId/status', controller.setManagerStatus);
 router.route('/assignments').get(controller.listAssignments).post(controller.assignManager);
 router.delete('/assignments/:assignmentId', controller.removeAssignment);

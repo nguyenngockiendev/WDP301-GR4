@@ -23,7 +23,7 @@ export const getRentalRequestById = async (req, res) => {
 
 export const createRentalRequest = async (req, res) => {
   try {
-    const newRequest = await rentalRequestsService.createRentalRequest(req.body);
+    const newRequest = await rentalRequestsService.createRentalRequest(req.body, req.user.userId);
     return sendSuccess(res, 201, 'Tạo yêu cầu thuê thành công', newRequest);
   } catch (error) {
     return sendError(res, error);
@@ -33,7 +33,7 @@ export const createRentalRequest = async (req, res) => {
 export const processRentalRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
-    const userId = req.session.user.userId;
+    const userId = req.user.userId;
     const processedRequest = await rentalRequestsService.processRentalRequest(
       requestId,
       req.body,

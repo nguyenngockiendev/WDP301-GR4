@@ -14,7 +14,7 @@ export const getTenantsByProperty = async (req, res) => {
 export const getTenantById = async (req, res) => {
   try {
     const { tenantId } = req.params;
-    const tenant = await tenantsService.getTenantById(tenantId);
+    const tenant = await tenantsService.getTenantById(tenantId, req.allowedPropertyIds);
     return sendSuccess(res, 200, 'Lấy thông tin người thuê thành công', tenant);
   } catch (error) {
     return sendError(res, error);

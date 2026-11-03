@@ -90,10 +90,32 @@ export async function setPropertyStatus(userId, propertyId, status) {
 }
 
 export async function listManagers(userId) {
-  const propertyIds = await Properties.distinct('_id', { owner: userId });
-  const assignedManagerIds = await ManagerAssignments.distinct('manager', { property: { $in: propertyIds }, status: 'active' });
-  return Users.find({ role: 'manager', $or: [{ createdBy: userId }, { _id: { $in: assignedManagerIds } }] })
-    .select('username email fullName phone role status createdAt').sort({ createdAt: -1 });
+  // There is one landlord account, so every account with the manager role is a
+  // business manager candidate, including legacy accounts not created here.
+  return Users.find({ role: 'manager' })
+    .select('username email fullName phone role status isVerified createdAt').sort({ createdAt: -1 });
+}
+
+export async function listUsers() {
+  return Users.find({})
+    .select('username email fullName phone role status isVerified createdAt')
+    .sort({ createdAt: -1, _id: -1 })
+    .lean();
+}
+
+export async function promoteUserToManager(userId, targetUserId) {
+  if (!objectId(targetUserId)) fail(400, 'Mã tài khoản không hợp lệ.');
+  const target = await Users.findById(targetUserId);
+  if (!target) fail(404, 'Không tìm thấy tài khoản.');
+  if (target.role === 'landlord') fail(409, 'Không thể đổi vai trò Chủ trọ.');
+  if (target.role === 'manager') fail(409, 'Tài khoản này đã là Quản lý viên.');
+  if (target.status !== 'active') fail(409, 'Chỉ có thể nâng vai trò tài khoản đang hoạt động.');
+  if (!target.isVerified) fail(409, 'Tài khoản cần xác thực email trước khi đổi vai trò.');
+
+  target.role = 'manager';
+  target.createdBy = userId;
+  await target.save();
+  return safeUser(target);
 }
 
 export async function createManager(userId, data) {
@@ -112,25 +134,11 @@ export async function createManager(userId, data) {
   return safeUser(manager);
 }
 
-export async function updateManager(userId, managerId, data) {
-  if (!objectId(managerId)) fail(400, 'Mã quản lý không hợp lệ.');
-  const manager = await Users.findOne({ _id: managerId, role: 'manager', createdBy: userId });
-  if (!manager) fail(404, 'Không tìm thấy tài khoản quản lý của bạn.');
-  if (data.fullName !== undefined) {
-    const fullName = String(data.fullName).trim();
-    if (fullName.length < 2) fail(400, 'Họ tên phải có ít nhất 2 ký tự.');
-    manager.fullName = fullName;
-  }
-  if (data.phone !== undefined) manager.phone = String(data.phone).trim();
-  await manager.save();
-  return safeUser(manager);
-}
-
 export async function setManagerStatus(userId, managerId, status) {
   if (!objectId(managerId)) fail(400, 'Mã quản lý không hợp lệ.');
   if (!['active', 'inactive'].includes(status)) fail(400, 'Trạng thái tài khoản không hợp lệ.');
-  const manager = await Users.findOne({ _id: managerId, role: 'manager', createdBy: userId });
-  if (!manager) fail(404, 'Không tìm thấy tài khoản quản lý của bạn.');
+  const manager = await Users.findOne({ _id: managerId, role: 'manager' });
+  if (!manager) fail(404, 'Không tìm thấy tài khoản Quản lý viên.');
   if (status === 'inactive' && await ManagerAssignments.exists({ manager: manager._id, status: 'active' })) {
     fail(409, 'Hãy gỡ quản lý khỏi các nhà trọ trước khi vô hiệu hóa tài khoản.');
   }
@@ -150,7 +158,8 @@ export async function listAssignments(userId) {
 export async function assignManager(userId, managerId, propertyIds) {
   if (!objectId(managerId) || !Array.isArray(propertyIds) || propertyIds.length === 0) fail(400, 'Chọn một quản lý và ít nhất một nhà trọ.');
   const manager = await Users.findOne({ _id: managerId, role: 'manager', status: 'active' });
-  if (!manager || String(manager.createdBy) !== String(userId)) fail(404, 'Không tìm thấy tài khoản quản lý đang hoạt động của bạn.');
+  if (!manager) fail(404, 'Không tìm thấy tài khoản Quản lý viên đang hoạt động.');
+  if (!manager.isVerified) fail(409, 'Quản lý viên cần xác thực tài khoản trước khi được phân công.');
   const uniqueIds = [...new Set(propertyIds.map(String))];
   if (uniqueIds.some(id => !objectId(id))) fail(400, 'Có mã nhà trọ không hợp lệ.');
   const owned = await Properties.find({ _id: { $in: uniqueIds }, owner: userId }).select('_id');

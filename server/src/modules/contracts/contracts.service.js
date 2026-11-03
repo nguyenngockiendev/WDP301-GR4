@@ -1,6 +1,8 @@
 import Contracts from '../../models/Contracts.js';
 import RentalRequests from '../../models/RentalRequests.js';
 import Rooms from '../../models/Rooms.js';
+import Properties from '../../models/Properties.js';
+import ManagerAssignments from '../../models/ManagerAssignments.js';
 
 export const getContractsByProperty = async (propertyId) => {
   const contracts = await Contracts.find()
@@ -51,6 +53,12 @@ export const createContract = async (data) => {
     if (rentalRequest.status !== 'approved') {
       throw { status: 400, message: 'Yêu cầu thuê phải được phê duyệt' };
     }
+    if (String(rentalRequest.room) !== String(data.room)) {
+      throw { status: 400, message: 'Hợp đồng phải dùng đúng phòng của yêu cầu đã duyệt' };
+    }
+    if (String(rentalRequest.tenant) !== String(data.representative)) {
+      throw { status: 400, message: 'Người đại diện phải là người gửi yêu cầu thuê đã duyệt' };
+    }
   }
 
   const contract = await Contracts.create(data);
@@ -77,7 +85,19 @@ export const updateContract = async (contractId, data) => {
     }
   }
 
-  Object.assign(contract, data);
+  const editableFields = [
+    'startDate',
+    'endDate',
+    'monthlyRent',
+    'depositAmount',
+    'status',
+    'template',
+    'representative',
+    'otherMembers',
+  ];
+  for (const field of editableFields) {
+    if (Object.hasOwn(data, field)) contract[field] = data[field];
+  }
   await contract.save();
 
   return contract.populate([
@@ -152,15 +172,19 @@ export const changeRepresentative = async (contractId, newRepresentativeId) => {
   ]);
 };
 
-export const searchContracts = async (filters) => {
+export const searchContracts = async (filters, user) => {
   const query = {};
+
+  const propertyIds = user.role === 'landlord'
+    ? await Properties.distinct('_id', { owner: user.userId })
+    : await ManagerAssignments.distinct('property', { manager: user.userId, status: 'active' });
+  const roomIds = await Rooms.distinct('_id', { property: { $in: propertyIds } });
+  query.room = filters.room
+    ? roomIds.some(id => String(id) === String(filters.room)) ? filters.room : { $in: [] }
+    : { $in: roomIds };
 
   if (filters.status) {
     query.status = filters.status;
-  }
-
-  if (filters.room) {
-    query.room = filters.room;
   }
 
   if (filters.representative) {

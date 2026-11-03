@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useOutletContext } from 'react-router-dom';
 
 export default function DashboardLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user } = useOutletContext();
 
   return (
     <div className="flex h-screen w-screen overflow-hidden text-slate-800 relative select-none">
@@ -21,13 +22,13 @@ export default function DashboardLayout() {
       </div>
 
       {/* Sidebar bên trái có nút thu gọn */}
-      <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+      <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} user={user} />
 
       {/* Khung nội dung chính bên phải */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto px-8 pb-8">
-          <Outlet />
+          <Outlet context={{ user }} />
         </main>
       </div>
     </div>

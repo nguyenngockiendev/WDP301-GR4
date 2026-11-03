@@ -7,15 +7,21 @@ import {
   validateRenewContract,
   validateChangeRepresentative,
 } from './contracts.validation.js';
+import { requireAuth, requireRole } from '../../shared/middlewares/auth.middleware.js';
+import {
+  requireContractAccess,
+  requireContractManager,
+  requirePropertyManager,
+} from '../../shared/middlewares/property-access.middleware.js';
 
 const router = Router();
 
-router.get('/search', contractsController.searchContracts);
-router.get('/property/:propertyId', contractsController.getContractsByProperty);
-router.get('/:contractId', contractsController.getContractById);
-router.post('/', validate(validateCreateContract), contractsController.createContract);
-router.put('/:contractId', validate(validateUpdateContract), contractsController.updateContract);
-router.patch('/:contractId/renew', validate(validateRenewContract), contractsController.renewContract);
-router.patch('/:contractId/change-representative', validate(validateChangeRepresentative), contractsController.changeRepresentative);
+router.get('/search', requireAuth, requireRole('landlord', 'manager'), contractsController.searchContracts);
+router.get('/property/:propertyId', requireAuth, requireRole('landlord', 'manager'), requirePropertyManager, contractsController.getContractsByProperty);
+router.get('/:contractId', requireAuth, requireContractAccess, contractsController.getContractById);
+router.post('/', requireAuth, requireRole('landlord', 'manager'), requirePropertyManager, validate(validateCreateContract), contractsController.createContract);
+router.put('/:contractId', requireAuth, requireRole('landlord', 'manager'), requireContractManager, validate(validateUpdateContract), contractsController.updateContract);
+router.patch('/:contractId/renew', requireAuth, requireRole('landlord', 'manager'), requireContractManager, validate(validateRenewContract), contractsController.renewContract);
+router.patch('/:contractId/change-representative', requireAuth, requireRole('landlord', 'manager'), requireContractManager, validate(validateChangeRepresentative), contractsController.changeRepresentative);
 
 export default router;

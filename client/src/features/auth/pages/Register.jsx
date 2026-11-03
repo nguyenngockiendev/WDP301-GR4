@@ -18,7 +18,7 @@ export default function Register() {
     finally { setBusy(false); }
   }
   return <main className="min-h-screen grid place-items-center bg-slate-50 p-5"><form onSubmit={submit} className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-8 shadow-xl">
-    <h1 className="text-2xl font-black text-slate-800">Tạo tài khoản</h1><p className="text-sm text-slate-500">Đăng ký tài khoản người thuê, sau đó xác thực email bằng OTP.</p>
+    <h1 className="text-2xl font-black text-slate-800">Tạo tài khoản</h1><p className="text-sm text-slate-500">Tài khoản đầu tiên sẽ là Chủ trọ. Các tài khoản đăng ký sau là người thuê. Xác thực email bằng OTP để tiếp tục.</p>
     {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
     <label className="block text-sm">Họ và tên<input required name="fullName" minLength="2" className="mt-1 w-full rounded-xl border p-3" /></label>
     <label className="block text-sm">Username<input required name="username" minLength="2" className="mt-1 w-full rounded-xl border p-3" /></label>
