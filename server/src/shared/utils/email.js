@@ -2,18 +2,18 @@ import env from 'dotenv';
 env.config();
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const ServiceEmail = async data => {
-  try {
-    const result = await resend.emails.send({
-      from: 'Haven Stay<noreply@learnova.top>',
-      to: data.email,
-      subject: data.subject,
-      html: data.html,
-    });
-    return result;
-  } catch (error) {
-    throw error;
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error('Thiếu RESEND_API_KEY; hãy cấu hình để gửi email OTP.');
   }
+
+  const resend = new Resend(apiKey);
+  return resend.emails.send({
+    from: 'Haven Stay<noreply@learnova.top>',
+    to: data.email,
+    subject: data.subject,
+    html: data.html,
+  });
 };
 export { ServiceEmail };

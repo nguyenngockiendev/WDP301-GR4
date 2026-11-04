@@ -55,7 +55,7 @@ const contractSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
+  }
 );
 
 const Contracts = mongoose.model('Contract', contractSchema);

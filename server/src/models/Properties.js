@@ -60,7 +60,7 @@ const propertySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
+  }
 );
 
 const Properties = mongoose.model('Property', propertySchema);
