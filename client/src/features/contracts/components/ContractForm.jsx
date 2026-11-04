@@ -14,8 +14,7 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
     },
   });
 
-  const [otherMembers, setOtherMembers] = useState(contract?.otherMembers || []);
-  const [memberInput, setMemberInput] = useState('');
+  const [otherMembers] = useState((contract?.otherMembers || []).map(member => member?._id || member));
 
   useEffect(() => {
     if (contract) {
@@ -24,7 +23,7 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
   }, [contract, reset]);
 
   const onSubmitForm = (data) => {
-    data.otherMembers = otherMembers;
+    if (!contract) data.otherMembers = otherMembers;
     onSubmit(data);
   };
 

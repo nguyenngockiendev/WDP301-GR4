@@ -74,3 +74,26 @@ export const searchContracts = async (req, res) => {
     return sendError(res, error);
   }
 };
+
+export const getOccupants = async (req, res) => {
+  try {
+    const result = await contractsService.getOccupants(req.params.contractId);
+    return sendSuccess(res, 200, 'Lấy danh sách người trong phòng thành công', result);
+  } catch (error) { return sendError(res, error); }
+};
+
+export const listCoResidentCandidates = async (req, res) => {
+  try {
+    const result = await contractsService.listCoResidentCandidates(
+      req.params.contractId, req.query.search, req.query.page, req.query.pageSize,
+    );
+    return sendSuccess(res, 200, 'Lấy danh sách người thuê có thể xếp phòng thành công', result);
+  } catch (error) { return sendError(res, error); }
+};
+
+export const setCoResidents = async (req, res) => {
+  try {
+    const result = await contractsService.setCoResidents(req.params.contractId, req.body.residentIds);
+    return sendSuccess(res, 200, 'Cập nhật người ở cùng thành công', result);
+  } catch (error) { return sendError(res, error); }
+};

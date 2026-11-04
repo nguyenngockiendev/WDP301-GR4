@@ -6,6 +6,7 @@ import rentalRequestsRoutes from '../modules/rentalrequests/rentalrequests.route
 import tenantsRoutes from '../modules/tenants/tenants.route.js';
 import landlordRoutes from '../modules/landlord/landlord.route.js';
 import managerRoutes from '../modules/manager/manager.route.js';
+import propertyOperationsRoutes from '../modules/property-operations/property-operations.route.js';
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use('/rooms', roomsRoutes);
 router.use('/contracts', contractsRoutes);
 router.use('/rental-requests', rentalRequestsRoutes);
 router.use('/tenants', tenantsRoutes);
+router.use('/operations', propertyOperationsRoutes);
 
 export default router;

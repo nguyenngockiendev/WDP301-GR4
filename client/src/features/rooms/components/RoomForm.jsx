@@ -7,6 +7,7 @@ export default function RoomForm({ room, onSubmit, onCancel }) {
       roomNumber: '',
       area: '',
       price: '',
+      tier: 'standard',
       maxTenants: 1,
       facilities: [],
       description: '',
@@ -16,7 +17,7 @@ export default function RoomForm({ room, onSubmit, onCancel }) {
 
   useEffect(() => {
     if (room) {
-      reset(room);
+      reset({ ...room, tier: room.tier || 'standard' });
     }
   }, [room, reset]);
 
@@ -53,6 +54,15 @@ export default function RoomForm({ room, onSubmit, onCancel }) {
               {...register('roomNumber', { required: 'Số phòng là bắt buộc' })}
             />
             {errors.roomNumber && <span className="text-danger">{errors.roomNumber.message}</span>}
+          </div>
+          <div className="col-md-6 mb-3">
+            <label className="form-label">Hạng phòng</label>
+            <select className="form-select" {...register('tier')}>
+              <option value="basic">Cơ bản</option>
+              <option value="standard">Tiêu chuẩn</option>
+              <option value="premium">Cao cấp</option>
+            </select>
+            <small className="text-muted">Chủ trọ phân hạng theo diện tích, tiện nghi và chất lượng phòng.</small>
           </div>
 
           <div className="col-md-6 mb-3">

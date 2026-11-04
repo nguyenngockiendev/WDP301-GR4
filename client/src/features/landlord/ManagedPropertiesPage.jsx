@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, DoorOpen, FileSignature, CalendarClock } from 'lucide-react';
+import { Building2, DoorOpen, FileSignature, CalendarClock, Wrench } from 'lucide-react';
 import api from '../../shared/api/axiosClient';
 
 export default function ManagedPropertiesPage() {
@@ -42,7 +42,7 @@ export default function ManagedPropertiesPage() {
             <div className="flex flex-wrap gap-2 border-t pt-4">
               <Link to={`/properties/${property._id}/rooms`} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white"><DoorOpen size={16} />Quản lý phòng</Link>
               <Link to={`/properties/${property._id}/rental-requests`} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-slate-700"><CalendarClock size={16} />Yêu cầu thuê</Link>
-              <Link to={`/properties/${property._id}/contracts`} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-slate-700"><FileSignature size={16} />Hợp đồng</Link>
+              <Link to={`/properties/${property._id}/contracts`} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-slate-700"><FileSignature size={16} />Hợp đồng</Link><Link to={`/properties/${property._id}/operations`} className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800"><Wrench size={16} />Thiết bị & bảo trì</Link>
             </div>
           </article>
         ))}

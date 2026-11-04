@@ -5,6 +5,7 @@ import RoomStatusModal from './RoomStatusModal';
 export default function RoomList({ rooms, onEdit, onDeactivate }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const tierNames = { basic: 'Cơ bản', standard: 'Tiêu chuẩn', premium: 'Cao cấp' };
 
   const handleStatusChange = (room) => {
     setSelectedRoom(room);
@@ -21,6 +22,7 @@ export default function RoomList({ rooms, onEdit, onDeactivate }) {
             <thead className="table-light">
               <tr>
                 <th>Số Phòng</th>
+                <th>Hạng</th>
                 <th>Diện Tích</th>
                 <th>Giá Thuê</th>
                 <th>Trạng Thái</th>
@@ -32,8 +34,9 @@ export default function RoomList({ rooms, onEdit, onDeactivate }) {
               {rooms.map((room) => (
                 <tr key={room._id}>
                   <td className="fw-bold">{room.roomNumber}</td>
+                  <td><span className={`badge ${room.tier === 'premium' ? 'bg-warning text-dark' : room.tier === 'basic' ? 'bg-light text-dark' : 'bg-success'}`}>{tierNames[room.tier] || 'Tiêu chuẩn'}</span></td>
                   <td>{room.area} m²</td>
-                  <td>{Number(room.price).toLocaleString()} VNĐ</td>
+                  <td><strong>{Number(room.price).toLocaleString()} VNĐ</strong><small className="d-block text-muted">{room.area ? `${Math.round(Number(room.price) / Number(room.area)).toLocaleString()} đ/m²` : ''}</small></td>
                   <td>
                     <RoomStatusBadge
                       status={room.status}

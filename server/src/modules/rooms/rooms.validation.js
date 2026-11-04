@@ -5,9 +5,10 @@ export function validateCreateRoom(body) {
   if (!body?.area || Number(body.area) <= 0) {
     return 'Diện tích phòng phải lớn hơn 0';
   }
-  if (!body?.price || Number(body.price) < 0) {
-    return 'Giá thuê không được âm';
+  if (body?.price === undefined || body?.price === '' || !Number.isFinite(Number(body.price)) || Number(body.price) < 0) {
+    return 'Giá thuê phải là số không âm';
   }
+  if (body.tier && !['basic', 'standard', 'premium'].includes(body.tier)) return 'Hạng phòng không hợp lệ';
   if (body.maxTenants && Number(body.maxTenants) <= 0) {
     return 'Số người tối đa phải lớn hơn 0';
   }
@@ -24,6 +25,7 @@ export function validateUpdateRoom(body) {
   if (body?.price !== undefined && Number(body.price) < 0) {
     return 'Giá thuê không được âm';
   }
+  if (body?.tier !== undefined && !['basic', 'standard', 'premium'].includes(body.tier)) return 'Hạng phòng không hợp lệ';
   if (body?.maxTenants && Number(body.maxTenants) <= 0) {
     return 'Số người tối đa phải lớn hơn 0';
   }

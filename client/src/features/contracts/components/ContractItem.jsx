@@ -3,10 +3,13 @@ import { toast } from 'react-toastify';
 import contractsAPI from '../api/contracts-api';
 import RenewContractModal from './RenewContractModal';
 import ChangeRepresentativeModal from './ChangeRepresentativeModal';
+import CoResidentsModal from './CoResidentsModal';
+import { UsersRound } from 'lucide-react';
 
 export default function ContractItem({ contract, onEdit, onRefresh }) {
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showChangeRepModal, setShowChangeRepModal] = useState(false);
+  const [showCoResidentsModal, setShowCoResidentsModal] = useState(false);
 
   const statusConfig = {
     active: { bg: 'success', label: 'Hoạt Động' },
@@ -60,6 +63,9 @@ export default function ContractItem({ contract, onEdit, onRefresh }) {
               <strong>Người Đại Diện:</strong> {contract.representative?.fullName || 'N/A'}
             </p>
             <p className="mb-2">
+              <strong>Người ở cùng:</strong> {contract.otherMembers?.length || 0} / {contract.room?.maxTenants || 1} người
+            </p>
+            <p className="mb-2">
               <strong>Ngày Bắt Đầu:</strong>{' '}
               {new Date(contract.startDate).toLocaleDateString('vi-VN')}
             </p>
@@ -87,6 +93,9 @@ export default function ContractItem({ contract, onEdit, onRefresh }) {
             </button>
             {contract.status === 'active' && (
               <>
+                <button className="btn btn-outline-success" onClick={() => setShowCoResidentsModal(true)} title="Quản lý người ở cùng">
+                  <UsersRound size={14} className="me-1"/> Người ở cùng
+                </button>
                 <button
                   className="btn btn-outline-success"
                   onClick={() => setShowRenewModal(true)}
@@ -122,6 +131,7 @@ export default function ContractItem({ contract, onEdit, onRefresh }) {
           onChange={handleChangeRepresentative}
         />
       )}
+      {showCoResidentsModal && <CoResidentsModal contract={contract} onClose={() => setShowCoResidentsModal(false)} onSaved={onRefresh} />}
     </>
   );
 }

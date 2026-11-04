@@ -7,6 +7,7 @@ export default function RoomCard({ room }) {
   const handleViewDetails = () => {
     navigate(`/rooms/${room._id}`);
   };
+  const tierNames = { basic: 'Cơ bản', standard: 'Tiêu chuẩn', premium: 'Cao cấp' };
 
   return (
     <div className="card room-card h-100 shadow-sm">
@@ -15,7 +16,7 @@ export default function RoomCard({ room }) {
       )}
 
       <div className="card-body">
-        <h5 className="card-title">Phòng {room.roomNumber}</h5>
+        <div className="d-flex justify-content-between align-items-start gap-2"><h5 className="card-title">Phòng {room.roomNumber}</h5><span className="badge bg-success-subtle text-success-emphasis">{tierNames[room.tier] || 'Tiêu chuẩn'}</span></div>
 
         <p className="card-text text-muted mb-2">
           <small>{room.property?.name || 'Tòa nhà'}</small>
@@ -31,6 +32,7 @@ export default function RoomCard({ room }) {
             <span className="text-muted">/tháng</span>
           </div>
         </div>
+        <p className="small text-muted">Khoảng {room.area ? Math.round(Number(room.price) / Number(room.area)).toLocaleString('vi-VN') : '—'} đ/m²/tháng · Điện, nước tính theo mức sử dụng.</p>
 
         {room.facilities && room.facilities.length > 0 && (
           <div className="mb-3">

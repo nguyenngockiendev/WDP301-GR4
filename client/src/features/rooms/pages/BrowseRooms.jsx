@@ -10,6 +10,7 @@ export default function BrowseRooms() {
     property: '',
     minPrice: '',
     maxPrice: '',
+    tier: '',
   });
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function BrowseRooms() {
     const { name, value } = e.target;
     setFilters({ ...filters, [name]: value });
   };
+  const visibleRooms = filters.tier ? rooms.filter(room => (room.tier || 'standard') === filters.tier) : rooms;
 
   return (
     <div className="browse-rooms-container p-4">
@@ -55,6 +57,12 @@ export default function BrowseRooms() {
                 onChange={handleFilterChange}
                 placeholder="0"
               />
+            </div>
+            <div className="col-md-4 mb-3">
+              <label className="form-label">Hạng phòng</label>
+              <select className="form-select" name="tier" value={filters.tier} onChange={handleFilterChange}>
+                <option value="">Tất cả hạng</option><option value="basic">Cơ bản</option><option value="standard">Tiêu chuẩn</option><option value="premium">Cao cấp</option>
+              </select>
             </div>
 
             <div className="col-md-4 mb-3">
@@ -84,11 +92,11 @@ export default function BrowseRooms() {
             <span className="visually-hidden">Đang tải...</span>
           </div>
         </div>
-      ) : rooms.length === 0 ? (
+      ) : visibleRooms.length === 0 ? (
         <div className="alert alert-info">Không tìm thấy phòng nào khả dụng</div>
       ) : (
         <div className="row">
-          {rooms.map((room) => (
+          {visibleRooms.map((room) => (
             <div key={room._id} className="col-md-4 mb-4">
               <RoomCard room={room} />
             </div>
