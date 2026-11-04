@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import useLogin from '../hooks/uselogin';
 import LoginForm from '../components/LoginForm';
-
+import {jwtDecode} from 'jwt-decode';
 const Login = () => {
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -26,22 +26,27 @@ const Login = () => {
   const onSubmit = async data => {
     const result = await login(data);
     if (result?.success) {
+      localStorage.setItem('token', result.data.user);
+      const userid = jwtDecode(result.data.user);
+      localStorage.setItem('userId', userid?.userId);
       toast.success(result.message);
       navigate('/dashboard');
     }
   };
 
-  const handleGoogleSuccess = async credentialResponse => {
-    const googleToken = credentialResponse?.credential;
-    const result = await loginGoogle(googleToken);
-    if (result?.success) {
-      toast.success(result.message);
-      navigate('/dashboard');
+  const onsumbmitByGG = async googleToken => {
+    try {
+      const result = await loginGoogle(googleToken);
+      if (result) {
+        const tokenString = result.data.user;
+        localStorage.setItem('token', tokenString);
+        const userid = jwtDecode(tokenString);
+        localStorage.setItem('userId', userid?.userId);
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      console.log(error);
     }
-  };
-
-  const handleGoogleError = () => {
-    toast.error('Đăng nhập bằng Google thất bại!');
   };
 
   return (
@@ -51,8 +56,7 @@ const Login = () => {
       login={login}
       loading={loading}
       onSubmit={onSubmit}
-      handleGoogleSuccess={handleGoogleSuccess}
-      handleGoogleError={handleGoogleError}
+      onsumbmitByGG={onsumbmitByGG}
       navigate={navigate}
       errors={errors}
     />

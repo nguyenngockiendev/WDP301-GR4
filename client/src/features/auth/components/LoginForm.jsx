@@ -19,8 +19,7 @@ const LoginForm = ({
   handleSubmit,
   loading,
   onSubmit,
-  handleGoogleSuccess,
-  handleGoogleError,
+  onsumbmitByGG,
   errors,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -47,9 +46,7 @@ const LoginForm = ({
           </div>
 
           <div className="mb-6">
-            <h1 className="text-2xl font-black text-content-main tracking-tight">
-              Đăng Nhập
-            </h1>
+            <h1 className="text-2xl font-black text-content-main tracking-tight">Đăng Nhập</h1>
             <p className="text-xs font-medium text-content-sub mt-1">
               Nhập tài khoản của bạn để truy cập bảng điều khiển phòng trọ.
             </p>
@@ -57,9 +54,7 @@ const LoginForm = ({
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-content-main">
-                Địa chỉ Email
-              </label>
+              <label className="text-xs font-bold text-content-main">Địa chỉ Email</label>
               <div className="relative rounded-xl bg-surface-bg border border-surface-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-50 transition-all">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-content-muted">
                   <Mail size={16} />
@@ -80,9 +75,7 @@ const LoginForm = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-content-main">
-                Mật khẩu
-              </label>
+              <label className="text-xs font-bold text-content-main">Mật khẩu</label>
               <div className="relative rounded-xl bg-surface-bg border border-surface-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-50 transition-all">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-content-muted">
                   <Lock size={16} />
@@ -147,12 +140,17 @@ const LoginForm = ({
 
             <div className="w-full flex justify-center">
               <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
+                onSuccess={credentialResponse => {
+                  if (onsumbmitByGG) {
+                    onsumbmitByGG(credentialResponse.credential);
+                  }
+                }}
+                onError={() => {
+                  console.log('Đăng nhập Google thất bại');
+                }}
                 theme="outline"
-                size="large"
+                size="medium"
                 shape="rectangular"
-                width="100%"
                 text="signin_with"
                 locale="vi"
               />
@@ -181,7 +179,8 @@ const LoginForm = ({
               Quản lý dãy trọ & căn hộ thông minh, chính xác từng số điện nước.
             </h2>
             <p className="text-xs text-primary-100/80 leading-relaxed font-normal">
-              Theo dõi hợp đồng khách thuê, tính hóa đơn tự động và cập nhật chỉ số điện nước hàng tháng theo thời gian thực.
+              Theo dõi hợp đồng khách thuê, tính hóa đơn tự động và cập nhật chỉ số điện nước hàng
+              tháng theo thời gian thực.
             </p>
           </div>
 
@@ -202,7 +201,9 @@ const LoginForm = ({
               </div>
               <div>
                 <p className="text-xs font-bold leading-tight">Hợp Đồng & Tiền Cọc Minh Bạch</p>
-                <p className="text-[10px] text-primary-200/70">Tự động cảnh báo khi sắp hết hạn thuê</p>
+                <p className="text-[10px] text-primary-200/70">
+                  Tự động cảnh báo khi sắp hết hạn thuê
+                </p>
               </div>
             </div>
 
@@ -212,7 +213,9 @@ const LoginForm = ({
               </div>
               <div>
                 <p className="text-xs font-bold leading-tight">Chốt Điện Nước & Xuất Hoá Đơn</p>
-                <p className="text-[10px] text-primary-200/70">Gửi thông báo số tiền trực tiếp cho khách</p>
+                <p className="text-[10px] text-primary-200/70">
+                  Gửi thông báo số tiền trực tiếp cho khách
+                </p>
               </div>
             </div>
           </div>
