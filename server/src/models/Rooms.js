@@ -24,6 +24,11 @@ const roomSchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
+    tier: {
+      type: String,
+      enum: ['basic', 'standard', 'premium'],
+      default: 'standard',
+    },
     facilities: [
       {
         type: String,

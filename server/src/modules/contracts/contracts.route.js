@@ -17,6 +17,9 @@ import {
 const router = Router();
 
 router.get('/search', requireAuth, requireRole('landlord', 'manager'), contractsController.searchContracts);
+router.get('/:contractId/occupants', requireAuth, requireRole('landlord', 'manager'), requireContractManager, contractsController.getOccupants);
+router.get('/:contractId/co-resident-candidates', requireAuth, requireRole('landlord', 'manager'), requireContractManager, contractsController.listCoResidentCandidates);
+router.put('/:contractId/co-residents', requireAuth, requireRole('landlord', 'manager'), requireContractManager, contractsController.setCoResidents);
 router.get('/property/:propertyId', requireAuth, requireRole('landlord', 'manager'), requirePropertyManager, contractsController.getContractsByProperty);
 router.get('/:contractId', requireAuth, requireContractAccess, contractsController.getContractById);
 router.post('/', requireAuth, requireRole('landlord', 'manager'), requirePropertyManager, validate(validateCreateContract), contractsController.createContract);

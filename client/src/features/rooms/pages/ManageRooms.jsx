@@ -12,6 +12,7 @@ export default function ManageRooms() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [tierFilter, setTierFilter] = useState('all');
 
   useEffect(() => {
     fetchRooms();
@@ -95,11 +96,14 @@ export default function ManageRooms() {
       {loading ? (
         <p className="text-center">Đang tải...</p>
       ) : (
+        <>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm"><span className="text-sm font-bold text-slate-700">Danh sách phòng: {rooms.length}</span><label className="flex items-center gap-2 text-sm text-slate-600">Phân hạng<select value={tierFilter} onChange={event => setTierFilter(event.target.value)} className="rounded-lg border bg-white px-3 py-2"><option value="all">Tất cả hạng</option><option value="basic">Cơ bản</option><option value="standard">Tiêu chuẩn</option><option value="premium">Cao cấp</option></select></label></div>
         <RoomList
-          rooms={rooms}
+          rooms={rooms.filter(room => tierFilter === 'all' || (room.tier || 'standard') === tierFilter)}
           onEdit={handleEditRoom}
           onDeactivate={handleDeactivateRoom}
         />
+        </>
       )}
     </div>
   );
