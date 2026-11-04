@@ -11,33 +11,40 @@ export function validateCreateContract(body) {
   if (!body?.endDate) {
     return 'Ngày kết thúc không được để trống';
   }
-  const startDate = new Date(body.startDate);
-  const endDate = new Date(body.endDate);
-  if (startDate >= endDate) {
+  const startDate = new Date(body.startDate).getTime();
+  const endDate = new Date(body.endDate).getTime();
+  if (!Number.isFinite(startDate) || !Number.isFinite(endDate) || startDate >= endDate) {
     return 'Ngày kết thúc phải sau ngày bắt đầu';
   }
-  if (!body?.monthlyRent || Number(body.monthlyRent) <= 0) {
+  const monthlyRent = Number(body.monthlyRent);
+  if (!Number.isFinite(monthlyRent) || monthlyRent <= 0) {
     return 'Tiền thuê hàng tháng phải lớn hơn 0';
   }
-  if (body?.depositAmount && Number(body.depositAmount) < 0) {
-    return 'Tiền đặt cọc không được âm';
+  if (body?.depositAmount !== undefined) {
+    const depositAmount = Number(body.depositAmount);
+    if (!Number.isFinite(depositAmount) || depositAmount < 0)
+      return 'Tiền đặt cọc phải là số không âm';
   }
   return null;
 }
 
 export function validateUpdateContract(body) {
   if (body?.startDate && body?.endDate) {
-    const startDate = new Date(body.startDate);
-    const endDate = new Date(body.endDate);
-    if (startDate >= endDate) {
+    const startDate = new Date(body.startDate).getTime();
+    const endDate = new Date(body.endDate).getTime();
+    if (!Number.isFinite(startDate) || !Number.isFinite(endDate) || startDate >= endDate) {
       return 'Ngày kết thúc phải sau ngày bắt đầu';
     }
   }
-  if (body?.monthlyRent && Number(body.monthlyRent) <= 0) {
-    return 'Tiền thuê hàng tháng phải lớn hơn 0';
+  if (body?.monthlyRent !== undefined) {
+    const monthlyRent = Number(body.monthlyRent);
+    if (!Number.isFinite(monthlyRent) || monthlyRent <= 0)
+      return 'Tiền thuê hàng tháng phải lớn hơn 0';
   }
-  if (body?.depositAmount && Number(body.depositAmount) < 0) {
-    return 'Tiền đặt cọc không được âm';
+  if (body?.depositAmount !== undefined) {
+    const depositAmount = Number(body.depositAmount);
+    if (!Number.isFinite(depositAmount) || depositAmount < 0)
+      return 'Tiền đặt cọc phải là số không âm';
   }
   return null;
 }

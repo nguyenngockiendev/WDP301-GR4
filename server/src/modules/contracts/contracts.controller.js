@@ -23,7 +23,10 @@ export const getContractById = async (req, res) => {
 
 export const createContract = async (req, res) => {
   try {
-    const newContract = await contractsService.createContract({ ...req.body, createdBy: req.user.userId });
+    const newContract = await contractsService.createContract({
+      ...req.body,
+      createdBy: req.user.userId,
+    });
     return sendSuccess(res, 201, 'Tạo hợp đồng thành công', newContract);
   } catch (error) {
     return sendError(res, error);
@@ -57,7 +60,7 @@ export const changeRepresentative = async (req, res) => {
     const { newRepresentative } = req.body;
     const updatedContract = await contractsService.changeRepresentative(
       contractId,
-      newRepresentative,
+      newRepresentative
     );
     return sendSuccess(res, 200, 'Thay đổi người đại diện thành công', updatedContract);
   } catch (error) {
@@ -79,21 +82,33 @@ export const getOccupants = async (req, res) => {
   try {
     const result = await contractsService.getOccupants(req.params.contractId);
     return sendSuccess(res, 200, 'Lấy danh sách người trong phòng thành công', result);
-  } catch (error) { return sendError(res, error); }
+  } catch (error) {
+    return sendError(res, error);
+  }
 };
 
 export const listCoResidentCandidates = async (req, res) => {
   try {
     const result = await contractsService.listCoResidentCandidates(
-      req.params.contractId, req.query.search, req.query.page, req.query.pageSize,
+      req.params.contractId,
+      req.query.search,
+      req.query.page,
+      req.query.pageSize
     );
     return sendSuccess(res, 200, 'Lấy danh sách người thuê có thể xếp phòng thành công', result);
-  } catch (error) { return sendError(res, error); }
+  } catch (error) {
+    return sendError(res, error);
+  }
 };
 
 export const setCoResidents = async (req, res) => {
   try {
-    const result = await contractsService.setCoResidents(req.params.contractId, req.body.residentIds);
+    const result = await contractsService.setCoResidents(
+      req.params.contractId,
+      req.body.residentIds
+    );
     return sendSuccess(res, 200, 'Cập nhật người ở cùng thành công', result);
-  } catch (error) { return sendError(res, error); }
+  } catch (error) {
+    return sendError(res, error);
+  }
 };

@@ -12,7 +12,13 @@ async function canManageProperty(user, propertyId) {
     return Boolean(await Properties.exists({ _id: propertyId, owner: user.userId }));
   }
   if (user.role === 'manager') {
-    return Boolean(await ManagerAssignments.exists({ manager: user.userId, property: propertyId, status: 'active' }));
+    return Boolean(
+      await ManagerAssignments.exists({
+        manager: user.userId,
+        property: propertyId,
+        status: 'active',
+      })
+    );
   }
   return false;
 }
@@ -37,67 +43,90 @@ export async function requirePropertyManager(req, res, next) {
     if (!propertyId || !mongoose.Types.ObjectId.isValid(propertyId)) {
       return sendError(res, { status: 400, message: 'Nhà trọ không hợp lệ.' });
     }
-    if (!await canManageProperty(req.user, propertyId)) {
+    if (!(await canManageProperty(req.user, propertyId))) {
       return sendError(res, { status: 403, message: 'Bạn không được quản lý nhà trọ này.' });
     }
     req.propertyId = propertyId;
     next();
-  } catch (error) { next(error); }
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function requireRentalRequestManager(req, res, next) {
   try {
-    const request = await RentalRequests.findById(req.params.requestId).populate('room', 'property');
+    const request = await RentalRequests.findById(req.params.requestId).populate(
+      'room',
+      'property'
+    );
     if (!request) return notFound(res, 'Yêu cầu thuê không tồn tại.');
-    if (!request.room || !await canManageProperty(req.user, request.room.property)) {
-      return sendError(res, { status: 403, message: 'Bạn không được xử lý yêu cầu thuê của nhà trọ này.' });
+    if (!request.room || !(await canManageProperty(req.user, request.room.property))) {
+      return sendError(res, {
+        status: 403,
+        message: 'Bạn không được xử lý yêu cầu thuê của nhà trọ này.',
+      });
     }
     req.rentalRequest = request;
     next();
-  } catch (error) { next(error); }
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function requireRentalRequestAccess(req, res, next) {
   try {
-    const request = await RentalRequests.findById(req.params.requestId).populate('room', 'property');
+    const request = await RentalRequests.findById(req.params.requestId).populate(
+      'room',
+      'property'
+    );
     if (!request) return notFound(res, 'Yêu cầu thuê không tồn tại.');
-    const isTenant = req.user.role === 'tenant' && String(request.tenant) === String(req.user.userId);
-    const isManager = request.room && await canManageProperty(req.user, request.room.property);
+    const isTenant =
+      req.user.role === 'tenant' && String(request.tenant) === String(req.user.userId);
+    const isManager = request.room && (await canManageProperty(req.user, request.room.property));
     if (!isTenant && !isManager) {
       return sendError(res, { status: 403, message: 'Bạn không có quyền xem yêu cầu thuê này.' });
     }
     req.rentalRequest = request;
     next();
-  } catch (error) { next(error); }
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function requireContractManager(req, res, next) {
   try {
     const contract = await Contracts.findById(req.params.contractId).populate('room', 'property');
     if (!contract) return notFound(res, 'Hợp đồng không tồn tại.');
-    if (!contract.room || !await canManageProperty(req.user, contract.room.property)) {
-      return sendError(res, { status: 403, message: 'Bạn không được quản lý hợp đồng của nhà trọ này.' });
+    if (!contract.room || !(await canManageProperty(req.user, contract.room.property))) {
+      return sendError(res, {
+        status: 403,
+        message: 'Bạn không được quản lý hợp đồng của nhà trọ này.',
+      });
     }
     req.contract = contract;
     next();
-  } catch (error) { next(error); }
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function requireContractAccess(req, res, next) {
   try {
     const contract = await Contracts.findById(req.params.contractId).populate('room', 'property');
     if (!contract) return notFound(res, 'Hợp đồng không tồn tại.');
-    const isTenant = req.user.role === 'tenant' && (
-      String(contract.representative) === String(req.user.userId) ||
-      contract.otherMembers.some(member => String(member) === String(req.user.userId))
-    );
-    const isManager = contract.room && await canManageProperty(req.user, contract.room.property);
+    const isTenant =
+      req.user.role === 'tenant' &&
+      (String(contract.representative) === String(req.user.userId) ||
+        contract.otherMembers.some(member => String(member) === String(req.user.userId)));
+    const isManager = contract.room && (await canManageProperty(req.user, contract.room.property));
     if (!isTenant && !isManager) {
       return sendError(res, { status: 403, message: 'Bạn không có quyền xem hợp đồng này.' });
     }
     req.contract = contract;
     next();
-  } catch (error) { next(error); }
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function requireTenantManagerAccess(req, res, next) {
@@ -105,9 +134,13 @@ export async function requireTenantManagerAccess(req, res, next) {
     if (!mongoose.Types.ObjectId.isValid(req.params.tenantId)) {
       return sendError(res, { status: 400, message: 'Mã người thuê không hợp lệ.' });
     }
-    const propertyIds = req.user.role === 'landlord'
-      ? await Properties.distinct('_id', { owner: req.user.userId })
-      : await ManagerAssignments.distinct('property', { manager: req.user.userId, status: 'active' });
+    const propertyIds =
+      req.user.role === 'landlord'
+        ? await Properties.distinct('_id', { owner: req.user.userId })
+        : await ManagerAssignments.distinct('property', {
+            manager: req.user.userId,
+            status: 'active',
+          });
     const roomIds = await Rooms.distinct('_id', { property: { $in: propertyIds } });
     const contract = await Contracts.findOne({
       room: { $in: roomIds },
@@ -116,5 +149,7 @@ export async function requireTenantManagerAccess(req, res, next) {
     if (!contract) return notFound(res, 'Không tìm thấy người thuê trong nhà trọ bạn quản lý.');
     req.allowedPropertyIds = propertyIds;
     next();
-  } catch (error) { next(error); }
+  } catch (error) {
+    next(error);
+  }
 }

@@ -52,7 +52,7 @@ const roomSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
+  }
 );
 
 const Rooms = mongoose.model('Room', roomSchema);

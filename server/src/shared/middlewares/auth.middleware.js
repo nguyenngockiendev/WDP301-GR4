@@ -9,9 +9,11 @@ export const requireAuth = async (req, res, next) => {
   try {
     if (typeof req.session.user === 'string') {
       const decoded = jwt.verify(req.session.user, process.env.JWT_SECRET);
-      req.user = await Users.findById(decoded.userId).select('-password');
+      const user = await Users.findById(decoded.userId).select('-password').lean();
+      req.user = user ? { ...user, userId: String(user._id) } : null;
     } else {
       req.user = req.session.user;
+      req.user.userId = req.user.userId || req.user._id || req.user.id;
     }
     if (!req.user) return sendError(res, { status: 401, message: 'Phiên đăng nhập không hợp lệ!' });
     return next();
