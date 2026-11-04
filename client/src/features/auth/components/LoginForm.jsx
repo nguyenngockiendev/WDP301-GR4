@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import {
   Lock,
   Mail,
@@ -11,15 +12,15 @@ import {
   KeyRound,
   ArrowRight,
   Loader2,
-  AlertCircle,
 } from 'lucide-react';
 
 const LoginForm = ({
   register,
   handleSubmit,
   loading,
-  error,
   onSubmit,
+  handleGoogleSuccess,
+  handleGoogleError,
   errors,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -53,13 +54,6 @@ const LoginForm = ({
               Nhập tài khoản của bạn để truy cập bảng điều khiển phòng trọ.
             </p>
           </div>
-
-          {error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-status-danger text-xs font-semibold flex items-center gap-2">
-              <AlertCircle size={16} className="flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1.5">
@@ -142,6 +136,27 @@ const LoginForm = ({
                 </>
               )}
             </button>
+
+            <div className="relative flex items-center justify-center my-3">
+              <div className="border-t border-surface-border w-full" />
+              <span className="bg-surface-card px-3 text-[11px] font-semibold text-content-muted uppercase tracking-wider shrink-0">
+                Hoặc đăng nhập với
+              </span>
+              <div className="border-t border-surface-border w-full" />
+            </div>
+
+            <div className="w-full flex justify-center">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                theme="outline"
+                size="large"
+                shape="rectangular"
+                width="100%"
+                text="signin_with"
+                locale="vi"
+              />
+            </div>
 
             <p className="text-center text-xs font-medium text-content-sub pt-2">
               Chưa có tài khoản quản lý?{' '}
