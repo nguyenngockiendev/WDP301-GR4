@@ -1,11 +1,18 @@
-import React from 'react';
-import Login from '../pages/Login';
+import Login from "../pages/Login";
+import ForgotPassword from "../pages/ForgotPassword";
+import Register from "../pages/Register";
 
-const authRoutes = [
+export const authRoutes = [
   {
-    path: '/login',
+    path: "/login",
     element: <Login />,
   },
+  {
+    path: "/forgot-password",
+    element: <ForgotPassword />,
+  },
+  {
+    path: "/register",
+    element: <Register />,
+  },
 ];
-
-export default authRoutes;
