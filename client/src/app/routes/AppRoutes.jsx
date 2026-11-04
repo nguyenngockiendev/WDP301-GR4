@@ -1,6 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout/DashboardLayout';
-import authRoutes from '../../features/auth/routes/authRoutes';
+import { authRoutes } from '../../features/auth/routes/AuthRoutes';
 import roomsRoutes from '../../features/rooms/routes/RoomsRoutes';
 import contractsRoutes from '../../features/contracts/routes/ContractsRoutes';
 import rentalsRoutes from '../../features/rentals/routes/RentalsRoutes';
@@ -10,7 +10,6 @@ import ProtectedRoute from './ProtectedRoute';
 import PropertiesHome from '../../features/landlord/PropertiesHome';
 import ManagersPage from '../../features/landlord/ManagersPage';
 import SettingsPage from '../../features/landlord/SettingsPage';
-import ProfilePage from '../../features/auth/pages/ProfilePage';
 import HomePage from '../../features/home/HomePage';
 import PropertyOperationsPage from '../../features/landlord/PropertyOperationsPage';
 
@@ -37,7 +36,6 @@ export default function AppRoutes() {
             <Route path="/managers" element={<ManagersPage />} />
           </Route>
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
           <Route element={<ProtectedRoute roles={['landlord', 'manager']} />}>
             <Route path="/properties/:propertyId/operations" element={<PropertyOperationsPage />} />
           </Route>

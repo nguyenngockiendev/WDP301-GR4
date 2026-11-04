@@ -28,11 +28,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    isVerified: {
-      // Existing accounts predate OTP and remain usable; public registration sets false explicitly.
-      type: Boolean,
-      default: true,
-    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -47,6 +42,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['active', 'inactive'],
       default: 'active',
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    googleId: {
+      type: String,
+      default: null,
     },
   },
   {

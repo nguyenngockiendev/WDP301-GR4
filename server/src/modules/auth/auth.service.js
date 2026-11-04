@@ -1,162 +1,282 @@
 import bcrypt from 'bcryptjs';
-import crypto from 'node:crypto';
 import Users from '../../models/Users.js';
-import Otps from '../../models/Otps.js';
-import { sendOtpEmail } from './email.service.js';
-
-const publicUser = user => ({
-  userId: user._id,
-  username: user.username,
-  email: user.email,
-  fullName: user.fullName,
-  phone: user.phone || '',
-  role: user.role,
-});
-const otpSecret = () => process.env.OTP_SECRET || process.env.SESSION_SECRET || 'development-otp-secret';
-const hashOtp = (userId, code) =>
-  crypto.createHmac('sha256', otpSecret()).update(`${userId}:${code}`).digest('hex');
-
-export async function issueOtp(user, purpose = 'register') {
-  const code = crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
-  await Otps.deleteMany({ user: user._id, purpose, isUsed: false });
-  await Otps.create({
-    user: user._id,
-    contact: user.email,
-    otpHash: hashOtp(user._id, code),
-    purpose,
-    createdAt: now,
-    expiresAt,
-  });
+import Otp from '../../models/Otps.js';
+import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
+import emailTemplates from '../../shared/utils/email.templates.js';
+import { ServiceEmail } from '../../shared/utils/email.js';
+const loginUser = async data => {
   try {
-    await sendOtpEmail({ to: user.email, code, purpose });
+    if (!data.email || !data.password) {
+      throw { status: 400, message: 'Vui lòng nhập đầy đủ email và mật khẩu!' };
+    }
+
+    const user = await Users.findOne({ email: data.email });
+
+    if (!user) {
+      throw { status: 401, message: 'Email hoặc mật khẩu không chính xác!' };
+    }
+    if (user.status === 'inactive') {
+      throw { status: 401, message: 'Tài khoản của bạn bị khóa!' };
+    }
+    const isMatch = await bcrypt.compare(data.password, user.password);
+    if (!isMatch) {
+      throw { status: 401, message: 'Email hoặc mật khẩu không chính xác!' };
+    }
+
+    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, {
+      expiresIn: '1h',
+    });
+    return token;
   } catch (error) {
-    await Otps.deleteMany({ user: user._id, purpose, isUsed: false });
+    console.log(error);
     throw error;
   }
-}
+};
+const loginByGoogleService = async googleToken => {
+  if (!googleToken) {
+    throw { status: 400, message: 'Thiếu Google Token!' };
+  }
+  const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+  if (!client) {
+    throw { status: 404, message: 'Mã hết hạn hoặc không tồn tại!' };
+  }
+  const ticket = await client.verifyIdToken({
+    idToken: googleToken,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+  const { sub: googleId, email, name } = ticket.getPayload();
+  const isAccount = await Users.findOne({
+    $or: [{ googleId: googleId }, { email: email }],
+  });
+  if (isAccount && isAccount.status === 'inactive') {
+    throw { status: 403, message: 'Tài khoản bị khóa!' };
+  }
+  if (isAccount) {
+    if (isAccount.googleId != googleId) {
+      isAccount.googleId = googleId;
+      isAccount.isVerified = true;
+      await isAccount.save();
+    }
+  }
 
-export async function registerUser(data) {
-  const username = String(data.username || '').trim();
-  const email = String(data.email || '').trim().toLowerCase();
-  const fullName = String(data.fullName || '').trim();
-  if (!username || !email || !fullName || !data.password) {
-    throw { status: 400, message: 'Vui lòng điền đầy đủ thông tin.' };
+  if (!isAccount) {
+    const result = await Users.create({
+      username: name,
+      email: email,
+      fullName: name,
+      password: null,
+      phone: '',
+      isVerified: true,
+      googleId: googleId,
+    });
+    const payload = { userId: result._id, role: result.role };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN,
+    });
+    return token;
   }
-  if (String(data.password).length < 8) {
-    throw { status: 400, message: 'Mật khẩu phải có ít nhất 8 ký tự.' };
-  }
-  if (await Users.exists({ $or: [{ email }, { username }] })) {
-    throw { status: 409, message: 'Email hoặc username đã được sử dụng.' };
-  }
-  // The first public account becomes the single landlord; later accounts are tenants.
-  const role = (await Users.exists({ role: 'landlord' })) ? 'tenant' : 'landlord';
-  let user;
+  const payload = { userId: isAccount._id, role: isAccount.role };
+  const token = jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
+  });
+  return token;
+};
+
+const registerUser = async data => {
   try {
-    user = await Users.create({
-      username,
-      email,
-      fullName,
-      phone: String(data.phone || '').trim(),
-      password: await bcrypt.hash(data.password, 12),
+    for (const item in data) {
+      if (!data[item] || data[item] === '') {
+        throw {
+          status: 404,
+          message: 'Thông tin không chính xác , không đc để trống!',
+        };
+      }
+    }
+    const exitUser = await Users.findOne({ email: data.email });
+    if (exitUser) {
+      throw {
+        status: 400,
+        message: 'Email đã tồn tại!',
+      };
+    }
+
+    if (data.otp.length < 6) {
+      throw {
+        status: 400,
+        message: 'OTP sai!',
+      };
+    }
+    const isOtp = await Otp.findOne({
+      contact: data.email,
+      otpCode: data.otp,
+      purpose: data.purpose,
+    });
+    if (!isOtp) {
+      throw {
+        status: 400,
+        message: 'Mã OTP không chính xác hoặc đã hết hạn!',
+      };
+    }
+
+    if (data.password.length < 6) {
+      throw {
+        status: 400,
+        message: 'Mật khẩu phải >= 6 kí tự',
+      };
+    }
+    if (data.password !== data.repeatpassword) {
+      throw { status: 400, message: 'Mật khẩu xác nhận không khớp!' };
+    }
+    if (exitUser) {
+      throw { status: 400, message: 'Email đã tồn tại' };
+    }
+
+    const hashpassword = await bcrypt.hash(data.password, Number(process.env.SALT_ROUNDS) || 10);
+
+    // The first registered account owns the workspace; later public signups are tenants.
+    const role = (await Users.exists({ role: 'landlord' })) ? 'tenant' : 'landlord';
+
+    const result = await Users.create({
+      username: data.username,
+      email: data.email,
+      password: hashpassword,
+      fullName: data.username,
       role,
       status: 'active',
-      isVerified: false,
+      phone: data.phone || '',
+      isVerified: true,
     });
+    await Otp.deleteMany({ contact: data.email, purpose: 'register' });
+
+    return result;
   } catch (error) {
-    // A concurrent first registration can lose the unique-landlord race; retry it as tenant.
-    if (role !== 'landlord' || error?.code !== 11000 || error?.keyPattern?.role !== 1) throw error;
-    user = await Users.create({
-      username,
-      email,
-      fullName,
-      phone: String(data.phone || '').trim(),
-      password: await bcrypt.hash(data.password, 12),
-      role: 'tenant',
-      status: 'active',
-      isVerified: false,
-    });
+    throw error;
   }
+};
+const forgotPasswordService = async data => {
   try {
-    await issueOtp(user, 'register');
-    return { user: publicUser(user), verificationRequired: true, emailSent: true };
+    for (const item in data) {
+      if (!data[item] || data[item] === '') {
+        throw {
+          status: 404,
+          message: 'Thông tin không chính xác , không đc để trống!',
+        };
+      }
+    }
+    if (data.newPassword.length < 6) {
+      throw {
+        status: 400,
+        message: 'Dữ liệu không hợp lệ hoặc thiếu thông tin!',
+      };
+    }
+    if (data.otp.length < 6) {
+      throw {
+        status: 400,
+        message: 'OTP sai!',
+      };
+    }
+    const isOtp = await Otp.findOne({
+      contact: data.email,
+      otpCode: data.otp,
+      purpose: data.purpose,
+    });
+    if (!isOtp) {
+      throw {
+        status: 400,
+        message: 'Mã OTP không chính xác hoặc đã hết hạn!',
+      };
+    }
+    const isUser = await Users.findOne({
+      email: data.email,
+    });
+    if (!isUser) {
+      throw {
+        status: 404,
+        message: 'Tài khoản không tồn tại!',
+      };
+    }
+    if (isUser.status === 'inactive') {
+      throw {
+        status: 403,
+        message: 'Tài khoản của bạn đang bị khóa, không thể đổi mật khẩu!',
+      };
+    }
+
+    const newPass = await bcrypt.hash(data.newPassword, parseInt(process.env.SALT_ROUNDS));
+    const result = await Users.findOneAndUpdate(
+      {
+        email: data.email,
+      },
+      {
+        isVerified: true,
+        password: newPass,
+      },
+    );
+    await Otp.deleteMany({
+      contact: data.email,
+      purpose: data.purpose,
+    });
+    return result;
   } catch (error) {
-    return { user: publicUser(user), verificationRequired: true, emailSent: false, emailError: error.message };
+    console.log(error);
+    throw error;
   }
-}
+};
 
-export async function verifyRegistrationOtp({ email, otp }) {
-  const normalizedEmail = String(email || '').trim().toLowerCase();
-  const user = await Users.findOne({ email: normalizedEmail });
-  if (!user) throw { status: 404, message: 'Không tìm thấy tài khoản.' };
-  if (user.isVerified) return publicUser(user);
-  const challenge = await Otps.findOne({ user: user._id, purpose: 'register', isUsed: false })
-    .sort({ createdAt: -1 });
-  if (!challenge || challenge.expiresAt <= new Date()) {
-    throw { status: 400, message: 'Mã đã hết hạn. Hãy yêu cầu gửi mã mới.' };
-  }
-  if (challenge.attemptCount >= 5) {
-    throw { status: 429, message: 'Bạn đã nhập sai quá số lần cho phép. Hãy yêu cầu mã mới.' };
-  }
-  const expected = Buffer.from(challenge.otpHash);
-  const received = Buffer.from(hashOtp(user._id, String(otp || '').trim()));
-  if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) {
-    challenge.attemptCount += 1;
-    await challenge.save();
-    throw { status: 400, message: 'Mã OTP không chính xác.' };
-  }
-  challenge.isUsed = true;
-  user.isVerified = true;
-  await Promise.all([challenge.save(), user.save()]);
-  return publicUser(user);
-}
+const sendOtpEmailService = async datas => {
+  try {
+    const antiSpam = await Otp.findOne({
+      contact: datas.contact,
+      purpose: datas.purpose,
+    });
+    if (antiSpam && Date.now() - new Date(antiSpam.createdAt).getTime() < 60000) {
+      throw {
+        status: 429,
+        message: 'Vui lòng đợi 60 giây trước khi yêu cầu gửi lại mã!',
+      };
+    }
+    await Otp.deleteMany({
+      contact: datas.contact,
+      purpose: datas.purpose,
+    });
+    let otpCode = Math.floor(Math.random() * 900000 + 100000);
+    await Otp.create({
+      contact: datas.contact,
+      otpCode: otpCode,
+      purpose: datas.purpose,
+    });
+    const type = emailTemplates[datas.purpose];
+    if (!type) {
+      throw { status: 400, message: 'Mục đích gửi email không hợp lệ!' };
+    }
+    if (datas.purpose === 'register') {
+      const exitUser = await Users.findOne({ email: datas.contact });
+      if (exitUser) {
+        throw {
+          status: 400,
+          message: 'Email đã tồn tại!',
+        };
+      }
+    }
+    const { subject, html } = type({ otp: otpCode });
 
-export async function resendRegistrationOtp(email) {
-  const user = await Users.findOne({ email: String(email || '').trim().toLowerCase() });
-  if (!user) throw { status: 404, message: 'Không tìm thấy tài khoản.' };
-  if (user.isVerified) throw { status: 409, message: 'Tài khoản đã được xác thực.' };
-  await issueOtp(user, 'register');
-}
-
-export async function loginUser({ identifier, email, password }) {
-  const loginId = String(identifier || email || '').trim().toLowerCase();
-  if (!loginId || !password) throw { status: 400, message: 'Vui lòng nhập tài khoản và mật khẩu.' };
-  const user = await Users.findOne({ $or: [{ email: loginId }, { username: loginId }] });
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    throw { status: 401, message: 'Tài khoản hoặc mật khẩu không chính xác.' };
+    const data = {
+      email: datas.contact,
+      subject: subject,
+      html: html,
+    };
+    const result = await ServiceEmail(data);
+    return result;
+  } catch (error) {
+    throw error;
   }
-  if (user.status !== 'active') throw { status: 403, message: 'Tài khoản đã bị vô hiệu hóa.' };
-  if (!user.isVerified) throw { status: 403, message: 'Hãy xác thực email trước khi đăng nhập.' };
-  return publicUser(user);
-}
+};
 
-export async function updateProfile(userId, data) {
-  const fullName = String(data.fullName || '').trim();
-  const phone = String(data.phone || '').trim();
-  if (fullName.length < 2 || fullName.length > 120) {
-    throw { status: 400, message: 'Họ tên phải từ 2 đến 120 ký tự.' };
-  }
-  if (phone.length > 30) throw { status: 400, message: 'Số điện thoại quá dài.' };
-  const user = await Users.findByIdAndUpdate(
-    userId,
-    { $set: { fullName, phone } },
-    { new: true, runValidators: true },
-  );
-  if (!user) throw { status: 404, message: 'Không tìm thấy tài khoản.' };
-  return publicUser(user);
-}
-
-export async function changePassword(userId, { currentPassword, newPassword, confirmPassword }) {
-  if (!currentPassword || !newPassword) throw { status: 400, message: 'Hãy nhập mật khẩu hiện tại và mật khẩu mới.' };
-  if (String(newPassword).length < 8) throw { status: 400, message: 'Mật khẩu mới phải có ít nhất 8 ký tự.' };
-  if (newPassword !== confirmPassword) throw { status: 400, message: 'Mật khẩu xác nhận không khớp.' };
-  const user = await Users.findById(userId);
-  if (!user || !(await bcrypt.compare(currentPassword, user.password))) {
-    throw { status: 400, message: 'Mật khẩu hiện tại không chính xác.' };
-  }
-  user.password = await bcrypt.hash(newPassword, 12);
-  await user.save();
-}
-
-export { publicUser };
+export {
+  registerUser,
+  loginUser,
+  loginByGoogleService,
+  forgotPasswordService,
+  sendOtpEmailService,
+};

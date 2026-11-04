@@ -1,32 +1,89 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import api from '../../../shared/api/axiosClient';
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import useRegister from '../hooks/useRegister';
+import useOtp from '../hooks/useSendOtp';
+import RegisterForm from '../components/RegisterForm';
 
-export default function Register() {
+const Register = () => {
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    formState: { errors },
+  } = useForm();
+
   const navigate = useNavigate();
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  async function submit(event) {
-    event.preventDefault(); setError(''); setBusy(true);
-    const form = new FormData(event.currentTarget);
-    const payload = Object.fromEntries(form.entries());
-    if (payload.password !== payload.confirmPassword) { setError('Mật khẩu xác nhận không khớp.'); setBusy(false); return; }
-    try {
-      await api.post('/auth/register', payload);
-      navigate(`/verify-otp?email=${encodeURIComponent(payload.email)}`);
-    } catch (e) { setError(e.response?.data?.message || 'Không thể đăng ký tài khoản.'); }
-    finally { setBusy(false); }
-  }
-  return <main className="min-h-screen grid place-items-center bg-slate-50 p-5"><form onSubmit={submit} className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-8 shadow-xl">
-    <h1 className="text-2xl font-black text-slate-800">Tạo tài khoản</h1><p className="text-sm text-slate-500">Tài khoản đầu tiên sẽ là Chủ trọ. Các tài khoản đăng ký sau là người thuê. Xác thực email bằng OTP để tiếp tục.</p>
-    {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
-    <label className="block text-sm">Họ và tên<input required name="fullName" minLength="2" className="mt-1 w-full rounded-xl border p-3" /></label>
-    <label className="block text-sm">Username<input required name="username" minLength="2" className="mt-1 w-full rounded-xl border p-3" /></label>
-    <label className="block text-sm">Email<input required name="email" type="email" className="mt-1 w-full rounded-xl border p-3" /></label>
-    <label className="block text-sm">Số điện thoại<input name="phone" className="mt-1 w-full rounded-xl border p-3" /></label>
-    <label className="block text-sm">Mật khẩu<input required name="password" type="password" minLength="8" className="mt-1 w-full rounded-xl border p-3" /></label>
-    <label className="block text-sm">Nhập lại mật khẩu<input required name="confirmPassword" type="password" minLength="8" className="mt-1 w-full rounded-xl border p-3" /></label>
-    <button disabled={busy} className="w-full rounded-xl bg-emerald-600 p-3 font-bold text-white disabled:opacity-50">{busy ? 'Đang tạo tài khoản…' : 'Đăng ký và gửi OTP'}</button>
-    <p className="text-center text-sm text-slate-500">Đã có tài khoản? <Link className="text-emerald-700 underline" to="/login">Đăng nhập</Link></p>
-  </form></main>;
-}
+  const { register: registerAccount, loading } = useRegister();
+  const { sendOtp, loading: otpLoading } = useOtp();
+
+  const [countdown, setCountdown] = useState(0);
+  const [otpSent, setOtpSent] = useState(false);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
+
+  const handleSendOtp = async () => {
+    const email = getValues('email');
+    if (!email || !email.trim()) {
+      toast.warning('Vui lòng nhập địa chỉ Email trước khi nhận mã OTP!');
+      return;
+    }
+
+    const result = await sendOtp({
+      contact: email.trim(),
+      purpose: 'register',
+    });
+
+    if (result?.success) {
+      setOtpSent(true);
+      setCountdown(60);
+      toast.success(result.message);
+    }
+  };
+
+  const onSubmit = async (data) => {
+    if (data.password !== data.repeatpassword) {
+      toast.error('Mật khẩu nhập lại không khớp!');
+      return;
+    }
+
+    const result = await registerAccount({
+      name: data.name.trim(),
+      email: data.email.trim(),
+      phone: data.phone.trim(),
+      password: data.password,
+      repeatpassword: data.repeatpassword,
+      otp: data.otp.trim(),
+      purpose: 'register',
+    });
+
+    if (result?.success) {
+      toast.success(result.message);
+      navigate('/login');
+    }
+  };
+
+  return (
+    <RegisterForm
+      register={register}
+      handleSubmit={handleSubmit}
+      loading={loading}
+      otpLoading={otpLoading}
+      onSubmit={onSubmit}
+      handleSendOtp={handleSendOtp}
+      countdown={countdown}
+      otpSent={otpSent}
+      errors={errors}
+      navigate={navigate}
+    />
+  );
+};
+
+export default Register;
