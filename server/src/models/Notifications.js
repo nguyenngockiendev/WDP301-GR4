@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema(
   {
+    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    property: { type: mongoose.Schema.Types.ObjectId, ref: 'Property' },
     recipient: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

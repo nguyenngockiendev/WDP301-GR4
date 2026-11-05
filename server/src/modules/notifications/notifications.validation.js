@@ -10,7 +10,26 @@ export const validateNotificationQuery = query => {
 };
 
 export const validateNotificationId = id => {
-  if (!/^[a-f\d]{24}$/i.test(id)) {
+  if (typeof id !== 'string' || !/^[a-f\d]{24}$/i.test(id)) {
     throw { status: 400, message: 'ID thông báo không hợp lệ.' };
   }
+};
+
+export const validateSendNotification = body => {
+  if (!body || typeof body !== 'object') throw { status: 400, message: 'Dữ liệu không hợp lệ.' };
+  const { recipientId, propertyId, title, content } = body;
+  validateNotificationId(recipientId);
+  validateNotificationId(propertyId);
+  if (typeof title !== 'string' || !title.trim() || title.trim().length > 200) {
+    throw { status: 400, message: 'Tiêu đề phải có từ 1 đến 200 ký tự.' };
+  }
+  if (typeof content !== 'string' || !content.trim() || content.trim().length > 5000) {
+    throw { status: 400, message: 'Nội dung phải có từ 1 đến 5000 ký tự.' };
+  }
+  return {
+    recipientId: recipientId.toLowerCase(),
+    propertyId: propertyId.toLowerCase(),
+    title: title.trim(),
+    content: content.trim(),
+  };
 };
