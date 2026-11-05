@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { requireAuth } from '../../shared/middlewares/auth.middleware.js';
 import * as rentalRequestsController from './rentalrequests.controller.js';
 import { validate } from '../../shared/middlewares/validate.middleware.js';
 import {
@@ -12,6 +13,6 @@ router.get('/property/:propertyId', rentalRequestsController.getRentalRequestsBy
 router.get('/pending/:propertyId', rentalRequestsController.getPendingRequests);
 router.get('/:requestId', rentalRequestsController.getRentalRequestById);
 router.post('/', validate(validateCreateRentalRequest), rentalRequestsController.createRentalRequest);
-router.patch('/:requestId/process', validate(validateProcessRentalRequest), rentalRequestsController.processRentalRequest);
+router.patch('/:requestId/process', requireAuth, validate(validateProcessRentalRequest), rentalRequestsController.processRentalRequest);
 
 export default router;

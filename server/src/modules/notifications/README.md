@@ -1,30 +1,28 @@
-# UC43 — Thông báo
+# UC43 — JWT và WebSocket
 
-Frontend: `/notifications`, dùng DashboardLayout và màu Tailwind của nhóm.
-Đăng nhập lại nếu trình duyệt còn token cũ (frontend trước đây lưu cả object phản hồi).
+Đăng nhập lại sau khi chuyển từ session. Đăng nhập email/Google lưu JWT từ data.user;
+Axios gửi Authorization: Bearer <token>. Không sử dụng cookie session cho API thông báo.
+Middleware kiểm tra chữ ký HS256, thời hạn và userId. GET /api/auth/me trả claims đã xác minh.
 
-Các API yêu cầu `Authorization: Bearer <JWT>`:
+WebSocket /ws/notifications dùng cùng cổng backend. Trong 5 giây sau khi kết nối,
+client gửi { type: 'authenticate', token }. JWT không đặt trong URL.
+Server kiểm tra Origin và JWT, tự chọn người nhận từ userId; không cho client chọn tài khoản khác.
+Socket đóng khi token hết hạn. Frontend xóa token hết hạn và yêu cầu đăng nhập lại.
+Mất kết nối mạng sẽ tự thử lại sau 1–30 giây; sự kiện ready tải lại dữ liệu bỏ lỡ.
 
-| Method | URL | Chức năng |
-| --- | --- | --- |
-| GET | `/api/notifications?page=1&limit=10&status=all` | Danh sách mới nhất trước; status: all/read/unread; limit: 1–100 |
-| GET | `/api/notifications/unread-count` | Số chưa đọc |
-| PATCH | `/api/notifications/:id/read` | Đánh dấu đã đọc |
-| PATCH | `/api/notifications/read-all` | Đánh dấu tất cả đã đọc |
+createNotification() lưu DB rồi phát notifications.changed tới tất cả tab của người nhận.
+Đánh dấu đã đọc cũng phát sự kiện. Frontend tải lại số chưa đọc và danh sách theo bộ lọc/trang hiện tại.
+Ghi trực tiếp bằng Compass/import không phát sự kiện; các module phải gọi service.
+Triển khai nhiều tiến trình cần pub/sub dùng chung.
 
-Người nhận luôn lấy từ JWT, không lấy từ query/body. Thông báo của người khác trả 404 khi cập nhật.
-Phản hồi dùng cấu trúc chung `{ success, message, data }`.
-Danh sách trả `items`, `total`, `unreadCount`, `page`, `limit`, `totalPages`.
+Đăng xuất xóa token và đóng socket ở client, đồng bộ các tab cùng origin qua storage event.
+Chưa có blacklist/refresh token: bản sao token vẫn hợp lệ đến hạn (hiện 1 giờ).
 
-Module khác có thể import `createNotification` từ `notifications.service.js`
-và truyền `{ recipient, title, content, type, related }` sau khi nghiệp vụ thành công.
-Chưa tự động phát sinh thông báo từ hóa đơn/hợp đồng; chưa điều hướng tới đối tượng liên quan.
-Tài khoản chưa có thông báo sẽ thấy trạng thái trống.
+API:
+- GET /api/notifications?page=1&limit=10&status=all (all/read/unread; limit 1–100)
+- GET /api/notifications/unread-count
+- PATCH /api/notifications/:id/read
+- PATCH /api/notifications/read-all
 
-Kiểm thử tại thư mục server: `node --test test/notifications.test.js`.
-Test dùng MongoDB tạm trên máy (mongodb-memory-server tự tải MongoDB lần đầu),
-không kết nối hoặc ghi dữ liệu lên Atlas. Có sẵn dữ liệu hai người dùng giả trong test
-để kiểm tra phân trang, bộ lọc, JWT và chống đọc/cập nhật chéo tài khoản.
-
-Chạy backend bằng `npm run dev` trong server, frontend bằng `npm run dev` trong client.
-Frontend mặc định ở cổng 3000, backend theo PORT trong server/.env.
+Chạy npm test trong server; test dùng MongoDB tạm, không ghi Atlas.
+Frontend: npm run dev trong client; backend: npm run dev trong server.

@@ -33,7 +33,7 @@ export const createRentalRequest = async (req, res) => {
 export const processRentalRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
-    const userId = req.session.user.userId;
+    const userId = req.user.userId;
     const processedRequest = await rentalRequestsService.processRentalRequest(
       requestId,
       req.body,

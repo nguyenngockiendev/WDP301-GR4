@@ -1,12 +1,6 @@
 import { sendError } from '../utils/response.js';
-
-export const requireAuth = (req, res, next) => {
-  if (!req.session?.user) {
-    return sendError(res, { status: 401, message: 'Vui lòng đăng nhập để tiếp tục!' });
-  }
-  req.user = req.session.user;
-  next();
-};
+import { authMiddleware } from './jwt.middleware.js';
+export const requireAuth = authMiddleware;
 
 export const requireRole = (...allowedRoles) => {
   return (req, res, next) => {

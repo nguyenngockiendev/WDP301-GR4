@@ -8,7 +8,7 @@ const filters = [['all', 'Tất cả'], ['unread', 'Chưa đọc'], ['read', 'Đ
 const buttonClass = 'inline-flex items-center justify-center gap-2 rounded-xl border border-surface-border px-4 py-2 text-sm font-semibold hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed';
 
 export default function NotificationsPage() {
-  const { unreadCount, setUnreadCount, refreshUnread } = useNotifications();
+  const { unreadCount, setUnreadCount, refreshUnread, realtimeRevision } = useNotifications();
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);
@@ -41,7 +41,7 @@ export default function NotificationsPage() {
       if (id === requestId.current) setLoading(false);
     });
     return () => { requestId.current++; };
-  }, [page, status, revision, setUnreadCount]);
+  }, [page, status, revision, realtimeRevision, setUnreadCount]);
 
   async function markRead(id) {
     setBusy(true);

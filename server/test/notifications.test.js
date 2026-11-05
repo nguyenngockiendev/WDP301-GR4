@@ -20,7 +20,7 @@ let ownId;
 let otherId;
 before(async () => {
   process.env.JWT_SECRET = 'notifications-isolated-test-secret';
-  token = jwt.sign({ userId: owner.toString(), role: 'tenant' }, process.env.JWT_SECRET);
+  token = jwt.sign({ userId: owner.toString(), role: 'tenant' }, process.env.JWT_SECRET, { expiresIn: '1h' });
   database = await MongoMemoryServer.create();
   await mongoose.connect(database.getUri());
   const records = await Notifications.create([

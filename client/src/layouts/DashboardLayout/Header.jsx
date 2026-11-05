@@ -2,14 +2,24 @@ import React from 'react';
 import { Search, Plus, ChevronDown, LogOut } from 'lucide-react';
 import NotificationBell from '../../features/notifications/components/NotificationBell';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 
 export default function Header() {
   const navigate = useNavigate();
+  const { authenticated } = useNotifications();
+  const [logoutError, setLogoutError] = useState('');
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userId');
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      window.dispatchEvent(new Event('auth-changed'));
+      navigate('/login');
+    } catch {
+      setLogoutError('Chưa đăng xuất được. Vui lòng thử lại.');
+    }
   };
 
   return (
@@ -38,7 +48,8 @@ export default function Header() {
         </div>
 
         {/* Nút Chuông */}
-        {localStorage.getItem('token') && <NotificationBell />}
+        {authenticated && <NotificationBell />}
+        {logoutError && <span role="alert" className="text-sm text-status-danger">{logoutError}</span>}
 
         {/* Nút Tạo Hợp Đồng Mới (Xanh Emerald Gradient) */}
         <button

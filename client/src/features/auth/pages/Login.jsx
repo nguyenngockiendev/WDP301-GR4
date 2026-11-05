@@ -26,7 +26,7 @@ const Login = () => {
   const onSubmit = async data => {
     try {
       const result = await login(data);
-      if (result.success) {
+      if (result?.success) {
         navigate('/dashboard');
       }
     } catch (err) {
