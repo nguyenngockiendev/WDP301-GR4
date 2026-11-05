@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import useLogin from '../hooks/uselogin';
 import LoginForm from '../components/LoginForm';
+import { toast } from 'react-toastify';
 
 const Login = () => {
   useEffect(() => {
@@ -25,7 +26,7 @@ const Login = () => {
   const onSubmit = async data => {
     try {
       const result = await login(data);
-      if (result) {
+      if (result.success) {
         navigate('/dashboard');
       }
     } catch (err) {

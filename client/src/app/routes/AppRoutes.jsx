@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout/DashboardLayout';
-import authRoutes from '../../features/auth/routes/authRoutes';
+import { authRoutes } from '../../features/auth/routes/AuthRoutes';
 import roomsRoutes from '../../features/rooms/routes/RoomsRoutes';
 import contractsRoutes from '../../features/contracts/routes/ContractsRoutes';
 import rentalsRoutes from '../../features/rentals/routes/RentalsRoutes';
@@ -12,15 +12,13 @@ export default function AppRoutes() {
   const routes = [...roomsRoutes, ...contractsRoutes, ...rentalsRoutes, ...tenantsRoutes, ...notificationsRoutes];
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
 
       {authRoutes.map(route => (
         <Route key={route.path} path={route.path} element={route.element} />
       ))}
 
       <Route element={<DashboardLayout />}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-
         <Route path="dashboard" element={<DashboardPage />} />
 
         {routes.map(route => (
