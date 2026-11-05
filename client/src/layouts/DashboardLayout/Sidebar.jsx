@@ -26,22 +26,22 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       title: 'QUẢN LÝ CHO THUÊ',
       items: [
-        { to: '/', label: 'Danh sách phòng', icon: DoorOpen },
-        { to: '/', label: 'Hợp đồng thuê', icon: FileSignature },
+        { to: '#', label: 'Danh sách phòng', icon: DoorOpen },
+        { to: '#', label: 'Hợp đồng thuê', icon: FileSignature },
         {
-          to: '/',
+          to: '#',
           label: 'Yêu cầu đặt phòng',
           icon: CalendarClock,
           badge: '2',
         },
-        { to: '/', label: 'Khách thuê', icon: Users },
+        { to: '#', label: 'Khách thuê', icon: Users },
       ],
     },
     {
       title: 'DỊCH VỤ & TÀI CHÍNH',
       items: [
-        { to: '/', label: 'Số điện & nước', icon: Zap },
-        { to: '/', label: 'Hóa đơn tiền phòng', icon: ReceiptText },
+        { to: '#', label: 'Số điện & nước', icon: Zap },
+        { to: '#', label: 'Hóa đơn tiền phòng', icon: ReceiptText },
       ],
     },
   ];
