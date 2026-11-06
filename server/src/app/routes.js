@@ -4,6 +4,7 @@ import roomsRoutes from '../modules/rooms/rooms.route.js';
 import contractsRoutes from '../modules/contracts/contracts.route.js';
 import rentalRequestsRoutes from '../modules/rentalrequests/rentalrequests.route.js';
 import tenantsRoutes from '../modules/tenants/tenants.route.js';
+import propertiesRoutes from '../modules/properties/properties.route.js';
 
 const router = Router();
 
@@ -12,5 +13,6 @@ router.use('/rooms', roomsRoutes);
 router.use('/contracts', contractsRoutes);
 router.use('/rental-requests', rentalRequestsRoutes);
 router.use('/tenants', tenantsRoutes);
+router.use('/properties', propertiesRoutes);
 
 export default router;

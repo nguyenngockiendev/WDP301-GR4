@@ -24,22 +24,23 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       title: 'QUẢN LÝ CHO THUÊ',
       items: [
-        { to: '/', label: 'Danh sách phòng', icon: DoorOpen },
-        { to: '/', label: 'Hợp đồng thuê', icon: FileSignature },
+        { to: '/rooms', label: 'Danh sách phòng', icon: DoorOpen },
+        { to: '/contracts', label: 'Hợp đồng thuê', icon: FileSignature },
         {
-          to: '/',
+          to: '/rental-requests',
           label: 'Yêu cầu đặt phòng',
           icon: CalendarClock,
           badge: '2',
         },
-        { to: '/', label: 'Khách thuê', icon: Users },
+        { to: '/tenants', label: 'Khách thuê', icon: Users },
       ],
     },
     {
       title: 'DỊCH VỤ & TÀI CHÍNH',
       items: [
-        { to: '/', label: 'Số điện & nước', icon: Zap },
-        { to: '/', label: 'Hóa đơn tiền phòng', icon: ReceiptText },
+        // Chưa có trang -> tạm vô hiệu hóa để không bị đá về /login
+        { to: null, label: 'Số điện & nước', icon: Zap },
+        { to: null, label: 'Hóa đơn tiền phòng', icon: ReceiptText },
       ],
     },
   ];
@@ -112,9 +113,23 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
               {/* Các liên kết trong nhóm */}
               {section.items.map((item) => {
                 const Icon = item.icon;
+                if (!item.to) {
+                  return (
+                    <div
+                      key={item.label}
+                      title={`${item.label} (sắp có)`}
+                      className={`flex items-center rounded-2xl text-xs font-bold text-slate-300 cursor-not-allowed ${
+                        isCollapsed ? 'w-11 h-11 justify-center mx-auto' : 'gap-3 px-3.5 py-2.5'
+                      }`}
+                    >
+                      <Icon size={18} className="shrink-0" />
+                      {!isCollapsed && <span className="whitespace-nowrap flex-1">{item.label}</span>}
+                    </div>
+                  );
+                }
                 return (
                   <NavLink
-                    key={item.to}
+                    key={item.label}
                     to={item.to}
                     className={({ isActive }) =>
                       `flex items-center rounded-2xl text-xs font-bold transition-all duration-200 group relative ${
