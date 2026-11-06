@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
+  Bell,
   DoorOpen,
   FileSignature,
   CalendarClock,
@@ -19,6 +20,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       title: 'TỔNG QUAN',
       items: [
         { to: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+        { to: '/notifications', label: 'Thông báo', icon: Bell },
       ],
     },
     {
@@ -51,7 +53,6 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
         isCollapsed ? 'w-20' : 'w-64'
       }`}
     >
-      {/* NÚT TOGGLE THU GỌN / MỞ RỘNG (GẮN NGAY MÉP BORDER - SIÊU HIỆN ĐẠI & KHÔNG BỊ LỆCH) */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="absolute -right-3.5 top-7 w-7 h-7 rounded-full bg-white border border-emerald-100 shadow-[0_2px_10px_rgba(0,0,0,0.08)] flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer z-50 group"

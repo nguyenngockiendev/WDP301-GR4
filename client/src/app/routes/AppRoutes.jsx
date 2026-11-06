@@ -7,25 +7,20 @@ import contractsRoutes from '../../features/contracts/routes/ContractsRoutes';
 import rentalsRoutes from '../../features/rentals/routes/RentalsRoutes';
 import tenantsRoutes from '../../features/tenants/routes/TenantsRoutes';
 import DashboardPage from '../../features/dashboard/pages/DashboardPage';
-import PropertyRedirect from '../../features/properties/pages/PropertyRedirect';
-import { getCurrentUser } from '../../shared/utils/auth';
-
-// Menu ngắn -> tự chuyển tới /properties/:propertyId/<section> của landlord
-const shortcutRoutes = [
-  { path: '/rooms', section: 'rooms' },
-  { path: '/contracts', section: 'contracts' },
-  { path: '/rental-requests', section: 'rental-requests' },
-  { path: '/tenants', section: 'tenants' },
-];
-
+import notificationsRoutes from '../../features/notifications/routes/NotificationsRoutes';
+import shortcuts from '../../features/properties/routes/RentalsRoutes';
 export default function AppRoutes() {
-  const routes = [...roomsRoutes, ...contractsRoutes, ...rentalsRoutes, ...tenantsRoutes];
+  const routes = [
+    ...roomsRoutes,
+    ...contractsRoutes,
+    ...rentalsRoutes,
+    ...tenantsRoutes,
+    ...notificationsRoutes,
+    ...shortcuts,
+  ];
   return (
     <Routes>
-      <Route
-        path="/"
-        element={<Navigate to={getCurrentUser() ? '/dashboard' : '/login'} replace />}
-      />
+      <Route path="/" element={<Navigate to={'/login'} replace />} />
 
       {authRoutes.map(route => (
         <Route key={route.path} path={route.path} element={route.element} />
@@ -34,11 +29,6 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
           <Route path="dashboard" element={<DashboardPage />} />
-
-          {shortcutRoutes.map(r => (
-            <Route key={r.path} path={r.path} element={<PropertyRedirect section={r.section} />} />
-          ))}
-
           {routes.map(route => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}
