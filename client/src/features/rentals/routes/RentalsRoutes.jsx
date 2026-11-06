@@ -7,6 +7,10 @@ const rentalsRoutes = [
     path: '/properties/:propertyId/rental-requests',
     element: <ProcessRentalRequests />,
   },
+  {
+    path: '/rooms/:roomId/rental-request',
+    element: <SubmitRentalRequest />,
+  },
 ];
 
 export default rentalsRoutes;
