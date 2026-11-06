@@ -1,3 +1,4 @@
+import { requireAuth } from '../../shared/middlewares/auth.middleware.js';
 import { Router } from 'express';
 import { register, login, LoginByGoogleController, forgotPasswordController, SenOtpController } from './auth.controller.js';
 import { validate } from '../../shared/middlewares/validate.middleware.js';
@@ -12,4 +13,5 @@ router.post('/login/google', createLimiter(5, 3), LoginByGoogleController);
 router.post('/forgot-password', createLimiter(5, 3), forgotPasswordController);
 router.post('/send-otp', createLimiter(5, 3), SenOtpController);
 
+router.get('/me', requireAuth, (req, res) => res.json({ success: true, data: { user: req.user } }));
 export default router;

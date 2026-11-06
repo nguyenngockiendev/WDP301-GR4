@@ -28,9 +28,8 @@ const Login = () => {
     try {
       const result = await login(data);
       if (result?.success) {
-        // Server trả token trong data.user
         const token = result.data?.token || result.data?.user;
-        if (typeof token === 'string') saveToken(token);
+        saveToken(token);
         navigate('/dashboard');
       }
     } catch (err) {

@@ -1,6 +1,9 @@
 import app from './app/app.js';
 import { connectDatabase } from './config/db.config.js';
 import dotenv from 'dotenv';
+import { createServer } from 'node:http';
+import { attachNotificationsSocket } from './modules/notifications/notifications.socket.js';
+import { allowedOrigins } from './config/origins.config.js';
 
 // Import all models to register schemas
 import './models/Users.js';
@@ -24,7 +27,9 @@ dotenv.config();
 
 async function bootstrap() {
   await connectDatabase();
-  app.listen(PORT, () => {
+  const server = createServer(app);
+  attachNotificationsSocket(server, { allowedOrigins });
+  server.listen(PORT, () => {
     console.log(`[Server] Đang chạy tại :${PORT}`);
   });
 }

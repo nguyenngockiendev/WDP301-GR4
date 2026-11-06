@@ -1,0 +1,74 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { once } from 'node:events';
+import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import { WebSocket } from 'ws';
+import { attachNotificationsSocket } from '../src/modules/notifications/notifications.socket.js';
+import { createNotification, markRead } from '../src/modules/notifications/notifications.service.js';
+
+test('WebSocket authenticates, isolates recipients, broadcasts persisted changes and rejects invalid origins and expired tokens', async t => {
+
+  const database = await MongoMemoryServer.create();
+  await mongoose.connect(database.getUri());
+  process.env.JWT_SECRET = 'websocket-test-secret';
+  const server = createServer();
+  const wss = attachNotificationsSocket(server, { allowedOrigins: new Set(['http://localhost:3000']) });
+  const clients = [];
+  t.after(async () => {
+    for (const client of clients) client.terminate();
+    for (const client of wss.clients) client.terminate();
+    await new Promise(resolve => wss.close(resolve));
+    await new Promise(resolve => server.close(resolve));
+    await mongoose.disconnect();
+    await database.stop();
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const url = `ws://127.0.0.1:${server.address().port}/ws/notifications`;
+  const userA = new mongoose.Types.ObjectId().toString();
+  const userB = new mongoose.Types.ObjectId().toString();
+  async function connect(user, token) {
+    const socket = new WebSocket(url, { headers: { Origin: 'http://localhost:3000' } });
+    clients.push(socket);
+    await once(socket, 'open');
+    const ready = once(socket, 'message', { signal: AbortSignal.timeout(3000) });
+    socket.send(JSON.stringify({ type: 'authenticate', token: token || jwt.sign({ userId: user }, process.env.JWT_SECRET, { expiresIn: '1h' }) }));
+    assert.equal(JSON.parse((await ready)[0]).type, 'ready');
+    return socket;
+  }
+  const a = await connect(userA);
+  const secondTab = await connect(userA);
+  const b = await connect(userB);
+  let leaked = 0;
+  b.on('message', () => leaked++);
+  const message = socket => once(socket, 'message', { signal: AbortSignal.timeout(3000) });
+  const received = [message(a), message(secondTab)];
+  const notification = await createNotification({ recipient: userA, title: 'New invoice', content: 'Test only' });
+  for (const pending of received) assert.equal(JSON.parse((await pending)[0]).type, 'notifications.changed');
+  const readEvent = message(secondTab);
+  await markRead(userA, notification.id);
+  assert.equal(JSON.parse((await readEvent)[0]).type, 'notifications.changed');
+  await new Promise(resolve => setTimeout(resolve, 100));
+  assert.equal(leaked, 0);
+  a.close();
+  await once(a, 'close');
+  const reconnected = await connect(userA);
+  const reconnectEvent = message(reconnected);
+  await createNotification({ recipient: userA, title: 'Second', content: 'After reconnect' });
+  await reconnectEvent;
+  const invalid = new WebSocket(url);
+  clients.push(invalid);
+  await once(invalid, 'open');
+  const rejected = once(invalid, 'close');
+  invalid.send(JSON.stringify({ type: 'authenticate', token: 'broken' }));
+  assert.equal((await rejected)[0], 4001);
+  const foreign = new WebSocket(url, { headers: { Origin: 'https://untrusted.example' } });
+  foreign.on('error', () => {});
+  const status = await new Promise(resolve => foreign.once('unexpected-response', (req, res) => { res.resume(); req.destroy(); resolve(res.statusCode); }));
+  assert.equal(status, 403);
+  const expiring = await connect(userA, jwt.sign({ userId: userA }, process.env.JWT_SECRET, { expiresIn: 2 }));
+  assert.equal((await once(expiring, 'close', { signal: AbortSignal.timeout(4000) }))[0], 4001);
+});

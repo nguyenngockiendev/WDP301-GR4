@@ -4,7 +4,11 @@ import { sendSuccess, sendError } from '../../shared/utils/response.js';
 export const getRentalRequestsByProperty = async (req, res) => {
   try {
     const { propertyId } = req.params;
-    const requests = await rentalRequestsService.getRentalRequestsByProperty(propertyId, req.user, req.query.status);
+    const requests = await rentalRequestsService.getRentalRequestsByProperty(
+      propertyId,
+      req.user,
+      req.query.status,
+    );
     return sendSuccess(res, 200, 'Lấy danh sách yêu cầu thuê thành công', requests);
   } catch (error) {
     return sendError(res, error);
@@ -33,8 +37,12 @@ export const createRentalRequest = async (req, res) => {
 export const processRentalRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
-    // Trước đây lấy req.session.user.userId (session.user là chuỗi token) -> luôn lỗi
-    const processedRequest = await rentalRequestsService.processRentalRequest(requestId, req.body, req.user);
+
+    const processedRequest = await rentalRequestsService.processRentalRequest(
+      requestId,
+      req.body,
+      req.user,
+    );
     return sendSuccess(res, 200, 'Xử lý yêu cầu thuê thành công', processedRequest);
   } catch (error) {
     return sendError(res, error);
