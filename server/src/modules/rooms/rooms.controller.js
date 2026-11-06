@@ -4,7 +4,7 @@ import { sendSuccess, sendError } from '../../shared/utils/response.js';
 export const getRoomsByProperty = async (req, res) => {
   try {
     const { propertyId } = req.params;
-    const rooms = await roomsService.getRoomsByProperty(propertyId);
+    const rooms = await roomsService.getRoomsByProperty(propertyId, req.user);
     return sendSuccess(res, 200, 'Lấy danh sách phòng thành công', rooms);
   } catch (error) {
     return sendError(res, error);
@@ -23,7 +23,7 @@ export const getRoomById = async (req, res) => {
 
 export const createRoom = async (req, res) => {
   try {
-    const newRoom = await roomsService.createRoom(req.body);
+    const newRoom = await roomsService.createRoom(req.body, req.user);
     return sendSuccess(res, 201, 'Tạo phòng thành công', newRoom);
   } catch (error) {
     return sendError(res, error);
@@ -33,7 +33,7 @@ export const createRoom = async (req, res) => {
 export const updateRoom = async (req, res) => {
   try {
     const { roomId } = req.params;
-    const updatedRoom = await roomsService.updateRoom(roomId, req.body);
+    const updatedRoom = await roomsService.updateRoom(roomId, req.body, req.user);
     return sendSuccess(res, 200, 'Cập nhật phòng thành công', updatedRoom);
   } catch (error) {
     return sendError(res, error);
@@ -43,7 +43,7 @@ export const updateRoom = async (req, res) => {
 export const updateRoomStatus = async (req, res) => {
   try {
     const { roomId } = req.params;
-    const updatedRoom = await roomsService.updateRoomStatus(roomId, req.body.status);
+    const updatedRoom = await roomsService.updateRoomStatus(roomId, req.body.status, req.user);
     return sendSuccess(res, 200, 'Cập nhật trạng thái phòng thành công', updatedRoom);
   } catch (error) {
     return sendError(res, error);
@@ -53,7 +53,7 @@ export const updateRoomStatus = async (req, res) => {
 export const deactivateRoom = async (req, res) => {
   try {
     const { roomId } = req.params;
-    const deactivatedRoom = await roomsService.deactivateRoom(roomId);
+    const deactivatedRoom = await roomsService.deactivateRoom(roomId, req.user);
     return sendSuccess(res, 200, 'Vô hiệu hóa phòng thành công', deactivatedRoom);
   } catch (error) {
     return sendError(res, error);
