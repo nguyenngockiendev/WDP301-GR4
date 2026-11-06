@@ -14,6 +14,11 @@ const contractsAPI = {
     return api.get(`/contracts/${contractId}`);
   },
 
+  // Văn bản hợp đồng đã điền dữ liệu vào mẫu
+  getContractDocument: async (contractId) => {
+    return api.get(`/contracts/${contractId}/document`);
+  },
+
   createContract: async (contractData) => {
     return api.post('/contracts', contractData);
   },

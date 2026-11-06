@@ -15,6 +15,14 @@ const contractSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ContractTemplate',
     },
+    // Bản lưu tên + nội dung mẫu lúc lập hợp đồng (sửa mẫu sau không ảnh hưởng hợp đồng cũ)
+    templateTitle: {
+      type: String,
+      trim: true,
+    },
+    templateContent: {
+      type: String,
+    },
     representative: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

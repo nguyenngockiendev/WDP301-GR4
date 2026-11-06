@@ -18,6 +18,7 @@ router.use(authMiddleware, checkRole('landlord', 'manager'));
 router.get('/search', contractsController.searchContracts);
 router.get('/property/:propertyId', contractsController.getContractsByProperty);
 router.get('/property/:propertyId/form-options', contractsController.getContractFormOptions);
+router.get('/:contractId/document', contractsController.getContractDocument);
 router.get('/:contractId', contractsController.getContractById);
 router.post('/', validate(validateCreateContract), contractsController.createContract);
 router.put('/:contractId', validate(validateUpdateContract), contractsController.updateContract);

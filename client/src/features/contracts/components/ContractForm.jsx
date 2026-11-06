@@ -31,6 +31,7 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
           monthlyRent: contract.monthlyRent,
           depositAmount: contract.depositAmount,
           status: contract.status,
+          template: String(contract.template?._id || contract.template || ''),
         }
       : {
           rentalRequest: '',
@@ -41,6 +42,7 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
           monthlyRent: '',
           depositAmount: '',
           status: 'active',
+          template: '',
         },
   });
 
@@ -104,9 +106,17 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
 
   const moneyLocked = isEdit && contract.status !== 'draft';
 
+  // Mẫu hợp đồng: bắt buộc khi tạo; khi sửa chỉ đổi được nếu hợp đồng còn Nháp hoặc chưa có mẫu
+  const originalTemplateId = isEdit ? String(contract.template?._id || contract.template || '') : '';
+  const canChooseTemplate = !isEdit || !originalTemplateId || contract.status === 'draft';
+  const noTemplates = !loadingOptions && optionsLoaded && options.templates?.length === 0;
+
   const submit = data => {
     const payload = { ...data };
     if (!payload.rentalRequest) delete payload.rentalRequest;
+    if (isEdit && (!canChooseTemplate || !payload.template || payload.template === originalTemplateId)) {
+      delete payload.template;
+    }
     // Khi sửa mà không tải được danh sách người thuê thì không gửi otherMembers (tránh xóa nhầm)
     if (!isEdit || optionsLoaded) {
       payload.otherMembers = members.filter(id => id !== String(representativeId));
@@ -134,13 +144,42 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
       footer={
         <>
           <button type="button" className={btnGhost} onClick={onCancel}>Hủy</button>
-          <button type="submit" form="contract-form" className={btnPrimary} disabled={isSubmitting || (!isEdit && loadingOptions)}>
+          <button type="submit" form="contract-form" className={btnPrimary} disabled={isSubmitting || (!isEdit && (loadingOptions || noTemplates))}>
             {isEdit ? 'Cập nhật' : 'Tạo hợp đồng'}
           </button>
         </>
       }
     >
       <form id="contract-form" onSubmit={handleSubmit(submit)} className="space-y-4">
+        {canChooseTemplate ? (
+          <div>
+            <label className={labelCls}>Mẫu hợp đồng {!isEdit && '*'}</label>
+            <select
+              className={inputCls}
+              disabled={loadingOptions}
+              {...register('template', { required: isEdit ? false : 'Vui lòng chọn mẫu hợp đồng' })}
+            >
+              <option value="">{loadingOptions ? 'Đang tải...' : '— Chọn mẫu do chủ trọ soạn —'}</option>
+              {(options.templates || []).map(t => (
+                <option key={t._id} value={t._id}>
+                  {t.title}
+                </option>
+              ))}
+            </select>
+            {noTemplates && (
+              <p className="mt-1 text-[11px] font-semibold text-amber-600">
+                Chủ trọ chưa có mẫu hợp đồng nào đang dùng. Cần chủ trọ tạo mẫu ở mục "Mẫu hợp đồng" trước.
+              </p>
+            )}
+            {err('template')}
+          </div>
+        ) : (
+          <p className="text-[11px] font-semibold text-slate-500">
+            Mẫu hợp đồng: <span className="text-slate-800">{contract.templateTitle || contract.template?.title}</span>
+            <span className="text-slate-400"> (chỉ đổi được khi hợp đồng ở trạng thái Nháp)</span>
+          </p>
+        )}
+
         {!isEdit && (
           <>
             {options.approvedRequests.length > 0 && (
