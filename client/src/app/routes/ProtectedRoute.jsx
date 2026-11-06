@@ -1,9 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { getCurrentUser } from '../../shared/utils/auth';
 
-/**
- * Bọc các route cần đăng nhập. Truyền `roles` để giới hạn theo vai trò.
- */
 export default function ProtectedRoute({ roles, children }) {
   const location = useLocation();
   const user = getCurrentUser();

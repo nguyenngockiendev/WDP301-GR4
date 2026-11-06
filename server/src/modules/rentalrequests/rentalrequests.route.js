@@ -9,30 +9,14 @@ import {
 
 const router = Router();
 
-const staffOnly = [authMiddleware, checkRole('landlord', 'manager')];
+router.use(authMiddleware);
 
-// Người thuê gửi yêu cầu: tenant lấy từ token, không tin body
-const setTenantFromToken = (req, _res, next) => {
-  req.body = { ...req.body, tenant: req.user.userId };
-  next();
-};
+const requirePropertyManager = checkRole('landlord', 'manager');
 
-router.get('/property/:propertyId', staffOnly, rentalRequestsController.getRentalRequestsByProperty);
-router.get('/pending/:propertyId', staffOnly, rentalRequestsController.getPendingRequests);
-router.get('/:requestId', staffOnly, rentalRequestsController.getRentalRequestById);
-router.post(
-  '/',
-  authMiddleware,
-  checkRole('tenant'),
-  setTenantFromToken,
-  validate(validateCreateRentalRequest),
-  rentalRequestsController.createRentalRequest,
-);
-router.patch(
-  '/:requestId/process',
-  staffOnly,
-  validate(validateProcessRentalRequest),
-  rentalRequestsController.processRentalRequest,
-);
+router.get('/property/:propertyId', requirePropertyManager, rentalRequestsController.getRentalRequestsByProperty);
+router.get('/pending/:propertyId', requirePropertyManager, rentalRequestsController.getPendingRequests);
+router.get('/:requestId', requirePropertyManager, rentalRequestsController.getRentalRequestById);
+router.post('/', checkRole('tenant'), validate(validateCreateRentalRequest), rentalRequestsController.createRentalRequest);
+router.patch('/:requestId/process', requirePropertyManager, validate(validateProcessRentalRequest), rentalRequestsController.processRentalRequest);
 
 export default router;

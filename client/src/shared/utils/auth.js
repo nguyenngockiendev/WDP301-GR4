@@ -22,7 +22,6 @@ export const decodeToken = token => {
   }
 };
 
-/** Trả về { userId, role, exp } nếu token còn hạn, ngược lại null. */
 export const getCurrentUser = () => {
   const token = getToken();
   if (!token) return null;
