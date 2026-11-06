@@ -1,18 +1,10 @@
 import { Router } from 'express';
-import Properties from '../../models/Properties.js';
-import { authMiddleware } from '../../shared/middlewares/middlewave.js';
-import { sendSuccess, sendError } from '../../shared/utils/response.js';
+import * as propertiesController from './properties.controller.js';
+import { authMiddleware, checkRole } from '../../shared/middlewares/middlewave.js';
 
 const router = Router();
 
-// Lấy danh sách nhà trọ của user đang đăng nhập (landlord)
-router.get('/my', authMiddleware, async (req, res) => {
-  try {
-    const properties = await Properties.find({ owner: req.user.userId }).sort({ createdAt: 1 });
-    return sendSuccess(res, 200, 'Lấy danh sách nhà trọ thành công!', properties);
-  } catch (error) {
-    return sendError(res, error);
-  }
-});
+// Nhà trọ của user đang đăng nhập (landlord: sở hữu, manager: được giao)
+router.get('/my', authMiddleware, checkRole('landlord', 'manager'), propertiesController.getMyProperties);
 
 export default router;
