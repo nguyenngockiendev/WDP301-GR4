@@ -93,12 +93,22 @@ export const createContract = async (data, user) => {
     }
   }
 
+  const otherMembers = [...new Set((data.otherMembers || []).map(String))].filter(
+    id => id !== String(data.representative),
+  );
+  if (otherMembers.length > 0) {
+    const validCount = await Users.countDocuments({ _id: { $in: otherMembers }, role: 'tenant' });
+    if (validCount !== otherMembers.length) {
+      throw { status: 400, message: 'Có người ở cùng không tồn tại hoặc không phải người thuê' };
+    }
+  }
+
   const contract = await Contracts.create({
     room: data.room,
     rentalRequest: data.rentalRequest || undefined,
     template: data.template || undefined,
     representative: data.representative,
-    otherMembers: data.otherMembers || [],
+    otherMembers,
     startDate: data.startDate,
     endDate: data.endDate,
     monthlyRent: data.monthlyRent,
@@ -122,6 +132,19 @@ export const updateContract = async (contractId, data, user) => {
   for (const field of lockedFields) {
     if (data[field] !== undefined && Number(data[field]) !== contract[field] && contract.status !== 'draft') {
       throw { status: 400, message: 'Không thể chỉnh sửa tiền thuê / tiền cọc sau khi ký hợp đồng' };
+    }
+  }
+
+  if (data.otherMembers !== undefined) {
+    if (!Array.isArray(data.otherMembers)) {
+      throw { status: 400, message: 'Danh sách người ở cùng không hợp lệ' };
+    }
+    // Bỏ trùng và bỏ người đại diện khỏi danh sách người ở cùng
+    const repId = String(contract.representative);
+    data.otherMembers = [...new Set(data.otherMembers.map(String))].filter(id => id !== repId);
+    const validCount = await Users.countDocuments({ _id: { $in: data.otherMembers }, role: 'tenant' });
+    if (validCount !== data.otherMembers.length) {
+      throw { status: 400, message: 'Có người ở cùng không tồn tại hoặc không phải người thuê' };
     }
   }
 
