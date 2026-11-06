@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
+import { CalendarDays, Pencil, RefreshCw, UserRoundCog, Users, Wallet, DoorOpen } from 'lucide-react';
 import contractsAPI from '../api/contracts-api';
 import RenewContractModal from './RenewContractModal';
 import ChangeRepresentativeModal from './ChangeRepresentativeModal';
+import ContractStatusBadge from './ContractStatusBadge';
+import { formatCurrency, formatDate } from '../../../shared/utils/format';
+
+const DAY = 24 * 60 * 60 * 1000;
 
 export default function ContractItem({ contract, onEdit, onRefresh }) {
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showChangeRepModal, setShowChangeRepModal] = useState(false);
 
-  const statusConfig = {
-    active: { bg: 'success', label: 'Hoạt Động' },
-    expired: { bg: 'danger', label: 'Hết Hạn' },
-    terminated: { bg: 'secondary', label: 'Kết Thúc' },
-    draft: { bg: 'warning', label: 'Nháp' },
-  };
+  const daysLeft = Math.ceil((new Date(contract.endDate) - Date.now()) / DAY);
+  const expiringSoon = contract.status === 'active' && daysLeft >= 0 && daysLeft <= 30;
+  const memberCount = 1 + (contract.otherMembers?.length || 0);
 
-  const config = statusConfig[contract.status] || { bg: 'secondary', label: contract.status };
-
-  const handleRenew = async (newEndDate) => {
+  const handleRenew = async newEndDate => {
     try {
       await contractsAPI.renewContract(contract._id, newEndDate);
       toast.success('Gia hạn hợp đồng thành công');
@@ -28,7 +28,7 @@ export default function ContractItem({ contract, onEdit, onRefresh }) {
     }
   };
 
-  const handleChangeRepresentative = async (newRepresentativeId) => {
+  const handleChangeRepresentative = async newRepresentativeId => {
     try {
       await contractsAPI.changeRepresentative(contract._id, newRepresentativeId);
       toast.success('Thay đổi người đại diện thành công');
@@ -39,80 +39,91 @@ export default function ContractItem({ contract, onEdit, onRefresh }) {
     }
   };
 
+  const actionBtn =
+    'flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition cursor-pointer';
+
   return (
     <>
-      <div className="card contract-item shadow-sm h-100">
-        <div className="card-body">
-          <div className="d-flex justify-content-between align-items-start mb-3">
-            <div>
-              <h5 className="card-title mb-1">
-                Phòng {contract.room?.roomNumber || 'N/A'}
-              </h5>
-              <small className="text-muted">
-                {contract.room?.property?.name || 'Tòa nhà'}
-              </small>
+      <div className="h-full flex flex-col p-5 rounded-3xl bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(16,185,129,0.10)] hover:-translate-y-0.5 transition-all">
+        {/* Đầu thẻ */}
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
+              <DoorOpen size={20} />
             </div>
-            <span className={`badge bg-${config.bg}`}>{config.label}</span>
+            <div className="min-w-0">
+              <h4 className="text-sm font-black text-slate-900 truncate">Phòng {contract.room?.roomNumber || 'N/A'}</h4>
+              <p className="text-[11px] font-semibold text-slate-400 truncate">{contract.room?.property?.name || 'Nhà trọ'}</p>
+            </div>
           </div>
+          <ContractStatusBadge status={contract.status} />
+        </div>
 
-          <div className="contract-details">
-            <p className="mb-2">
-              <strong>Người Đại Diện:</strong> {contract.representative?.fullName || 'N/A'}
-            </p>
-            <p className="mb-2">
-              <strong>Ngày Bắt Đầu:</strong>{' '}
-              {new Date(contract.startDate).toLocaleDateString('vi-VN')}
-            </p>
-            <p className="mb-2">
-              <strong>Ngày Kết Thúc:</strong>{' '}
-              {new Date(contract.endDate).toLocaleDateString('vi-VN')}
-            </p>
-            <p className="mb-2">
-              <strong>Tiền Thuê:</strong> {Number(contract.monthlyRent).toLocaleString()} VNĐ/tháng
-            </p>
-            {contract.depositAmount > 0 && (
-              <p className="mb-2">
-                <strong>Đặt Cọc:</strong> {Number(contract.depositAmount).toLocaleString()} VNĐ
-              </p>
-            )}
+        {/* Người đại diện */}
+        <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50/80 border border-slate-100 mb-3">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-slate-700 to-slate-900 text-white text-xs font-black flex items-center justify-center shrink-0">
+            {(contract.representative?.fullName || '?').trim().charAt(0).toUpperCase()}
           </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-extrabold text-slate-800 truncate">{contract.representative?.fullName || 'N/A'}</p>
+            <p className="text-[11px] text-slate-400 truncate">
+              {contract.representative?.phone || contract.representative?.email || 'Người đại diện'}
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500" title="Số người ở">
+            <Users size={13} /> {memberCount}
+          </span>
+        </div>
 
-          <div className="mt-3 btn-group btn-group-sm w-100" role="group">
-            <button
-              className="btn btn-outline-primary"
-              onClick={() => onEdit(contract)}
-              title="Chỉnh sửa"
-            >
-              ✎ Sửa
-            </button>
-            {contract.status === 'active' && (
-              <>
-                <button
-                  className="btn btn-outline-success"
-                  onClick={() => setShowRenewModal(true)}
-                  title="Gia hạn"
-                >
-                  ⟲ Gia Hạn
-                </button>
-                <button
-                  className="btn btn-outline-info"
-                  onClick={() => setShowChangeRepModal(true)}
-                  title="Đổi đại diện"
-                >
-                  👤 Đổi ĐĐ
-                </button>
-              </>
-            )}
+        {/* Thông tin */}
+        <div className="grid grid-cols-2 gap-2.5 text-xs mb-4">
+          <div className="p-3 rounded-2xl border border-slate-100">
+            <p className="flex items-center gap-1 text-[10px] font-bold uppercase text-slate-400 mb-1">
+              <CalendarDays size={12} /> Thời hạn
+            </p>
+            <p className="font-bold text-slate-700">
+              {formatDate(contract.startDate)} → {formatDate(contract.endDate)}
+            </p>
+            {expiringSoon && <p className="mt-1 text-[10px] font-bold text-amber-600">Còn {daysLeft} ngày</p>}
           </div>
+          <div className="p-3 rounded-2xl border border-slate-100">
+            <p className="flex items-center gap-1 text-[10px] font-bold uppercase text-slate-400 mb-1">
+              <Wallet size={12} /> Tiền thuê
+            </p>
+            <p className="font-black text-slate-900">{formatCurrency(contract.monthlyRent)}</p>
+            <p className="mt-0.5 text-[10px] font-semibold text-slate-400">Cọc: {formatCurrency(contract.depositAmount)}</p>
+          </div>
+        </div>
+
+        {/* Thao tác */}
+        <div className="mt-auto flex gap-2">
+          <button
+            className={`${actionBtn} bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700`}
+            onClick={() => onEdit(contract)}
+          >
+            <Pencil size={13} /> Sửa
+          </button>
+          {contract.status === 'active' && (
+            <>
+              <button
+                className={`${actionBtn} bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}
+                onClick={() => setShowRenewModal(true)}
+              >
+                <RefreshCw size={13} /> Gia hạn
+              </button>
+              <button
+                className={`${actionBtn} bg-sky-50 text-sky-700 hover:bg-sky-100`}
+                onClick={() => setShowChangeRepModal(true)}
+              >
+                <UserRoundCog size={13} /> Đổi đại diện
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {showRenewModal && (
-        <RenewContractModal
-          contract={contract}
-          onClose={() => setShowRenewModal(false)}
-          onRenew={handleRenew}
-        />
+        <RenewContractModal contract={contract} onClose={() => setShowRenewModal(false)} onRenew={handleRenew} />
       )}
 
       {showChangeRepModal && (

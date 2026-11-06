@@ -1,46 +1,86 @@
 import Contracts from '../../models/Contracts.js';
 import RentalRequests from '../../models/RentalRequests.js';
 import Rooms from '../../models/Rooms.js';
+import Users from '../../models/Users.js';
+import { assertPropertyAccess } from '../properties/properties.service.js';
 
-export const getContractsByProperty = async (propertyId) => {
-  const contracts = await Contracts.find()
-    .populate({
-      path: 'room',
-      match: { property: propertyId },
-    })
-    .populate('representative', 'fullName email phone')
-    .populate('otherMembers', 'fullName email phone')
-    .populate('rentalRequest')
-    .populate('template')
-    .populate('createdBy', 'fullName email');
+const populateFields = [
+  { path: 'room', populate: { path: 'property', select: 'name address' } },
+  { path: 'representative', select: 'fullName email phone' },
+  { path: 'otherMembers', select: 'fullName email phone' },
+  'rentalRequest',
+  'template',
+  { path: 'createdBy', select: 'fullName email' },
+];
 
-  return contracts.filter(contract => contract.room !== null);
-};
+// Các trường được phép sửa qua API cập nhật
+const EDITABLE_FIELDS = ['startDate', 'endDate', 'monthlyRent', 'depositAmount', 'status', 'otherMembers', 'template'];
 
-export const getContractById = async (contractId) => {
-  const contract = await Contracts.findById(contractId)
-    .populate('room')
-    .populate('representative', 'fullName email phone')
-    .populate('otherMembers', 'fullName email phone')
-    .populate('rentalRequest')
-    .populate('template')
-    .populate('createdBy', 'fullName email');
-
+/** Lấy hợp đồng và kiểm tra user có quyền với nhà trọ chứa phòng của hợp đồng. */
+const findContractWithAccess = async (contractId, user) => {
+  const contract = await Contracts.findById(contractId);
   if (!contract) {
     throw { status: 404, message: 'Hợp đồng không tồn tại' };
   }
+  const room = await Rooms.findById(contract.room).select('property');
+  await assertPropertyAccess(user, room?.property);
   return contract;
 };
 
-export const createContract = async (data) => {
+export const getContractsByProperty = async (propertyId, user) => {
+  await assertPropertyAccess(user, propertyId);
+
+  const roomIds = await Rooms.find({ property: propertyId }).distinct('_id');
+  return Contracts.find({ room: { $in: roomIds } })
+    .sort({ createdAt: -1 })
+    .populate(populateFields);
+};
+
+/** Dữ liệu cho form tạo hợp đồng: phòng chưa có hợp đồng, yêu cầu thuê đã duyệt, danh sách người thuê. */
+export const getContractFormOptions = async (propertyId, user) => {
+  await assertPropertyAccess(user, propertyId);
+
+  const rooms = await Rooms.find({ property: propertyId }).select('roomNumber price status').sort({ roomNumber: 1 });
+  const roomIds = rooms.map(r => r._id);
+  const busyRoomIds = await Contracts.find({ room: { $in: roomIds }, status: 'active' }).distinct('room');
+  const busy = new Set(busyRoomIds.map(String));
+
+  const approvedRequests = await RentalRequests.find({ room: { $in: roomIds }, status: 'approved' })
+    .populate('tenant', 'fullName email phone')
+    .populate('room', 'roomNumber price');
+
+  const tenants = await Users.find({ role: 'tenant', status: 'active' })
+    .select('fullName email phone')
+    .sort({ fullName: 1 })
+    .limit(500);
+
+  return {
+    rooms: rooms.filter(r => !busy.has(String(r._id))),
+    approvedRequests: approvedRequests.filter(r => r.room && r.tenant && !busy.has(String(r.room._id))),
+    tenants,
+  };
+};
+
+export const getContractById = async (contractId, user) => {
+  const contract = await findContractWithAccess(contractId, user);
+  return contract.populate(populateFields);
+};
+
+export const createContract = async (data, user) => {
   const room = await Rooms.findById(data.room);
   if (!room) {
     throw { status: 404, message: 'Phòng không tồn tại' };
   }
+  await assertPropertyAccess(user, room.property);
 
   const activeContract = await Contracts.findOne({ room: data.room, status: 'active' });
   if (activeContract) {
     throw { status: 400, message: 'Phòng này đã có hợp đồng hoạt động' };
+  }
+
+  const representative = await Users.findOne({ _id: data.representative, role: 'tenant' });
+  if (!representative) {
+    throw { status: 404, message: 'Người đại diện không tồn tại hoặc không phải người thuê' };
   }
 
   if (data.rentalRequest) {
@@ -53,48 +93,48 @@ export const createContract = async (data) => {
     }
   }
 
-  const contract = await Contracts.create(data);
-  return contract.populate([
-    'room',
-    { path: 'representative', select: 'fullName email phone' },
-    { path: 'otherMembers', select: 'fullName email phone' },
-    'rentalRequest',
-    'template',
-    { path: 'createdBy', select: 'fullName email' },
-  ]);
+  const contract = await Contracts.create({
+    room: data.room,
+    rentalRequest: data.rentalRequest || undefined,
+    template: data.template || undefined,
+    representative: data.representative,
+    otherMembers: data.otherMembers || [],
+    startDate: data.startDate,
+    endDate: data.endDate,
+    monthlyRent: data.monthlyRent,
+    depositAmount: data.depositAmount || 0,
+    status: data.status || 'active',
+    createdBy: user.userId,
+  });
+
+  if (contract.status === 'active' && room.status !== 'occupied') {
+    room.status = 'occupied';
+    await room.save();
+  }
+
+  return contract.populate(populateFields);
 };
 
-export const updateContract = async (contractId, data) => {
-  const contract = await Contracts.findById(contractId);
-  if (!contract) {
-    throw { status: 404, message: 'Hợp đồng không tồn tại' };
-  }
+export const updateContract = async (contractId, data, user) => {
+  const contract = await findContractWithAccess(contractId, user);
 
   const lockedFields = ['monthlyRent', 'depositAmount'];
   for (const field of lockedFields) {
-    if (data[field] && contract.status !== 'draft') {
-      throw { status: 400, message: `Không thể chỉnh sửa ${field} sau khi ký hợp đồng` };
+    if (data[field] !== undefined && Number(data[field]) !== contract[field] && contract.status !== 'draft') {
+      throw { status: 400, message: 'Không thể chỉnh sửa tiền thuê / tiền cọc sau khi ký hợp đồng' };
     }
   }
 
-  Object.assign(contract, data);
+  for (const field of EDITABLE_FIELDS) {
+    if (data[field] !== undefined) contract[field] = data[field];
+  }
   await contract.save();
 
-  return contract.populate([
-    'room',
-    { path: 'representative', select: 'fullName email phone' },
-    { path: 'otherMembers', select: 'fullName email phone' },
-    'rentalRequest',
-    'template',
-    { path: 'createdBy', select: 'fullName email' },
-  ]);
+  return contract.populate(populateFields);
 };
 
-export const renewContract = async (contractId, newEndDate) => {
-  const contract = await Contracts.findById(contractId);
-  if (!contract) {
-    throw { status: 404, message: 'Hợp đồng không tồn tại' };
-  }
+export const renewContract = async (contractId, newEndDate, user) => {
+  const contract = await findContractWithAccess(contractId, user);
 
   if (contract.status !== 'active') {
     throw { status: 400, message: 'Chỉ có thể gia hạn hợp đồng hoạt động' };
@@ -108,21 +148,11 @@ export const renewContract = async (contractId, newEndDate) => {
   contract.endDate = newEndDate;
   await contract.save();
 
-  return contract.populate([
-    'room',
-    { path: 'representative', select: 'fullName email phone' },
-    { path: 'otherMembers', select: 'fullName email phone' },
-    'rentalRequest',
-    'template',
-    { path: 'createdBy', select: 'fullName email' },
-  ]);
+  return contract.populate(populateFields);
 };
 
-export const changeRepresentative = async (contractId, newRepresentativeId) => {
-  const contract = await Contracts.findById(contractId);
-  if (!contract) {
-    throw { status: 404, message: 'Hợp đồng không tồn tại' };
-  }
+export const changeRepresentative = async (contractId, newRepresentativeId, user) => {
+  const contract = await findContractWithAccess(contractId, user);
 
   const allMembers = [contract.representative, ...contract.otherMembers];
   const isMember = allMembers.some(member => member.toString() === newRepresentativeId);
@@ -133,45 +163,34 @@ export const changeRepresentative = async (contractId, newRepresentativeId) => {
   const oldRepresentative = contract.representative;
   contract.representative = newRepresentativeId;
 
-  if (!contract.otherMembers.includes(oldRepresentative)) {
+  if (!contract.otherMembers.some(m => m.toString() === oldRepresentative.toString())) {
     contract.otherMembers.push(oldRepresentative);
   }
-  contract.otherMembers = contract.otherMembers.filter(
-    member => member.toString() !== newRepresentativeId,
-  );
+  contract.otherMembers = contract.otherMembers.filter(member => member.toString() !== newRepresentativeId);
 
   await contract.save();
 
-  return contract.populate([
-    'room',
-    { path: 'representative', select: 'fullName email phone' },
-    { path: 'otherMembers', select: 'fullName email phone' },
-    'rentalRequest',
-    'template',
-    { path: 'createdBy', select: 'fullName email' },
-  ]);
+  return contract.populate(populateFields);
 };
 
-export const searchContracts = async (filters) => {
-  const query = {};
+export const searchContracts = async (filters, user) => {
+  if (!filters.property) {
+    throw { status: 400, message: 'Thiếu mã nhà trọ (property)' };
+  }
+  await assertPropertyAccess(user, filters.property);
+
+  const roomIds = await Rooms.find({ property: filters.property }).distinct('_id');
+  const query = { room: { $in: roomIds } };
 
   if (filters.status) {
     query.status = filters.status;
   }
-
   if (filters.room) {
-    query.room = filters.room;
+    query.room = roomIds.some(id => id.toString() === filters.room) ? filters.room : null;
   }
-
   if (filters.representative) {
     query.representative = filters.representative;
   }
 
-  const contracts = await Contracts.find(query)
-    .populate('room')
-    .populate('representative', 'fullName email phone')
-    .populate('otherMembers', 'fullName email phone')
-    .populate('createdBy', 'fullName email');
-
-  return contracts;
+  return Contracts.find(query).sort({ createdAt: -1 }).populate(populateFields);
 };
