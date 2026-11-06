@@ -10,6 +10,7 @@ import DashboardPage from '../../features/dashboard/pages/DashboardPage';
 import notificationsRoutes from '../../features/notifications/routes/NotificationsRoutes';
 import shortcuts from '../../features/properties/routes/RentalsRoutes';
 import templatesRoutes from '../../features/templates/routes/TemplatesRoutes';
+import managersRoutes from '../../features/managers/routes/ManagersRoutes';
 export default function AppRoutes() {
   const routes = [
     ...roomsRoutes,
@@ -19,6 +20,7 @@ export default function AppRoutes() {
     ...notificationsRoutes,
     ...shortcuts,
     ...templatesRoutes,
+    ...managersRoutes,
   ];
   return (
     <Routes>

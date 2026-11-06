@@ -7,6 +7,7 @@ import tenantsRoutes from '../modules/tenants/tenants.route.js';
 import notificationsRoutes from '../modules/notifications/notifications.route.js';
 import propertiesRoutes from '../modules/properties/properties.route.js';
 import contractTemplatesRoutes from '../modules/contracttemplates/contracttemplates.route.js';
+import managerAssignmentsRoutes from '../modules/managerassignments/managerassignments.route.js';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/tenants', tenantsRoutes);
 router.use('/notifications', notificationsRoutes);
 router.use('/properties', propertiesRoutes);
 router.use('/contract-templates', contractTemplatesRoutes);
+router.use('/manager-assignments', managerAssignmentsRoutes);
 
 export default router;
