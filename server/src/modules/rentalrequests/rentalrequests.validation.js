@@ -1,7 +1,5 @@
 export function validateCreateRentalRequest(body) {
-  if (!body?.tenant || String(body.tenant).trim().length === 0) {
-    return 'Người thuê không được để trống';
-  }
+  // Người thuê lấy từ token (req.user) trong service, không cần gửi trong body
   if (!body?.room || String(body.room).trim().length === 0) {
     return 'Phòng không được để trống';
   }
@@ -9,7 +7,10 @@ export function validateCreateRentalRequest(body) {
     return 'Ngày dự kiến không được để trống';
   }
   const expectedDate = new Date(body.expectedDate);
-  if (expectedDate < new Date()) {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  // So theo ngày (cho phép chọn hôm nay); 'YYYY-MM-DD' được parse theo UTC nên lùi thêm 1 ngày để tránh lệch múi giờ
+  if (Number.isNaN(expectedDate.getTime()) || expectedDate < new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000)) {
     return 'Ngày dự kiến không được trong quá khứ';
   }
   return null;
