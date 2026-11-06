@@ -9,6 +9,7 @@ import tenantsRoutes from '../../features/tenants/routes/TenantsRoutes';
 import DashboardPage from '../../features/dashboard/pages/DashboardPage';
 import notificationsRoutes from '../../features/notifications/routes/NotificationsRoutes';
 import shortcuts from '../../features/properties/routes/RentalsRoutes';
+import templatesRoutes from '../../features/templates/routes/TemplatesRoutes';
 export default function AppRoutes() {
   const routes = [
     ...roomsRoutes,
@@ -17,6 +18,7 @@ export default function AppRoutes() {
     ...tenantsRoutes,
     ...notificationsRoutes,
     ...shortcuts,
+    ...templatesRoutes,
   ];
   return (
     <Routes>
