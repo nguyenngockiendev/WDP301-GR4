@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { loginUserAPI } from '../api/auth-api';
+import { loginUserAPI, loginByGoogleAPI } from '../api/auth-api';
 import { toast } from 'react-toastify';
 
 const useLogin = () => {
@@ -8,7 +8,6 @@ const useLogin = () => {
   const login = async data => {
     try {
       setLoading(true);
-
       const res = await loginUserAPI(data.email, data.password);
       return res;
     } catch (err) {
@@ -20,7 +19,21 @@ const useLogin = () => {
     }
   };
 
-  return { login, loading };
+  const loginGoogle = async googleToken => {
+    try {
+      setLoading(true);
+      const res = await loginByGoogleAPI(googleToken);
+      return res;
+    } catch (err) {
+      const message = err.response?.data?.message || 'Lỗi đăng nhập bằng Google';
+      toast.error(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { login, loginGoogle, loading };
 };
 
 export default useLogin;
