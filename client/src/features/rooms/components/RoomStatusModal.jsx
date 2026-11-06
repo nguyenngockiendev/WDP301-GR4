@@ -1,24 +1,18 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import roomsAPI from '../api/rooms-api';
+import Modal, { btnPrimary, btnGhost } from './Modal';
+import { ROOM_STATUS } from './RoomStatusBadge';
 
 export default function RoomStatusModal({ room, onClose, onStatusChanged }) {
   const [newStatus, setNewStatus] = useState(room.status);
   const [loading, setLoading] = useState(false);
-
-  const statusOptions = [
-    { value: 'available', label: 'Khả Dụng' },
-    { value: 'occupied', label: 'Có Người Ở' },
-    { value: 'reserved', label: 'Đã Đặt' },
-    { value: 'maintenance', label: 'Bảo Trì' },
-  ];
 
   const handleSave = async () => {
     if (newStatus === room.status) {
       onClose();
       return;
     }
-
     try {
       setLoading(true);
       await roomsAPI.updateRoomStatus(room._id, newStatus);
@@ -32,57 +26,41 @@ export default function RoomStatusModal({ room, onClose, onStatusChanged }) {
   };
 
   return (
-    <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Cập Nhật Trạng Thái Phòng {room.roomNumber}</h5>
+    <Modal
+      title={`Trạng thái phòng ${room.roomNumber}`}
+      onClose={onClose}
+      disabled={loading}
+      maxWidth="max-w-md"
+      footer={
+        <>
+          <button className={btnGhost} onClick={onClose} disabled={loading}>Hủy</button>
+          <button className={btnPrimary} onClick={handleSave} disabled={loading}>
+            {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
+          </button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-2 gap-2.5">
+        {Object.entries(ROOM_STATUS).map(([value, cfg]) => {
+          const active = newStatus === value;
+          return (
             <button
+              key={value}
               type="button"
-              className="btn-close"
-              onClick={onClose}
               disabled={loading}
-            ></button>
-          </div>
-
-          <div className="modal-body">
-            <div className="mb-3">
-              <label className="form-label">Trạng Thái</label>
-              <select
-                className="form-select"
-                value={newStatus}
-                onChange={(e) => setNewStatus(e.target.value)}
-                disabled={loading}
-              >
-                {statusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onClose}
-              disabled={loading}
+              onClick={() => setNewStatus(value)}
+              className={`flex items-center gap-2 px-3.5 py-3 rounded-2xl border text-xs font-bold transition cursor-pointer ${
+                active
+                  ? 'border-emerald-400 bg-emerald-50 text-emerald-800 ring-4 ring-emerald-100'
+                  : 'border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/40'
+              }`}
             >
-              Hủy
+              <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+              {cfg.label}
             </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleSave}
-              disabled={loading}
-            >
-              {loading ? 'Đang lưu...' : 'Lưu'}
-            </button>
-          </div>
-        </div>
+          );
+        })}
       </div>
-    </div>
+    </Modal>
   );
 }
