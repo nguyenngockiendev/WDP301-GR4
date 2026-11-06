@@ -1,130 +1,91 @@
 import Contracts from '../../models/Contracts.js';
+import Rooms from '../../models/Rooms.js';
 import Users from '../../models/Users.js';
+import { assertPropertyAccess, getMyProperties } from '../properties/properties.service.js';
 
-export const getTenantsByProperty = async (propertyId) => {
-  const contracts = await Contracts.find({ status: 'active' })
-    .populate({
-      path: 'room',
-      match: { property: propertyId },
-    })
-    .populate('representative', 'fullName email phone')
-    .populate('otherMembers', 'fullName email phone');
+// Chỉ trả các trường an toàn của user (không bao giờ trả password, googleId...)
+const SAFE_USER_FIELDS = 'fullName email phone status isVerified createdAt';
+
+/** Gom người thuê (đại diện + người ở cùng) từ các hợp đồng đang hiệu lực của nhà trọ. */
+export const getTenantsByProperty = async (propertyId, user, searchTerm = '') => {
+  await assertPropertyAccess(user, propertyId);
+
+  const roomIds = await Rooms.find({ property: propertyId }).distinct('_id');
+  const contracts = await Contracts.find({ room: { $in: roomIds }, status: 'active' })
+    .populate('room', 'roomNumber')
+    .populate('representative', SAFE_USER_FIELDS)
+    .populate('otherMembers', SAFE_USER_FIELDS);
 
   const tenantsMap = new Map();
 
-  contracts.forEach(contract => {
-    if (contract.room) {
-      if (!tenantsMap.has(contract.representative._id.toString())) {
-        tenantsMap.set(contract.representative._id.toString(), {
-          _id: contract.representative._id,
-          fullName: contract.representative.fullName,
-          email: contract.representative.email,
-          phone: contract.representative.phone,
-          contracts: [],
-        });
-      }
-      tenantsMap.get(contract.representative._id.toString()).contracts.push({
-        contractId: contract._id,
-        room: contract.room,
-        startDate: contract.startDate,
-        endDate: contract.endDate,
-        monthlyRent: contract.monthlyRent,
-      });
-
-      contract.otherMembers.forEach(member => {
-        if (!tenantsMap.has(member._id.toString())) {
-          tenantsMap.set(member._id.toString(), {
-            _id: member._id,
-            fullName: member.fullName,
-            email: member.email,
-            phone: member.phone,
-            contracts: [],
-          });
-        }
-        tenantsMap.get(member._id.toString()).contracts.push({
-          contractId: contract._id,
-          room: contract.room,
-          startDate: contract.startDate,
-          endDate: contract.endDate,
-          monthlyRent: contract.monthlyRent,
-        });
+  const addTenant = (member, contract, roleInContract) => {
+    if (!member) return;
+    const key = member._id.toString();
+    if (!tenantsMap.has(key)) {
+      tenantsMap.set(key, {
+        _id: member._id,
+        fullName: member.fullName,
+        email: member.email,
+        phone: member.phone,
+        status: member.status,
+        isRepresentative: false,
+        contracts: [],
       });
     }
+    const tenant = tenantsMap.get(key);
+    if (roleInContract === 'representative') tenant.isRepresentative = true;
+    tenant.contracts.push({
+      contractId: contract._id,
+      room: contract.room,
+      startDate: contract.startDate,
+      endDate: contract.endDate,
+      monthlyRent: contract.monthlyRent,
+      memberCount: 1 + contract.otherMembers.length,
+      roleInContract,
+    });
+  };
+
+  contracts.forEach(contract => {
+    addTenant(contract.representative, contract, 'representative');
+    contract.otherMembers.forEach(member => addTenant(member, contract, 'member'));
   });
 
-  return Array.from(tenantsMap.values());
+  let tenants = Array.from(tenantsMap.values());
+
+  const kw = String(searchTerm || '').trim().toLowerCase();
+  if (kw) {
+    tenants = tenants.filter(t =>
+      [t.fullName, t.email, t.phone, ...t.contracts.map(c => c.room?.roomNumber)]
+        .filter(Boolean)
+        .some(v => String(v).toLowerCase().includes(kw)),
+    );
+  }
+
+  return tenants.sort((a, b) => String(a.fullName).localeCompare(String(b.fullName), 'vi'));
 };
 
-export const getTenantById = async (tenantId) => {
-  const tenant = await Users.findById(tenantId);
+/** Chi tiết người thuê + lịch sử hợp đồng, chỉ trong các nhà trọ user được quản lý. */
+export const getTenantById = async (tenantId, user) => {
+  const tenant = await Users.findOne({ _id: tenantId, role: 'tenant' }).select(SAFE_USER_FIELDS);
   if (!tenant) {
     throw { status: 404, message: 'Người thuê không tồn tại' };
   }
 
+  const properties = await getMyProperties(user);
+  const roomIds = await Rooms.find({ property: { $in: properties.map(p => p._id) } }).distinct('_id');
+
   const contracts = await Contracts.find({
+    room: { $in: roomIds },
     $or: [{ representative: tenantId }, { otherMembers: tenantId }],
   })
-    .populate('room')
-    .populate('template');
+    .sort({ startDate: -1 })
+    .populate({ path: 'room', select: 'roomNumber property', populate: { path: 'property', select: 'name' } })
+    .populate('representative', 'fullName phone')
+    .populate('otherMembers', 'fullName phone');
 
-  return {
-    ...tenant.toObject(),
-    contracts,
-  };
-};
-
-export const searchTenants = async (propertyId, searchTerm) => {
-  const contracts = await Contracts.find({ status: 'active' })
-    .populate({
-      path: 'room',
-      match: { property: propertyId },
-    })
-    .populate('representative', 'fullName email phone')
-    .populate('otherMembers', 'fullName email phone');
-
-  const tenantsMap = new Map();
-
-  contracts.forEach(contract => {
-    if (contract.room) {
-      if (!tenantsMap.has(contract.representative._id.toString())) {
-        tenantsMap.set(contract.representative._id.toString(), {
-          _id: contract.representative._id,
-          fullName: contract.representative.fullName,
-          email: contract.representative.email,
-          phone: contract.representative.phone,
-          contracts: [],
-        });
-      }
-      tenantsMap.get(contract.representative._id.toString()).contracts.push({
-        contractId: contract._id,
-        room: contract.room,
-        startDate: contract.startDate,
-        endDate: contract.endDate,
-      });
-
-      contract.otherMembers.forEach(member => {
-        if (!tenantsMap.has(member._id.toString())) {
-          tenantsMap.set(member._id.toString(), {
-            _id: member._id,
-            fullName: member.fullName,
-            email: member.email,
-            phone: member.phone,
-            contracts: [],
-          });
-        }
-      });
-    }
-  });
-
-  const tenants = Array.from(tenantsMap.values());
-
-  if (searchTerm) {
-    return tenants.filter(tenant =>
-      tenant.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tenant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (tenant.phone && tenant.phone.includes(searchTerm)),
-    );
+  if (contracts.length === 0) {
+    throw { status: 403, message: 'Người thuê này không thuộc nhà trọ bạn quản lý!' };
   }
 
-  return tenants;
+  return { ...tenant.toObject(), contracts };
 };
