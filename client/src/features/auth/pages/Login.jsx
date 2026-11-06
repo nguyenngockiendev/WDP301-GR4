@@ -27,7 +27,7 @@ const Login = () => {
 
   const onSubmit = async data => {
     const result = await login(data);
-    if (result.success) {
+    if (result) {
       const token = result.data?.token || result.data?.user;
       saveToken(token);
       navigate('/dashboard');
@@ -37,7 +37,7 @@ const Login = () => {
   const onsumbmitByGG = async googleToken => {
     try {
       const result = await loginGoogle(googleToken);
-      if (result.success) {
+      if (result) {
         const token = result.data?.token || result.data?.user;
         saveToken(token);
         navigate('/dashboard');
