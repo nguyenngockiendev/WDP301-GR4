@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   Building2,
   Sparkles,
+  Search,
 } from 'lucide-react';
 
 export default function Sidebar({ isCollapsed, setIsCollapsed }) {
@@ -35,6 +36,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
           badge: '2',
         },
         { to: '/tenants', label: 'Khách thuê', icon: Users },
+        { to: '/browse-rooms', label: 'Tìm phòng trống', icon: Search },
       ],
     },
     {
