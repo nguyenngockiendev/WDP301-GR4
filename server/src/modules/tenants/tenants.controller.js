@@ -4,7 +4,7 @@ import { sendSuccess, sendError } from '../../shared/utils/response.js';
 export const getTenantsByProperty = async (req, res) => {
   try {
     const { propertyId } = req.params;
-    const tenants = await tenantsService.getTenantsByProperty(propertyId);
+    const tenants = await tenantsService.getTenantsByProperty(propertyId, req.user);
     return sendSuccess(res, 200, 'Lấy danh sách người thuê thành công', tenants);
   } catch (error) {
     return sendError(res, error);
@@ -14,7 +14,7 @@ export const getTenantsByProperty = async (req, res) => {
 export const getTenantById = async (req, res) => {
   try {
     const { tenantId } = req.params;
-    const tenant = await tenantsService.getTenantById(tenantId);
+    const tenant = await tenantsService.getTenantById(tenantId, req.user);
     return sendSuccess(res, 200, 'Lấy thông tin người thuê thành công', tenant);
   } catch (error) {
     return sendError(res, error);
@@ -25,7 +25,7 @@ export const searchTenants = async (req, res) => {
   try {
     const { propertyId } = req.params;
     const { q } = req.query;
-    const tenants = await tenantsService.searchTenants(propertyId, q);
+    const tenants = await tenantsService.getTenantsByProperty(propertyId, req.user, q);
     return sendSuccess(res, 200, 'Tìm kiếm người thuê thành công', tenants);
   } catch (error) {
     return sendError(res, error);
