@@ -1,13 +1,13 @@
 import React from 'react';
 import { Search, Plus, ChevronDown, Bell, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { clearAuth } from '../../shared/utils/auth';
 
 export default function Header() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userId');
+    clearAuth();
     navigate('/login');
   };
 

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import useLogin from '../hooks/uselogin';
 import LoginForm from '../components/LoginForm';
 import { toast } from 'react-toastify';
+import { saveToken } from '../../../shared/utils/auth';
 
 const Login = () => {
   useEffect(() => {
@@ -26,7 +27,10 @@ const Login = () => {
   const onSubmit = async data => {
     try {
       const result = await login(data);
-      if (result.success) {
+      if (result?.success) {
+        // Server trả token trong data.user
+        const token = result.data?.token || result.data?.user;
+        if (typeof token === 'string') saveToken(token);
         navigate('/dashboard');
       }
     } catch (err) {
