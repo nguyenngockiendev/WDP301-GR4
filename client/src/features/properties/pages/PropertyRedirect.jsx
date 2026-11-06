@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import propertiesAPI from '../api/properties-api';
+import { getCurrentUser } from '../../../shared/utils/auth';
 
 /**
  * Dùng cho các menu như /rooms, /contracts...: lấy nhà trọ của landlord đang đăng nhập
@@ -40,7 +41,10 @@ export default function PropertyRedirect({ section }) {
   }
   return (
     <div className="p-6 text-slate-600">
-      {state.error || 'Bạn chưa có nhà trọ nào. Hãy tạo nhà trọ trước khi quản lý.'}
+      {state.error ||
+        (getCurrentUser()?.role === 'manager'
+          ? 'Bạn chưa được giao quản lý nhà trọ nào. Vui lòng liên hệ chủ trọ.'
+          : 'Bạn chưa có nhà trọ nào. Hãy tạo nhà trọ trước khi quản lý.')}
     </div>
   );
 }
