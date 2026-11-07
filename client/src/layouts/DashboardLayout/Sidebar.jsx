@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { getCurrentUser } from '../../shared/utils/auth';
 import {
   LayoutDashboard,
   Bell,
@@ -12,10 +13,12 @@ import {
   ChevronLeft,
   Building2,
   Sparkles,
-  Search,
+  ClipboardList,
 } from 'lucide-react';
 
 export default function Sidebar({ isCollapsed, setIsCollapsed }) {
+  const currentUser = getCurrentUser();
+  const isTenant = currentUser?.role?.toLowerCase() === 'tenant';
   const menuSections = [
     {
       title: 'TỔNG QUAN',
@@ -36,7 +39,15 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
           badge: '2',
         },
         { to: '/tenants', label: 'Khách thuê', icon: Users },
-        { to: '/browse-rooms', label: 'Tìm phòng trống', icon: Search },
+        ...(isTenant
+          ? []
+          : [
+            {
+              to: '/manager/checkout-requests',
+              label: 'Yêu cầu trả phòng',
+              icon: ClipboardList,
+            },
+          ]),
       ],
     },
     {
@@ -51,9 +62,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
 
   return (
     <aside
-      className={`my-3 ml-3 h-[calc(100vh-1.5rem)] rounded-3xl bg-white/80 backdrop-blur-2xl border border-white/90 flex flex-col justify-between shrink-0 p-3 select-none shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-300 ease-in-out relative z-30 ${
-        isCollapsed ? 'w-20' : 'w-64'
-      }`}
+      className={`my-3 ml-3 h-[calc(100vh-1.5rem)] rounded-3xl bg-white/80 backdrop-blur-2xl border border-white/90 flex flex-col justify-between shrink-0 p-3 select-none shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-300 ease-in-out relative z-30 ${isCollapsed ? 'w-20' : 'w-64'
+        }`}
     >
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -62,9 +72,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       >
         <ChevronLeft
           size={14}
-          className={`stroke-[2.5] transition-transform duration-300 text-slate-500 group-hover:text-emerald-600 ${
-            isCollapsed ? 'rotate-180 text-emerald-600' : ''
-          }`}
+          className={`stroke-[2.5] transition-transform duration-300 text-slate-500 group-hover:text-emerald-600 ${isCollapsed ? 'rotate-180 text-emerald-600' : ''
+            }`}
         />
       </button>
 
@@ -72,9 +81,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Brand Header */}
         <div
-          className={`flex items-center gap-3 pt-2 pb-4 mb-2 border-b border-emerald-50/80 ${
-            isCollapsed ? 'justify-center px-0' : 'px-2'
-          }`}
+          className={`flex items-center gap-3 pt-2 pb-4 mb-2 border-b border-emerald-50/80 ${isCollapsed ? 'justify-center px-0' : 'px-2'
+            }`}
         >
           {/* Logo Icon cách điệu Gradient */}
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/25 shrink-0 relative overflow-hidden group">
@@ -121,9 +129,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
                     <div
                       key={item.label}
                       title={`${item.label} (sắp có)`}
-                      className={`flex items-center rounded-2xl text-xs font-bold text-slate-300 cursor-not-allowed ${
-                        isCollapsed ? 'w-11 h-11 justify-center mx-auto' : 'gap-3 px-3.5 py-2.5'
-                      }`}
+                      className={`flex items-center rounded-2xl text-xs font-bold text-slate-300 cursor-not-allowed ${isCollapsed ? 'w-11 h-11 justify-center mx-auto' : 'gap-3 px-3.5 py-2.5'
+                        }`}
                     >
                       <Icon size={18} className="shrink-0" />
                       {!isCollapsed && <span className="whitespace-nowrap flex-1">{item.label}</span>}
@@ -135,14 +142,12 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
                     key={item.label}
                     to={item.to}
                     className={({ isActive }) =>
-                      `flex items-center rounded-2xl text-xs font-bold transition-all duration-200 group relative ${
-                        isCollapsed
-                          ? 'w-11 h-11 justify-center mx-auto'
-                          : 'gap-3 px-3.5 py-2.5'
-                      } ${
-                        isActive
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-600/25 font-extrabold'
-                          : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70'
+                      `flex items-center rounded-2xl text-xs font-bold transition-all duration-200 group relative ${isCollapsed
+                        ? 'w-11 h-11 justify-center mx-auto'
+                        : 'gap-3 px-3.5 py-2.5'
+                      } ${isActive
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-600/25 font-extrabold'
+                        : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70'
                       }`
                     }
                   >
@@ -150,11 +155,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
                       <>
                         <Icon
                           size={18}
-                          className={`shrink-0 transition-transform duration-200 ${
-                            isActive
+                          className={`shrink-0 transition-transform duration-200 ${isActive
                               ? 'text-white scale-105'
                               : 'text-slate-400 group-hover:text-emerald-600 group-hover:scale-110'
-                          }`}
+                            }`}
                         />
 
                         {!isCollapsed && (
@@ -166,11 +170,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
                         {/* Badge thông báo nếu có */}
                         {item.badge && (
                           <span
-                            className={`shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-full transition ${
-                              isActive
+                            className={`shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-full transition ${isActive
                                 ? 'bg-white text-emerald-700 shadow-xs'
                                 : 'bg-emerald-100 text-emerald-800'
-                            } ${isCollapsed ? 'absolute -top-1 -right-1 ring-2 ring-white text-[9px] w-4 h-4 flex items-center justify-center p-0' : ''}`}
+                              } ${isCollapsed ? 'absolute -top-1 -right-1 ring-2 ring-white text-[9px] w-4 h-4 flex items-center justify-center p-0' : ''}`}
                           >
                             {item.badge}
                           </span>
@@ -221,9 +224,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
 
         {/* Thông tin Quản lý */}
         <div
-          className={`flex items-center gap-2.5 p-1.5 rounded-2xl hover:bg-slate-50/80 transition cursor-pointer group ${
-            isCollapsed ? 'justify-center' : 'px-2'
-          }`}
+          className={`flex items-center gap-2.5 p-1.5 rounded-2xl hover:bg-slate-50/80 transition cursor-pointer group ${isCollapsed ? 'justify-center' : 'px-2'
+            }`}
           title="Tài khoản Quản lý Tòa nhà"
         >
           <div className="relative shrink-0">
