@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'
 import useLogin from '../hooks/uselogin';
 import LoginForm from '../components/LoginForm';
 import { toast } from 'react-toastify';
+import { saveToken } from '../../../shared/utils/auth';
 
+import { jwtDecode } from 'jwt-decode';
 const Login = () => {
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -19,18 +21,29 @@ const Login = () => {
     handleSubmit,
     formState: { errors },
   } = useForm();
-  const { login, loading, error } = useLogin();
+  const { login, loginGoogle, loading } = useLogin();
 
   const navigate = useNavigate();
 
   const onSubmit = async data => {
+    const result = await login(data);
+    if (result) {
+      const token = result.data?.token || result.data?.user;
+      saveToken(token);
+      navigate('/dashboard');
+    }
+  };
+
+  const onsumbmitByGG = async googleToken => {
     try {
-      const result = await login(data);
-      if (result.success) {
+      const result = await loginGoogle(googleToken);
+      if (result) {
+        const token = result.data?.token || result.data?.user;
+        saveToken(token);
         navigate('/dashboard');
       }
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.log(error);
     }
   };
 
@@ -40,8 +53,8 @@ const Login = () => {
       handleSubmit={handleSubmit}
       login={login}
       loading={loading}
-      error={error}
       onSubmit={onSubmit}
+      onsumbmitByGG={onsumbmitByGG}
       navigate={navigate}
       errors={errors}
     />

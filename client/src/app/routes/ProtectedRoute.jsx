@@ -1,19 +1,13 @@
-
-import { useEffect, useState } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
-import api from '../../shared/api/axiosClient';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { getCurrentUser } from '../../shared/utils/auth';
 
 export default function ProtectedRoute({ roles }) {
-  const [state, setState] = useState({ loading: true, user: null });
-  useEffect(() => {
-    let active = true;
-    api.get('/auth/me')
-      .then(response => active && setState({ loading: false, user: response.data?.user || null }))
-      .catch(() => active && setState({ loading: false, user: null }));
-    return () => { active = false; };
-  }, []);
-  if (state.loading) return <div className="min-h-screen grid place-items-center text-slate-500">Đang kiểm tra phiên đăng nhập…</div>;
-  if (!state.user) return <Navigate to="/login" replace />;
-  if (roles && !roles.includes(state.user.role)) return <Navigate to="/dashboard" replace />;
-  return <Outlet context={{ user: state.user }} />;
+  const location = useLocation();
+  const user = getCurrentUser();
+
+  if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
+  if (roles && !roles.includes(user.role)) {
+    return <h3 className="p-6">403 - Bạn không có quyền truy cập trang này</h3>;
+  }
+  return <Outlet context={{ user }} />;
 }

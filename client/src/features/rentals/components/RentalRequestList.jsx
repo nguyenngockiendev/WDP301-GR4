@@ -1,23 +1,30 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { CalendarClock } from 'lucide-react';
 import RentalRequestItem from './RentalRequestItem';
 
-export default function RentalRequestList({ requests, onProcess }) {
-  return (
-    <div className="rental-requests-list">
-      {requests.length === 0 ? (
-        <div className="alert alert-info">Không có yêu cầu nào</div>
-      ) : (
-        <div className="row">
-          {requests.map((request) => (
-            <div key={request._id} className="col-md-6 mb-4">
-              <RentalRequestItem
-                request={request}
-                onProcess={onProcess}
-              />
-            </div>
-          ))}
+export default function RentalRequestList({ requests, onProcess, onCreateContract }) {
+  if (requests.length === 0) {
+    return (
+      <div className="py-16 flex flex-col items-center text-center rounded-3xl bg-white/85 border border-white/90">
+        <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+          <CalendarClock size={26} />
         </div>
-      )}
+        <p className="text-sm font-extrabold text-slate-800">Không có yêu cầu nào</p>
+        <p className="text-xs text-slate-400 mt-1">Yêu cầu đặt phòng của khách sẽ hiển thị ở đây.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+      {requests.map(request => (
+        <RentalRequestItem
+          key={request._id}
+          request={request}
+          onProcess={onProcess}
+          onCreateContract={onCreateContract}
+        />
+      ))}
     </div>
   );
 }

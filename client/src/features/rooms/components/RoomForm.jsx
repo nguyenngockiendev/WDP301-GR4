@@ -1,154 +1,155 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { Plus, X } from 'lucide-react';
+import Modal, { btnPrimary, btnGhost, inputCls, labelCls } from './Modal';
+
+const emptyRoom = {
+  roomNumber: '',
+  area: '',
+  price: '',
+  maxTenants: 1,
+  facilities: [],
+  description: '',
+  images: [],
+};
 
 export default function RoomForm({ room, onSubmit, onCancel }) {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm({
-    defaultValues: room || {
-      roomNumber: '',
-      area: '',
-      price: '',
-      tier: 'standard',
-      maxTenants: 1,
-      facilities: [],
-      description: '',
-      images: [],
-    },
-  });
-
-  useEffect(() => {
-    if (room) {
-      reset({ ...room, tier: room.tier || 'standard' });
-    }
-  }, [room, reset]);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm({ defaultValues: room || emptyRoom });
 
   const [facilities, setFacilities] = useState(room?.facilities || []);
   const [facilityInput, setFacilityInput] = useState('');
 
+  useEffect(() => {
+    reset(room || emptyRoom);
+    setFacilities(room?.facilities || []);
+  }, [room, reset]);
+
   const handleAddFacility = () => {
-    if (facilityInput.trim()) {
-      setFacilities([...facilities, facilityInput]);
-      setFacilityInput('');
-    }
+    const value = facilityInput.trim();
+    if (value && !facilities.includes(value)) setFacilities([...facilities, value]);
+    setFacilityInput('');
   };
 
-  const handleRemoveFacility = (index) => {
-    setFacilities(facilities.filter((_, i) => i !== index));
-  };
+  const onSubmitForm = data => onSubmit({ ...data, facilities });
 
-  const onSubmitForm = (data) => {
-    data.facilities = facilities;
-    onSubmit(data);
-  };
+  const err = name =>
+    errors[name] && <p className="mt-1 text-[11px] font-semibold text-rose-500">{errors[name].message}</p>;
 
   return (
-    <div className="room-form card p-4 shadow-sm">
-      <h3 className="mb-4">{room ? 'Cập Nhật Phòng' : 'Thêm Phòng Mới'}</h3>
-
-      <form onSubmit={handleSubmit(onSubmitForm)}>
-        <div className="row">
-          <div className="col-md-6 mb-3">
-            <label className="form-label">Số Phòng *</label>
+    <Modal
+      title={room ? `Cập nhật phòng ${room.roomNumber}` : 'Thêm phòng mới'}
+      onClose={onCancel}
+      maxWidth="max-w-2xl"
+      footer={
+        <>
+          <button type="button" className={btnGhost} onClick={onCancel}>Hủy</button>
+          <button type="submit" form="room-form" className={btnPrimary} disabled={isSubmitting}>
+            {room ? 'Cập nhật' : 'Tạo phòng'}
+          </button>
+        </>
+      }
+    >
+      <form id="room-form" onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>Số phòng *</label>
             <input
-              type="text"
-              className="form-control"
+              className={inputCls}
+              placeholder="VD: A101"
               {...register('roomNumber', { required: 'Số phòng là bắt buộc' })}
             />
-            {errors.roomNumber && <span className="text-danger">{errors.roomNumber.message}</span>}
+            {err('roomNumber')}
           </div>
-          <div className="col-md-6 mb-3">
-            <label className="form-label">Hạng phòng</label>
-            <select className="form-select" {...register('tier')}>
-              <option value="basic">Cơ bản</option>
-              <option value="standard">Tiêu chuẩn</option>
-              <option value="premium">Cao cấp</option>
-            </select>
-            <small className="text-muted">Chủ trọ phân hạng theo diện tích, tiện nghi và chất lượng phòng.</small>
-          </div>
-
-          <div className="col-md-6 mb-3">
-            <label className="form-label">Diện Tích (m²) *</label>
+          <div>
+            <label className={labelCls}>Diện tích (m²) *</label>
             <input
               type="number"
-              className="form-control"
-              {...register('area', { required: 'Diện tích là bắt buộc', min: 0 })}
+              className={inputCls}
+              placeholder="25"
+              {...register('area', { required: 'Diện tích là bắt buộc', min: { value: 1, message: 'Diện tích phải > 0' } })}
             />
-            {errors.area && <span className="text-danger">{errors.area.message}</span>}
+            {err('area')}
+          </div>
+          <div>
+            <label className={labelCls}>Giá thuê (VNĐ/tháng) *</label>
+            <input
+              type="number"
+              className={inputCls}
+              placeholder="5000000"
+              {...register('price', { required: 'Giá thuê là bắt buộc', min: { value: 0, message: 'Giá không hợp lệ' } })}
+            />
+            {err('price')}
+          </div>
+          <div>
+            <label className={labelCls}>Số người tối đa</label>
+            <input
+              type="number"
+              className={inputCls}
+              {...register('maxTenants', { min: { value: 1, message: 'Tối thiểu 1 người' } })}
+            />
+            {err('maxTenants')}
           </div>
         </div>
 
-        <div className="row">
-          <div className="col-md-6 mb-3">
-            <label className="form-label">Giá Thuê (VNĐ) *</label>
-            <input
-              type="number"
-              className="form-control"
-              {...register('price', { required: 'Giá thuê là bắt buộc', min: 0 })}
-            />
-            {errors.price && <span className="text-danger">{errors.price.message}</span>}
-          </div>
-
-          <div className="col-md-6 mb-3">
-            <label className="form-label">Số Người Tối Đa</label>
-            <input
-              type="number"
-              className="form-control"
-              {...register('maxTenants', { min: 1 })}
-            />
-          </div>
-        </div>
-
-        <div className="mb-3">
-          <label className="form-label">Mô Tả</label>
+        <div>
+          <label className={labelCls}>Mô tả</label>
           <textarea
-            className="form-control"
             rows="3"
+            className={`${inputCls} resize-none`}
+            placeholder="Ban công, hướng Đông, gần thang máy..."
             {...register('description')}
-          ></textarea>
+          />
         </div>
 
-        <div className="mb-3">
-          <label className="form-label">Tiện Nghi</label>
-          <div className="input-group mb-2">
+        <div>
+          <label className={labelCls}>Tiện nghi</label>
+          <div className="flex gap-2">
             <input
-              type="text"
-              className="form-control"
-              placeholder="Nhập tiện nghi..."
+              className={inputCls}
+              placeholder="Điều hòa, máy giặt, wifi..."
               value={facilityInput}
-              onChange={(e) => setFacilityInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddFacility()}
+              onChange={e => setFacilityInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddFacility();
+                }
+              }}
             />
             <button
               type="button"
-              className="btn btn-outline-secondary"
               onClick={handleAddFacility}
+              className="shrink-0 px-3.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
             >
-              Thêm
+              <Plus size={14} /> Thêm
             </button>
           </div>
-
-          <div className="facilities-list">
-            {facilities.map((facility, index) => (
-              <span key={index} className="badge bg-info me-2 mb-2">
-                {facility}
-                <button
-                  type="button"
-                  className="btn-close btn-close-white ms-1"
-                  onClick={() => handleRemoveFacility(index)}
-                ></button>
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="d-flex gap-2">
-          <button type="submit" className="btn btn-primary">
-            {room ? 'Cập Nhật' : 'Tạo Mới'}
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={onCancel}>
-            Hủy
-          </button>
+          {facilities.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {facilities.map((f, i) => (
+                <span
+                  key={f + i}
+                  className="inline-flex items-center gap-1 pl-3 pr-1.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-800 text-[11px] font-bold"
+                >
+                  {f}
+                  <button
+                    type="button"
+                    onClick={() => setFacilities(facilities.filter((_, idx) => idx !== i))}
+                    className="w-4 h-4 rounded-full hover:bg-emerald-200 flex items-center justify-center cursor-pointer"
+                  >
+                    <X size={11} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }

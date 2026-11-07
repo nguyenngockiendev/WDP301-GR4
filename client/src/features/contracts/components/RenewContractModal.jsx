@@ -1,24 +1,26 @@
 import React, { useState } from 'react';
+import Modal, { btnPrimary, btnGhost, inputCls, labelCls } from '../../../shared/components/Modal';
+import { formatDate } from '../../../shared/utils/format';
+
+const toInputDate = d => new Date(d).toISOString().split('T')[0];
+
+const addMonths = (date, months) => {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + months);
+  return toInputDate(d);
+};
 
 export default function RenewContractModal({ contract, onClose, onRenew }) {
-  const [newEndDate, setNewEndDate] = useState(
-    new Date(contract.endDate).toISOString().split('T')[0],
-  );
+  const [newEndDate, setNewEndDate] = useState(addMonths(contract.endDate, 6));
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleRenew = async () => {
-    if (!newEndDate) {
-      alert('Vui lòng chọn ngày kết thúc');
-      return;
+    if (!newEndDate) return setError('Vui lòng chọn ngày kết thúc');
+    if (new Date(newEndDate) <= new Date(contract.endDate)) {
+      return setError('Ngày kết thúc mới phải sau ngày kết thúc hiện tại');
     }
-
-    const newDate = new Date(newEndDate);
-    const currentEnd = new Date(contract.endDate);
-    if (newDate <= currentEnd) {
-      alert('Ngày kết thúc mới phải sau ngày hiện tại');
-      return;
-    }
-
+    setError('');
     try {
       setLoading(true);
       await onRenew(newEndDate);
@@ -28,57 +30,58 @@ export default function RenewContractModal({ contract, onClose, onRenew }) {
   };
 
   return (
-    <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Gia Hạn Hợp Đồng - Phòng {contract.room?.roomNumber}</h5>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={onClose}
-              disabled={loading}
-            ></button>
-          </div>
-
-          <div className="modal-body">
-            <p className="mb-3">
-              <strong>Ngày Kết Thúc Hiện Tại:</strong>{' '}
-              {new Date(contract.endDate).toLocaleDateString('vi-VN')}
-            </p>
-
-            <div className="mb-3">
-              <label className="form-label">Ngày Kết Thúc Mới *</label>
-              <input
-                type="date"
-                className="form-control"
-                value={newEndDate}
-                onChange={(e) => setNewEndDate(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Hủy
-            </button>
-            <button
-              type="button"
-              className="btn btn-success"
-              onClick={handleRenew}
-              disabled={loading}
-            >
-              {loading ? 'Đang xử lý...' : 'Gia Hạn'}
-            </button>
-          </div>
-        </div>
+    <Modal
+      title="Gia hạn hợp đồng"
+      subtitle={`Phòng ${contract.room?.roomNumber || ''} · ${contract.representative?.fullName || ''}`}
+      onClose={onClose}
+      disabled={loading}
+      maxWidth="max-w-md"
+      footer={
+        <>
+          <button className={btnGhost} onClick={onClose} disabled={loading}>Hủy</button>
+          <button className={btnPrimary} onClick={handleRenew} disabled={loading}>
+            {loading ? 'Đang gia hạn...' : 'Gia hạn'}
+          </button>
+        </>
+      }
+    >
+      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-xs mb-4">
+        <span className="text-slate-400 font-semibold">Ngày kết thúc hiện tại: </span>
+        <span className="font-extrabold text-slate-800">{formatDate(contract.endDate)}</span>
       </div>
-    </div>
+
+      <label className={labelCls}>Gia hạn nhanh</label>
+      <div className="flex gap-2 mb-4">
+        {[3, 6, 12].map(m => {
+          const value = addMonths(contract.endDate, m);
+          const active = value === newEndDate;
+          return (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setNewEndDate(value)}
+              className={`flex-1 py-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                active
+                  ? 'border-emerald-400 bg-emerald-50 text-emerald-800 ring-4 ring-emerald-100'
+                  : 'border-slate-200 text-slate-600 hover:border-emerald-200'
+              }`}
+            >
+              +{m} tháng
+            </button>
+          );
+        })}
+      </div>
+
+      <label className={labelCls}>Ngày kết thúc mới *</label>
+      <input
+        type="date"
+        className={inputCls}
+        value={newEndDate}
+        min={toInputDate(new Date(contract.endDate).getTime() + 86400000)}
+        onChange={e => setNewEndDate(e.target.value)}
+        disabled={loading}
+      />
+      {error && <p className="mt-1.5 text-[11px] font-semibold text-rose-500">{error}</p>}
+    </Modal>
   );
 }
