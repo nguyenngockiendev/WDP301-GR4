@@ -20,7 +20,7 @@ export default function AppRoutes() {
   ];
   return (
     <Routes>
-      <Route path="/" element={<Navigate to={'/login'} replace />} />
+      <Route path="/" element={<Navigate to="/home" replace />} />
 
       {authRoutes.map(route => (
         <Route key={route.path} path={route.path} element={route.element} />

@@ -39,12 +39,20 @@ WDP301-GR4/
 Dự án dùng chung **1 Database đám mây duy nhất trên MongoDB Atlas** theo thời gian thực (ai thêm/sửa/xoá dữ liệu thì tất cả thành viên khác đều nhìn thấy ngay lập tức).
 
 ### Bước 1: Cấu hình kết nối trên máy cá nhân
-Tạo file `server/.env` và dán chuỗi kết nối của nhóm:
+Tạo file `server/.env` từ `server/.env.example`, sau đó thay thông tin cụm Atlas và SMTP bằng thông tin nhóm cấp qua kênh riêng. Không đưa URI thật hoặc secret vào Git:
 ```env
 PORT=4000
-MONGODB_URI=mongodb+srv://kien34217_db_user:omSZsdQsiF1hgbXK@nexoracluster.ijcoacr.mongodb.net/WDP301_GR4?retryWrites=true&w=majority
-JWT_SECRET=wdp301_gr4_jwt_secret_key_2026
+MONGODB_URI=mongodb+srv://<db_username>:<db_password>@<cluster-host>.mongodb.net/WDP301_GR4?retryWrites=true&w=majority
+SESSION_SECRET=<random-secret-at-least-32-characters>
+OTP_SECRET=<separate-random-secret>
+SMTP_HOST=<smtp-host>
+SMTP_PORT=587
+SMTP_USER=<smtp-username>
+SMTP_PASS=<smtp-password>
+SMTP_FROM=Haven Stay <no-reply@example.com>
 ```
+
+Đăng ký tài khoản và xác thực OTP cần cấu hình SMTP. OTP có hiệu lực 5 phút, lưu dạng hash và cho phép tối đa 5 lần thử.
 
 ### Bước 2: Tải công cụ xem và quản lý Database trực quan (MongoDB Compass)
 Để xem các bảng và dữ liệu trong Database như một bảng tính Excel:
@@ -53,8 +61,7 @@ JWT_SECRET=wdp301_gr4_jwt_secret_key_2026
 3. Bấm nút **Connect**.
 4. Bạn sẽ thấy database tên là **`WDP301_GR4`** hiển thị đầy đủ các collection: `users`, `rooms`, `contracts`, `invoices`, `utilityreadings`... Bạn có thể xem, tìm kiếm, sửa hoặc thêm dữ liệu test trực tiếp tại đây!
 
-> ⚠️ **LƯU Ý QUAN TRỌNG VỀ LỖI TIMEOUT KHI KẾT NỐI:**  
-> Nếu bạn kết nối bị báo lỗi timeout, hãy báo Leader vào MongoDB Atlas $\rightarrow$ Mục **Network Access** $\rightarrow$ Kiểm tra IP đã được mở **`0.0.0.0/0` (Allow Access from Anywhere)** hay chưa.
+> Nếu kết nối bị timeout, nhờ người quản lý Atlas thêm IP public hiện tại vào **Security → Network Access → IP Access List**. Ưu tiên cho phép IP cụ thể thay vì mở toàn bộ địa chỉ.
 
 ---
 
@@ -65,13 +72,13 @@ Mở 2 tab Terminal riêng biệt trong VS Code:
 - **Terminal 1 — Chạy Backend (Port 4000):**
   ```bash
   cd server
-  npm install
+  npm ci
   npm run dev
   ```
 - **Terminal 2 — Chạy Frontend (Port 3000):**
   ```bash
   cd client
-  npm install
+  npm ci
   npm run dev
   ```
 👉 Mở trình duyệt tại: `http://localhost:3000/login`

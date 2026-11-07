@@ -1,7 +1,4 @@
 export function validateCreateRentalRequest(body) {
-  if (!body?.tenant || String(body.tenant).trim().length === 0) {
-    return 'Người thuê không được để trống';
-  }
   if (!body?.room || String(body.room).trim().length === 0) {
     return 'Phòng không được để trống';
   }

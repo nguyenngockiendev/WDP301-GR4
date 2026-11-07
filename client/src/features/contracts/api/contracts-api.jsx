@@ -33,6 +33,10 @@ const contractsAPI = {
   searchContracts: async (filters) => {
     return api.get('/contracts/search', { params: filters });
   },
+
+  getOccupants: async (contractId) => api.get(`/contracts/${contractId}/occupants`),
+  getCoResidentCandidates: async (contractId, params = {}) => api.get(`/contracts/${contractId}/co-resident-candidates`, { params }),
+  setCoResidents: async (contractId, residentIds) => api.put(`/contracts/${contractId}/co-residents`, { residentIds }),
 };
 
 export default contractsAPI;

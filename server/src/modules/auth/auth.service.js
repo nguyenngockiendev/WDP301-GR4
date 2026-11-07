@@ -132,16 +132,19 @@ const registerUser = async data => {
       throw { status: 400, message: 'Email đã tồn tại' };
     }
 
-    const hashpassword = await bcrypt.hash(data.password, parseInt(process.env.SALT_ROUNDS));
+    const hashpassword = await bcrypt.hash(data.password, Number(process.env.SALT_ROUNDS) || 10);
+
+    // The first registered account owns the workspace; later public signups are tenants.
+    const role = (await Users.exists({ role: 'landlord' })) ? 'tenant' : 'landlord';
 
     const result = await Users.create({
       username: data.username,
       email: data.email,
       password: hashpassword,
       fullName: data.username,
-      role: 'tenant',
+      role,
       status: 'active',
-      phone: '',
+      phone: data.phone || '',
       isVerified: true,
     });
     await Otp.deleteMany({ contact: data.email, purpose: 'register' });
