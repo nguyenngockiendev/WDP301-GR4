@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
+  Bell,
   DoorOpen,
   FileSignature,
   CalendarClock,
@@ -22,6 +23,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, user }) {
       title: 'TỔNG QUAN',
       items: [
         { to: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+        { to: '/notifications', label: 'Thông báo', icon: Bell },
       ],
     },
     {
@@ -32,12 +34,23 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, user }) {
           { to: '/managers', label: 'Quản lý viên', icon: Users },
           { to: '/settings', label: 'Giá và chính sách', icon: Settings },
         ] : []),
+        { to: '/rooms', label: 'Danh sách phòng', icon: DoorOpen },
+        { to: '/contracts', label: 'Hợp đồng thuê', icon: FileSignature },
+        {
+          to: '/rental-requests',
+          label: 'Yêu cầu đặt phòng',
+          icon: CalendarClock,
+          badge: '2',
+        },
+        { to: '/tenants', label: 'Khách thuê', icon: Users },
       ],
     },
     {
       title: 'DỊCH VỤ & TÀI CHÍNH',
       items: [
-        { to: '/profile', label: 'Hồ sơ & mật khẩu', icon: Sparkles },
+        // Chưa có trang -> tạm vô hiệu hóa để không bị đá về /login
+        { to: null, label: 'Số điện & nước', icon: Zap },
+        { to: null, label: 'Hóa đơn tiền phòng', icon: ReceiptText },
       ],
     },
   ];
@@ -48,7 +61,6 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, user }) {
         isCollapsed ? 'w-20' : 'w-64'
       }`}
     >
-      {/* NÚT TOGGLE THU GỌN / MỞ RỘNG (GẮN NGAY MÉP BORDER - SIÊU HIỆN ĐẠI & KHÔNG BỊ LỆCH) */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="absolute -right-3.5 top-7 w-7 h-7 rounded-full bg-white border border-emerald-100 shadow-[0_2px_10px_rgba(0,0,0,0.08)] flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer z-50 group"
@@ -110,9 +122,23 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, user }) {
               {/* Các liên kết trong nhóm */}
               {section.items.map((item) => {
                 const Icon = item.icon;
+                if (!item.to) {
+                  return (
+                    <div
+                      key={item.label}
+                      title={`${item.label} (sắp có)`}
+                      className={`flex items-center rounded-2xl text-xs font-bold text-slate-300 cursor-not-allowed ${
+                        isCollapsed ? 'w-11 h-11 justify-center mx-auto' : 'gap-3 px-3.5 py-2.5'
+                      }`}
+                    >
+                      <Icon size={18} className="shrink-0" />
+                      {!isCollapsed && <span className="whitespace-nowrap flex-1">{item.label}</span>}
+                    </div>
+                  );
+                }
                 return (
                   <NavLink
-                    key={item.to}
+                    key={item.label}
                     to={item.to}
                     className={({ isActive }) =>
                       `flex items-center rounded-2xl text-xs font-bold transition-all duration-200 group relative ${
@@ -204,7 +230,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, user }) {
           className={`flex items-center gap-2.5 p-1.5 rounded-2xl hover:bg-slate-50/80 transition cursor-pointer group ${
             isCollapsed ? 'justify-center' : 'px-2'
           }`}
-          title="Hồ sơ cá nhân"
+          title="Tài khoản Quản lý Tòa nhà"
         >
           <div className="relative shrink-0">
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-700 to-slate-900 text-white font-black text-xs flex items-center justify-center border-2 border-white shadow-xs">
@@ -216,10 +242,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, user }) {
           {!isCollapsed && (
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-xs font-extrabold text-slate-800 truncate">
-                Chủ trọ
+                {user?.fullName || user?.username || 'Tài khoản'}
               </span>
               <span className="text-[10px] font-medium text-slate-400 truncate">
-                Quản lý tài khoản
+                {user?.email || user?.role || ''}
               </span>
             </div>
           )}
