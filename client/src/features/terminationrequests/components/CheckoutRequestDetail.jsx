@@ -5,6 +5,12 @@ import CheckoutStatusBadge from './CheckoutStatusBadge';
 const formatDate = (value) => {
   if (!value) return '—';
   const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('vi-VN');
+};
+
+const formatDateTime = (value) => {
+  if (!value) return '—';
+  const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('vi-VN');
 };
 
@@ -30,7 +36,8 @@ export default function CheckoutRequestDetail({ request, onClose }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl border border-slate-100 p-4"><MapPin size={17} className="mb-2 text-emerald-600" /><p className="text-xs text-slate-400">Phòng</p><p className="mt-1 font-extrabold text-slate-800">{room.roomNumber || 'Chưa có dữ liệu'}</p></div>
           <div className="rounded-2xl border border-slate-100 p-4"><FileText size={17} className="mb-2 text-emerald-600" /><p className="text-xs text-slate-400">Mã hợp đồng</p><p className="mt-1 break-all font-extrabold text-slate-800">{contract._id || '—'}</p></div>
-          <div className="rounded-2xl border border-slate-100 p-4 sm:col-span-2"><CalendarDays size={17} className="mb-2 text-emerald-600" /><p className="text-xs text-slate-400">Thời gian gửi</p><p className="mt-1 font-extrabold text-slate-800">{formatDate(request.requestedDate || request.createdAt)}</p></div>
+          <div className="rounded-2xl border border-slate-100 p-4"><CalendarDays size={17} className="mb-2 text-emerald-600" /><p className="text-xs text-slate-400">Thời gian gửi</p><p className="mt-1 font-extrabold text-slate-800">{formatDateTime(request.requestedDate || request.createdAt)}</p></div>
+          <div className="rounded-2xl border border-slate-100 p-4"><CalendarDays size={17} className="mb-2 text-amber-500" /><p className="text-xs text-slate-400">Ngày dự kiến rời phòng</p><p className="mt-1 font-extrabold text-slate-800">{formatDate(request.moveOutDate)}</p></div>
         </div>
         <div className="mt-4 rounded-2xl border border-slate-100 p-4">
           <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Lý do trả phòng</p>

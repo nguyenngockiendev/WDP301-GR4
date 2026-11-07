@@ -1,0 +1,26 @@
+import React from 'react';
+import { CalendarDays, FileText, MapPin, UserRound, X } from 'lucide-react';
+import CheckoutStatusBadge from './CheckoutStatusBadge';
+const formatDate = value => { if (!value) return '—'; const date = new Date(value); return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('vi-VN'); };
+export default function CheckoutRequestDetail({ request, onClose }) {
+  if (!request) return null;
+  const contract = request.contract || {};
+  const room = contract.room || {};
+  const representative = contract.representative || {};
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-2xl rounded-3xl border border-white bg-white p-6 shadow-2xl sm:p-8 max-h-[90vh] overflow-y-auto">
+        <div className="mb-6 flex items-start justify-between"><div><p className="text-xs font-extrabold uppercase tracking-wider text-emerald-600">Chi tiết yêu cầu</p><h2 className="mt-1 text-xl font-black text-slate-800">Yêu cầu trả phòng</h2></div><button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100" aria-label="Đóng"><X size={20} /></button></div>
+        <div className="mb-5 flex items-center justify-between rounded-2xl bg-slate-50 p-4"><span className="text-sm font-bold text-slate-600">Trạng thái hiện tại</span><CheckoutStatusBadge status={request.status} /></div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-slate-100 p-4"><MapPin size={17} className="mb-2 text-emerald-600" /><p className="text-xs text-slate-400">Phòng</p><p className="mt-1 font-extrabold text-slate-800">{room.roomNumber || '—'}</p></div>
+          <div className="rounded-2xl border border-slate-100 p-4"><UserRound size={17} className="mb-2 text-emerald-600" /><p className="text-xs text-slate-400">Người đứng tên hợp đồng</p><p className="mt-1 font-extrabold text-slate-800">{representative.fullName || '—'}</p><p className="text-xs text-slate-400">{representative.email || ''}</p></div>
+          <div className="rounded-2xl border border-slate-100 p-4"><CalendarDays size={17} className="mb-2 text-emerald-600" /><p className="text-xs text-slate-400">Ngày gửi yêu cầu</p><p className="mt-1 font-extrabold text-slate-800">{formatDate(request.requestedDate || request.createdAt)}</p></div>
+          <div className="rounded-2xl border border-slate-100 p-4"><CalendarDays size={17} className="mb-2 text-emerald-600" /><p className="text-xs text-slate-400">Ngày dự kiến trả phòng</p><p className="mt-1 font-extrabold text-slate-800">{formatDate(request.moveOutDate)}</p></div>
+          <div className="rounded-2xl border border-slate-100 p-4 sm:col-span-2"><FileText size={17} className="mb-2 text-emerald-600" /><p className="text-xs text-slate-400">Mã hợp đồng</p><p className="mt-1 break-all font-extrabold text-slate-800">{contract._id || '—'}</p></div>
+        </div>
+        <div className="mt-4 rounded-2xl border border-slate-100 p-4"><p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Lý do trả phòng</p><p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">{request.reason || 'Không có nội dung.'}</p></div>
+      </div>
+    </div>
+  );
+}

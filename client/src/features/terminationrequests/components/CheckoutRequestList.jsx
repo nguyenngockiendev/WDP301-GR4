@@ -46,9 +46,10 @@ export default function CheckoutRequestList({ requests = [], loading = false, on
               </div>
               <span className="shrink-0 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-extrabold text-emerald-700">Xem chi tiết</span>
             </div>
-            <div className="mt-5 grid gap-3 border-t border-slate-100 pt-4 text-xs font-semibold text-slate-500 sm:grid-cols-3">
+            <div className="mt-5 grid gap-3 border-t border-slate-100 pt-4 text-xs font-semibold text-slate-500 sm:grid-cols-4">
               <span className="flex items-center gap-2"><MapPin size={15} className="text-emerald-600" />Phòng {room.roomNumber || 'Chưa có dữ liệu'}</span>
               <span className="flex items-center gap-2"><CalendarDays size={15} className="text-emerald-600" />Ngày gửi: {formatDate(item.requestedDate || item.createdAt)}</span>
+              <span className="flex items-center gap-2"><CalendarDays size={15} className="text-amber-500" />Dự kiến rời phòng: {formatDate(item.moveOutDate)}</span>
               <span className="flex items-center gap-2"><FileText size={15} className="text-emerald-600" />Hợp đồng: {contract._id ? `${String(contract._id).slice(-8)}` : '—'}</span>
             </div>
           </button>
