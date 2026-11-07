@@ -17,6 +17,8 @@ export default function AppRoutes() {
     ...tenantsRoutes,
     ...notificationsRoutes,
     ...shortcuts,
+    ...terminationRequestsRoutes,
+    ...managerTerminationRequestsRoutes
   ];
   return (
     <Routes>
