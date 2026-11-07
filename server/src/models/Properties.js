@@ -17,6 +17,12 @@ const propertySchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 1000,
+      default: '',
+    },
     status: {
       type: String,
       enum: ['active', 'inactive'],
@@ -31,6 +37,7 @@ const propertySchema = new mongoose.Schema(
         type: Number,
         default: 0,
       },
+      effectiveFrom: { type: Date, default: Date.now },
     },
     contractPolicy: {
       paymentDueDay: {
@@ -53,7 +60,7 @@ const propertySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
+  }
 );
 
 const Properties = mongoose.model('Property', propertySchema);

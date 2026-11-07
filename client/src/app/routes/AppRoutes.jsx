@@ -9,6 +9,8 @@ import tenantsRoutes from '../../features/tenants/routes/TenantsRoutes';
 import DashboardPage from '../../features/dashboard/pages/DashboardPage';
 import notificationsRoutes from '../../features/notifications/routes/NotificationsRoutes';
 import shortcuts from '../../features/properties/routes/RentalsRoutes';
+import terminationRequestsRoutes from '../../features/terminationrequests/routes/TerminationRequestsRoutes';
+import managerTerminationRequestsRoutes from '../../features/terminationrequests/routes/ManagerTerminationRequestsRoutes';
 export default function AppRoutes() {
   const routes = [
     ...roomsRoutes,
@@ -22,7 +24,7 @@ export default function AppRoutes() {
   ];
   return (
     <Routes>
-      <Route path="/" element={<Navigate to={'/login'} replace />} />
+      <Route path="/" element={<Navigate to="/home" replace />} />
 
       {authRoutes.map(route => (
         <Route key={route.path} path={route.path} element={route.element} />

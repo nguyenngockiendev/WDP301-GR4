@@ -1,0 +1,86 @@
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { Boxes, Wrench, Plus, ShieldCheck, CalendarClock } from 'lucide-react';
+import { toast } from 'react-toastify';
+import api from '../../shared/api/axiosClient';
+
+const money = value => `${Number(value || 0).toLocaleString('vi-VN')} đ`;
+const assetStatus = { in_stock: 'Trong kho', in_use: 'Đang sử dụng', maintenance: 'Đang bảo trì', retired: 'Ngừng sử dụng' };
+const ticketStatus = { reported: 'Mới báo', approved: 'Đã duyệt', in_progress: 'Đang xử lý', completed: 'Hoàn tất', rejected: 'Từ chối' };
+const priorityLabel = { low: 'Thấp', normal: 'Bình thường', high: 'Cao', urgent: 'Khẩn cấp' };
+
+export default function PropertyOperationsPage() {
+  const { propertyId } = useParams();
+  const [assets, setAssets] = useState([]); const [tickets, setTickets] = useState([]); const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(true); const [tab, setTab] = useState('assets');
+  const [assetForm, setAssetForm] = useState(false); const [ticketForm, setTicketForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [ticketRoom, setTicketRoom] = useState('');
+
+  async function load() {
+    setLoading(true);
+    try {
+      const [assetData, ticketData, roomData] = await Promise.all([
+        api.get(`/operations/properties/${propertyId}/assets`),
+        api.get(`/operations/properties/${propertyId}/maintenance`),
+        api.get(`/operations/properties/${propertyId}/rooms`),
+      ]);
+      setAssets(assetData.data || []); setTickets(ticketData.data || []); setRooms(roomData.data || []);
+    } catch (error) { toast.error(error.response?.data?.message || 'Không tải được thiết bị và lịch bảo trì.'); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, [propertyId]);
+
+  async function submitAsset(event) {
+    event.preventDefault(); setSaving(true);
+    const payload = Object.fromEntries(new FormData(event.currentTarget));
+    payload.purchasePrice = Number(payload.purchasePrice || 0); payload.room = payload.room || null;
+    try { await api.post(`/operations/properties/${propertyId}/assets`, payload); toast.success('Đã thêm thiết bị.'); setAssetForm(false); await load(); }
+    catch (error) { toast.error(error.response?.data?.message || 'Không thêm được thiết bị.'); }
+    finally { setSaving(false); }
+  }
+
+  async function submitTicket(event) {
+    event.preventDefault(); setSaving(true);
+    const payload = Object.fromEntries(new FormData(event.currentTarget));
+    payload.asset = payload.asset || null; payload.estimatedCost = Number(payload.estimatedCost || 0);
+    try { await api.post(`/operations/properties/${propertyId}/maintenance`, payload); toast.success('Đã ghi nhận yêu cầu bảo trì.'); setTicketForm(false); await load(); }
+    catch (error) { toast.error(error.response?.data?.message || 'Không tạo được yêu cầu bảo trì.'); }
+    finally { setSaving(false); }
+  }
+
+  async function moveTicket(ticket, status) {
+    const payload = { status };
+    if (status === 'completed') {
+      const actualCost = window.prompt('Chi phí thực tế (VNĐ)', String(ticket.estimatedCost || 0));
+      if (actualCost === null) return;
+      payload.actualCost = Number(actualCost);
+      if (!Number.isFinite(payload.actualCost) || payload.actualCost < 0) { toast.error('Chi phí phải là số không âm.'); return; }
+      const resolutionNote = window.prompt('Ghi chú xử lý', ticket.resolutionNote || '');
+      if (resolutionNote === null) return;
+      payload.resolutionNote = resolutionNote;
+    }
+    try { await api.patch(`/operations/properties/${propertyId}/maintenance/${ticket._id}`, payload); toast.success('Đã cập nhật yêu cầu.'); await load(); }
+    catch (error) { toast.error(error.response?.data?.message || 'Không cập nhật được yêu cầu.'); }
+  }
+
+  async function setAssetStatus(asset, status) {
+    try { await api.put(`/operations/properties/${propertyId}/assets/${asset._id}`, { status }); toast.success('Đã cập nhật thiết bị.'); await load(); }
+    catch (error) { toast.error(error.response?.data?.message || 'Không cập nhật được thiết bị.'); }
+  }
+
+  async function setAssetRoom(asset, roomId) {
+    try { await api.put(`/operations/properties/${propertyId}/assets/${asset._id}`, { room: roomId || null, status: roomId ? 'in_use' : 'in_stock' }); toast.success('Đã cập nhật vị trí thiết bị.'); await load(); }
+    catch (error) { toast.error(error.response?.data?.message || 'Không cập nhật được vị trí thiết bị.'); }
+  }
+
+  const activeTickets = tickets.filter(ticket => !['completed', 'rejected'].includes(ticket.status)).length;
+  return <main className="mx-auto max-w-7xl space-y-6 py-6">
+    <header className="flex flex-wrap items-end justify-between gap-4"><div><span className="text-xs font-extrabold uppercase tracking-widest text-emerald-700">VẬN HÀNH NHÀ TRỌ</span><h1 className="mt-1 text-2xl font-black text-slate-800">Thiết bị & bảo trì</h1><p className="mt-1 text-sm text-slate-500">Theo dõi tài sản theo phòng, xử lý sự cố theo từng trạng thái và lưu chi phí thực tế.</p></div><div className="flex gap-2"><button onClick={() => { setTab('assets'); setAssetForm(true); }} className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-bold text-emerald-700"><Plus size={16}/>Thêm thiết bị</button><button onClick={() => { setTab('maintenance'); setTicketForm(true); }} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-emerald-700/20"><Wrench size={16}/>Ghi nhận sự cố</button></div></header>
+    <div className="grid gap-4 sm:grid-cols-3"><div className="rounded-2xl border border-white bg-white/90 p-4 shadow-sm"><span className="text-xs font-bold uppercase text-slate-500">Tổng thiết bị</span><p className="mt-1 text-2xl font-black text-slate-800">{assets.length}</p></div><div className="rounded-2xl border border-white bg-emerald-50/80 p-4 shadow-sm"><span className="text-xs font-bold uppercase text-emerald-800">Đang sử dụng</span><p className="mt-1 text-2xl font-black text-emerald-950">{assets.filter(a => a.status === 'in_use').length}</p></div><div className="rounded-2xl border border-white bg-amber-50/80 p-4 shadow-sm"><span className="text-xs font-bold uppercase text-amber-800">Việc cần xử lý</span><p className="mt-1 text-2xl font-black text-amber-950">{activeTickets}</p></div></div>
+    <div className="flex gap-2 border-b border-slate-200"><button onClick={() => setTab('assets')} className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold ${tab === 'assets' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500'}`}><Boxes size={16}/>Danh mục thiết bị</button><button onClick={() => setTab('maintenance')} className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold ${tab === 'maintenance' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500'}`}><Wrench size={16}/>Bảo trì ({activeTickets})</button></div>
+    {loading ? <p role="status" className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">Đang tải dữ liệu…</p> : tab === 'assets' ? <section className="overflow-hidden rounded-2xl border border-white bg-white shadow-sm"><div className="flex items-center justify-between border-b p-5"><div><h2 className="font-extrabold text-slate-800">Thiết bị của nhà trọ</h2><p className="mt-1 text-xs text-slate-500">Giá mua phục vụ theo dõi tài sản, không tự cộng vào tiền thuê hoặc hóa đơn người thuê.</p></div><ShieldCheck className="text-emerald-600" size={20}/></div>{assets.length ? <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="bg-slate-50 text-[11px] uppercase text-slate-500"><tr><th className="p-4">Thiết bị</th><th className="p-4">Mã / thương hiệu</th><th className="p-4">Vị trí</th><th className="p-4">Giá mua</th><th className="p-4">Bảo hành đến</th><th className="p-4">Trạng thái</th></tr></thead><tbody>{assets.map(asset => <tr key={asset._id} className="border-t border-slate-100"><td className="p-4"><strong className="block text-slate-800">{asset.name}</strong><span className="text-xs text-slate-500">{asset.category} · {asset.brand || 'Chưa có thương hiệu'}</span></td><td className="p-4 text-slate-600">{asset.assetCode || '—'}<br/><small>{asset.model || ''}</small></td><td className="p-4"><select value={asset.room?._id||''} onChange={event=>setAssetRoom(asset,event.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"><option value="">Kho chung</option>{rooms.map(room=><option key={room._id} value={room._id}>Phòng {room.roomNumber}</option>)}</select></td><td className="p-4 font-bold text-slate-700">{money(asset.purchasePrice)}</td><td className="p-4 text-slate-600">{asset.warrantyExpiryDate ? new Date(asset.warrantyExpiryDate).toLocaleDateString('vi-VN') : '—'}</td><td className="p-4"><select value={asset.status} onChange={event => setAssetStatus(asset, event.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold"><option value="in_stock">Trong kho</option><option value="in_use">Đang sử dụng</option><option value="maintenance">Đang bảo trì</option><option value="retired">Ngừng sử dụng</option></select><span className="sr-only">{assetStatus[asset.status]}</span></td></tr>)}</tbody></table></div> : <p className="p-8 text-center text-sm text-slate-500">Chưa có thiết bị. Thêm tài sản để theo dõi vị trí, bảo hành và giá mua.</p>}</section> : <section className="space-y-3">{tickets.map(ticket => <article key={ticket._id} className="rounded-2xl border border-white bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${ticket.priority === 'urgent' || ticket.priority === 'high' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>{priorityLabel[ticket.priority]}</span><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700">{ticketStatus[ticket.status]}</span><span className="text-xs text-slate-500">Phòng {ticket.room?.roomNumber}</span></div><h3 className="mt-2 font-extrabold text-slate-800">{ticket.title}</h3><p className="mt-1 max-w-3xl text-sm text-slate-600">{ticket.description}</p><p className="mt-2 text-xs text-slate-500">{ticket.category}{ticket.asset ? ` · ${ticket.asset.name}` : ''} · Báo bởi {ticket.reportedBy?.fullName || '—'} · {new Date(ticket.createdAt).toLocaleDateString('vi-VN')}</p></div><div className="text-right text-xs text-slate-500">Dự kiến <strong className="text-slate-700">{money(ticket.estimatedCost)}</strong>{ticket.status === 'completed' && <p className="mt-1">Thực tế <strong>{money(ticket.actualCost)}</strong></p>}</div></div><div className="mt-4 flex flex-wrap gap-2">{ticket.status === 'reported' && <><button onClick={() => moveTicket(ticket, 'approved')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Duyệt yêu cầu</button><button onClick={() => moveTicket(ticket, 'rejected')} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600">Từ chối</button></>}{ticket.status === 'approved' && <button onClick={() => moveTicket(ticket, 'in_progress')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Bắt đầu xử lý</button>}{ticket.status === 'in_progress' && <button onClick={() => moveTicket(ticket, 'completed')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Hoàn tất bảo trì</button>}{ticket.resolutionNote && <span className="inline-flex items-center gap-1 px-2 text-xs text-slate-500"><CalendarClock size={14}/>{ticket.resolutionNote}</span>}</div></article>)}{!tickets.length && <p className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">Chưa có yêu cầu bảo trì nào.</p>}</section>}
+    {assetForm && <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/45 p-4"><form onSubmit={submitAsset} className="w-full max-w-2xl space-y-4 rounded-3xl bg-white p-6 shadow-2xl"><div><h2 className="text-xl font-black text-slate-800">Thêm thiết bị</h2><p className="text-sm text-slate-500">Thông tin tài sản và vị trí lưu giữ.</p></div><div className="grid gap-3 md:grid-cols-2"><label className="text-xs font-bold">Tên thiết bị<input name="name" required minLength="2" placeholder="Máy lạnh, máy bơm…" className="mt-1 w-full rounded-xl border p-3 text-sm font-normal"/></label><label className="text-xs font-bold">Nhóm thiết bị<input name="category" required placeholder="Điện lạnh, nội thất…" className="mt-1 w-full rounded-xl border p-3 text-sm font-normal"/></label><label className="text-xs font-bold">Mã tài sản<input name="assetCode" placeholder="VD: AC-101" className="mt-1 w-full rounded-xl border p-3 text-sm font-normal"/></label><label className="text-xs font-bold">Thương hiệu / model<input name="brand" placeholder="Thương hiệu" className="mt-1 w-full rounded-xl border p-3 text-sm font-normal"/></label><label className="text-xs font-bold">Gán cho phòng<select name="room" className="mt-1 w-full rounded-xl border bg-white p-3 text-sm font-normal"><option value="">Kho chung</option>{rooms.map(room => <option key={room._id} value={room._id}>Phòng {room.roomNumber}</option>)}</select></label><label className="text-xs font-bold">Giá mua (VNĐ)<input name="purchasePrice" type="number" min="0" defaultValue="0" className="mt-1 w-full rounded-xl border p-3 text-sm font-normal"/></label><label className="text-xs font-bold">Ngày mua<input name="purchaseDate" type="date" className="mt-1 w-full rounded-xl border p-3 text-sm font-normal"/></label><label className="text-xs font-bold">Hạn bảo hành<input name="warrantyExpiryDate" type="date" className="mt-1 w-full rounded-xl border p-3 text-sm font-normal"/></label><label className="text-xs font-bold md:col-span-2">Ghi chú<textarea name="note" rows="2" className="mt-1 w-full rounded-xl border p-3 text-sm font-normal"/></label></div><div className="flex justify-end gap-2"><button type="button" onClick={() => setAssetForm(false)} className="rounded-xl border px-4 py-2 text-sm font-bold">Hủy</button><button disabled={saving} className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? 'Đang lưu…' : 'Lưu thiết bị'}</button></div></form></div>}
+    {ticketForm && <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/45 p-4"><form onSubmit={submitTicket} className="w-full max-w-2xl space-y-4 rounded-3xl bg-white p-6 shadow-2xl"><div><h2 className="text-xl font-black text-slate-800">Ghi nhận yêu cầu bảo trì</h2><p className="text-sm text-slate-500">Yêu cầu sẽ chuyển theo luồng báo mới → duyệt → xử lý → hoàn tất.</p></div><div className="grid gap-3 md:grid-cols-2"><label className="text-xs font-bold">Phòng<select name="room" required className="mt-1 w-full rounded-xl border bg-white p-3 text-sm font-normal"><option value="">Chọn phòng</option>{rooms.map(room => <option key={room._id} value={room._id}>Phòng {room.roomNumber}</option>)}</select></label><label className="text-xs font-bold">Thiết bị (nếu có)<select name="asset" className="mt-1 w-full rounded-xl border bg-white p-3 text-sm font-normal"><option value="">Sự cố chung của phòng</option>{assets.filter(asset => asset.status !== 'retired').map(asset => <option key={asset._id} value={asset._id}>{asset.name}{asset.room ? ` — phòng ${asset.room.roomNumber}` : ' — kho chung'}</option>)}</select></label><label className="text-xs font-bold">Tiêu đề<input name="title" required minLength="3" placeholder="VD: Máy lạnh không hoạt động" className="mt-1 w-full rounded-xl border p-3 text-sm font-normal"/></label><label className="text-xs font-bold">Nhóm sự cố<input name="category" required placeholder="Điện, nước, thiết bị…" className="mt-1 w-full rounded-xl border p-3 text-sm font-normal"/></label><label className="text-xs font-bold">Ưu tiên<select name="priority" className="mt-1 w-full rounded-xl border bg-white p-3 text-sm font-normal"><option value="normal">Bình thường</option><option value="low">Thấp</option><option value="high">Cao</option><option value="urgent">Khẩn cấp</option></select></label><label className="text-xs font-bold">Chi phí dự kiến<input name="estimatedCost" type="number" min="0" defaultValue="0" className="mt-1 w-full rounded-xl border p-3 text-sm font-normal"/></label><label className="text-xs font-bold md:col-span-2">Mô tả<textarea name="description" required minLength="5" rows="3" className="mt-1 w-full rounded-xl border p-3 text-sm font-normal"/></label></div><div className="flex justify-end gap-2"><button type="button" onClick={() => setTicketForm(false)} className="rounded-xl border px-4 py-2 text-sm font-bold">Hủy</button><button disabled={saving} className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? 'Đang lưu…' : 'Gửi yêu cầu'}</button></div></form></div>}
+  </main>;
+}

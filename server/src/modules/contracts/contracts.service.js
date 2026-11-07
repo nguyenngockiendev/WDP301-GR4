@@ -2,6 +2,7 @@ import Contracts from '../../models/Contracts.js';
 import RentalRequests from '../../models/RentalRequests.js';
 import Rooms from '../../models/Rooms.js';
 import Users from '../../models/Users.js';
+import Properties from '../../models/Properties.js';
 import { assertPropertyAccess } from '../properties/properties.service.js';
 
 const populateFields = [
@@ -40,7 +41,10 @@ export const getContractsByProperty = async (propertyId, user) => {
 export const getContractFormOptions = async (propertyId, user) => {
   await assertPropertyAccess(user, propertyId);
 
-  const rooms = await Rooms.find({ property: propertyId }).select('roomNumber price status').sort({ roomNumber: 1 });
+  const [rooms, property] = await Promise.all([
+    Rooms.find({ property: propertyId }).select('roomNumber price status').sort({ roomNumber: 1 }),
+    Properties.findById(propertyId).select('contractPolicy'),
+  ]);
   const roomIds = rooms.map(r => r._id);
   const busyRoomIds = await Contracts.find({ room: { $in: roomIds }, status: 'active' }).distinct('room');
   const busy = new Set(busyRoomIds.map(String));
@@ -58,6 +62,7 @@ export const getContractFormOptions = async (propertyId, user) => {
     rooms: rooms.filter(r => !busy.has(String(r._id))),
     approvedRequests: approvedRequests.filter(r => r.room && r.tenant && !busy.has(String(r.room._id))),
     tenants,
+    contractPolicy: property?.contractPolicy || null,
   };
 };
 
@@ -72,6 +77,8 @@ export const createContract = async (data, user) => {
     throw { status: 404, message: 'Phòng không tồn tại' };
   }
   await assertPropertyAccess(user, room.property);
+  const property = await Properties.findById(room.property).select('contractPolicy');
+  const contractPolicy = property?.contractPolicy || {};
 
   const activeContract = await Contracts.findOne({ room: data.room, status: 'active' });
   if (activeContract) {
@@ -113,6 +120,8 @@ export const createContract = async (data, user) => {
     endDate: data.endDate,
     monthlyRent: data.monthlyRent,
     depositAmount: data.depositAmount || 0,
+    paymentDueDay: contractPolicy.paymentDueDay ?? 5,
+    paymentGraceDays: contractPolicy.paymentGraceDays ?? 3,
     status: data.status || 'active',
     createdBy: user.userId,
   });

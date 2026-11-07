@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     role: {
       type: String,
       enum: ['landlord', 'manager', 'tenant'],
@@ -49,6 +54,16 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+  },
+);
+
+// The application supports one primary landlord account per database.
+userSchema.index(
+  { role: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { role: 'landlord' },
+    name: 'one_primary_landlord',
   },
 );
 

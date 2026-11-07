@@ -10,7 +10,12 @@ const EMPTY_FILTERS = { property: '', minPrice: '', maxPrice: '' };
 export default function BrowseRooms() {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [filters, setFilters] = useState({
+    property: '',
+    minPrice: '',
+    maxPrice: '',
+    tier: '',
+  });
 
   useEffect(() => {
     fetchRooms(EMPTY_FILTERS);
@@ -49,17 +54,69 @@ export default function BrowseRooms() {
     const { name, value } = e.target;
     setFilters({ ...filters, [name]: value });
   };
+  const visibleRooms = filters.tier
+    ? rooms.filter(room => (room.tier || 'standard') === filters.tier)
+    : rooms;
 
-  const card = 'rounded-3xl bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_8px_30px_rgb(0,0,0,0.03)]';
+  const card =
+    'rounded-3xl bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_8px_30px_rgb(0,0,0,0.03)]';
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pt-2">
-      <div>
-        <h2 className="text-xl font-black text-slate-900 tracking-tight">Tìm kiếm phòng trống</h2>
-        <p className="text-xs font-semibold text-slate-400 mt-0.5">Lọc phòng đang trống theo khoảng giá thuê</p>
-      </div>
+    <div className="browse-rooms-container p-4">
+      <h2 className="mb-4">Tìm Kiếm Phòng Trọ</h2>
+      <div className="filter-section card p-3 mb-4">
+        <form onSubmit={handleSearch}>
+          <div className="row">
+            <div className="col-md-4 mb-3">
+              <label className="form-label">Giá Tối Thiểu (VNĐ)</label>
+              <input
+                type="number"
+                className="form-control"
+                name="minPrice"
+                value={filters.minPrice}
+                onChange={handleFilterChange}
+                placeholder="0"
+              />
+            </div>
+            <div className="col-md-4 mb-3">
+              <label className="form-label">Hạng phòng</label>
+              <select
+                className="form-select"
+                name="tier"
+                value={filters.tier}
+                onChange={handleFilterChange}
+              >
+                <option value="">Tất cả hạng</option>
+                <option value="basic">Cơ bản</option>
+                <option value="standard">Tiêu chuẩn</option>
+                <option value="premium">Cao cấp</option>
+              </select>
+            </div>
 
-      <form onSubmit={handleSearch} className={`${card} p-5 grid grid-cols-1 md:grid-cols-4 gap-4 items-end`}>
+            <div className="col-md-4 mb-3">
+              <label className="form-label">Giá Tối Đa (VNĐ)</label>
+              <input
+                type="number"
+                className="form-control"
+                name="maxPrice"
+                value={filters.maxPrice}
+                onChange={handleFilterChange}
+                placeholder="10000000"
+              />
+            </div>
+
+            <div className="col-md-4 d-flex align-items-end">
+              <button type="submit" className="btn btn-primary w-100">
+                Tìm Kiếm
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <form
+        onSubmit={handleSearch}
+        className={`${card} p-5 grid grid-cols-1 md:grid-cols-4 gap-4 items-end`}
+      >
         <div>
           <label className={labelCls}>Giá tối thiểu (VNĐ)</label>
           <input
@@ -72,54 +129,22 @@ export default function BrowseRooms() {
             placeholder="0"
           />
         </div>
-        <div>
-          <label className={labelCls}>Giá tối đa (VNĐ)</label>
-          <input
-            type="number"
-            min="0"
-            className={inputCls}
-            name="maxPrice"
-            value={filters.maxPrice}
-            onChange={handleFilterChange}
-            placeholder="10000000"
-          />
-        </div>
-        <button
-          type="submit"
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 active:scale-95 text-white font-extrabold text-xs shadow-md shadow-emerald-600/25 transition cursor-pointer"
-        >
-          <Search size={14} /> Tìm kiếm
-        </button>
-        <button
-          type="button"
-          onClick={handleReset}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition cursor-pointer"
-        >
-          <RotateCcw size={14} /> Đặt lại
-        </button>
       </form>
-
-      {loading ? (
+      rooms.length === 0 ? (
+      <div className={`${card} p-10 flex flex-col items-center text-slate-400`}>
+        <SearchX size={28} />
+        <p className="text-sm font-semibold mt-2">Không tìm thấy phòng nào khả dụng</p>
+      </div>
+      ) : (
+      <>
+        <p className="text-xs font-bold text-slate-500">Tìm thấy {rooms.length} phòng</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-80 rounded-3xl bg-white/70 animate-pulse" />
+          {rooms.map(room => (
+            <RoomCard key={room._id} room={room} />
           ))}
         </div>
-      ) : rooms.length === 0 ? (
-        <div className={`${card} p-10 flex flex-col items-center text-slate-400`}>
-          <SearchX size={28} />
-          <p className="text-sm font-semibold mt-2">Không tìm thấy phòng nào khả dụng</p>
-        </div>
-      ) : (
-        <>
-          <p className="text-xs font-bold text-slate-500">Tìm thấy {rooms.length} phòng</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {rooms.map(room => (
-              <RoomCard key={room._id} room={room} />
-            ))}
-          </div>
-        </>
-      )}
+      </>
+      )
     </div>
   );
 }
