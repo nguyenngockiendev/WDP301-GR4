@@ -16,6 +16,10 @@ const terminationRequestSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    moveOutDate: {
+      type: Date,
+      required: true,
+    },
     reason: {
       type: String,
       trim: true,
