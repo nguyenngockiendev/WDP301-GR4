@@ -1,22 +1,34 @@
-import React, { useEffect, useState } from 'react';
-import { Search, Plus, ChevronDown, Bell, LogOut } from 'lucide-react';
+import React from 'react';
+import { Search, Plus, ChevronDown, LogOut } from 'lucide-react';
+import NotificationBell from '../../features/notifications/components/NotificationBell';
 import { useNavigate } from 'react-router-dom';
-import api from '../../shared/api/axiosClient';
+import { useState } from 'react';
+import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 
 export default function Header() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  useEffect(() => { api.get('/auth/me').then(r => setUser(r.data.user)).catch(() => {}); }, []);
+  const { authenticated } = useNotifications();
+  const [logoutError, setLogoutError] = useState('');
 
   const handleLogout = async () => {
-    try { await api.post('/auth/logout'); } finally { navigate('/login', { replace: true }); }
+    try {
+
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      window.dispatchEvent(new Event('auth-changed'));
+      navigate('/login');
+    } catch {
+      setLogoutError('Chưa đăng xuất được. Vui lòng thử lại.');
+    }
   };
 
   return (
     <header className="h-20 bg-white/40 backdrop-blur-md px-8 flex items-center justify-between shrink-0 sticky top-0 z-20 border-b border-emerald-100/40">
       {/* Khối chọn tòa nhà */}
       <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/80 backdrop-blur-md border border-emerald-100/80 shadow-xs cursor-pointer hover:border-emerald-300 transition">
-        <span className="text-xs font-bold text-slate-800">Xin chào, {user?.fullName || 'tài khoản'}</span>
+        <span className="text-xs font-bold text-slate-800">
+          Tòa Nhà Bình An — 123 Nguyễn Trãi
+        </span>
         <ChevronDown size={14} className="text-slate-400" />
       </div>
 
@@ -36,17 +48,16 @@ export default function Header() {
         </div>
 
         {/* Nút Chuông */}
-        <button className="w-10 h-10 rounded-2xl bg-white/80 backdrop-blur-md border border-emerald-100/80 text-slate-600 hover:text-emerald-600 flex items-center justify-center transition shadow-xs cursor-pointer">
-          <Bell size={16} />
-        </button>
+        {authenticated && <NotificationBell />}
+        {logoutError && <span role="alert" className="text-sm text-status-danger">{logoutError}</span>}
 
         {/* Nút Tạo Hợp Đồng Mới (Xanh Emerald Gradient) */}
         <button
-          onClick={() => navigate(user?.role === 'manager' ? '/properties' : '/contracts')}
+          onClick={() => navigate('/contracts')}
           className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 active:scale-95 text-white text-xs font-extrabold shadow-md shadow-emerald-600/25 transition cursor-pointer"
         >
           <Plus size={16} className="stroke-[3]" />
-          <span>{user?.role === 'manager' ? 'Nhà Trọ Được Giao' : 'Tạo Hợp Đồng Mới'}</span>
+          <span>Tạo Hợp Đồng Mới</span>
         </button>
 
         {/* Nút Đăng xuất */}

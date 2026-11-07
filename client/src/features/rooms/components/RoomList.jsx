@@ -1,89 +1,115 @@
 import React, { useState } from 'react';
+import { Pencil, Ban, DoorOpen, Users } from 'lucide-react';
 import RoomStatusBadge from './RoomStatusBadge';
 import RoomStatusModal from './RoomStatusModal';
 
-export default function RoomList({ rooms, onEdit, onDeactivate }) {
+export default function RoomList({ rooms, onEdit, onDeactivate, onRefresh }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const tierNames = { basic: 'Cơ bản', standard: 'Tiêu chuẩn', premium: 'Cao cấp' };
 
-  const handleStatusChange = (room) => {
-    setSelectedRoom(room);
-    setShowStatusModal(true);
-  };
+  if (rooms.length === 0) {
+    return (
+      <div className="py-16 flex flex-col items-center text-center">
+        <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+          <DoorOpen size={26} />
+        </div>
+        <p className="text-sm font-extrabold text-slate-800">Không có phòng nào</p>
+        <p className="text-xs text-slate-400 mt-1">Thêm phòng mới hoặc thay đổi bộ lọc.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="room-list">
-      {rooms.length === 0 ? (
-        <div className="alert alert-info">Chưa có phòng nào</div>
-      ) : (
-        <div className="table-responsive">
-          <table className="table table-hover">
-            <thead className="table-light">
-              <tr>
-                <th>Số Phòng</th>
-                <th>Hạng</th>
-                <th>Diện Tích</th>
-                <th>Giá Thuê</th>
-                <th>Trạng Thái</th>
-                <th>Tiện Nghi</th>
-                <th>Hành Động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rooms.map((room) => (
-                <tr key={room._id}>
-                  <td className="fw-bold">{room.roomNumber}</td>
-                  <td><span className={`badge ${room.tier === 'premium' ? 'bg-warning text-dark' : room.tier === 'basic' ? 'bg-light text-dark' : 'bg-success'}`}>{tierNames[room.tier] || 'Tiêu chuẩn'}</span></td>
-                  <td>{room.area} m²</td>
-                  <td><strong>{Number(room.price).toLocaleString()} VNĐ</strong><small className="d-block text-muted">{room.area ? `${Math.round(Number(room.price) / Number(room.area)).toLocaleString()} đ/m²` : ''}</small></td>
-                  <td>
-                    <RoomStatusBadge
-                      status={room.status}
-                      onClick={() => handleStatusChange(room)}
-                    />
-                  </td>
-                  <td>
-                    {room.facilities?.length > 0 ? (
-                      <span className="badge bg-secondary">{room.facilities.length} tiện nghi</span>
-                    ) : (
-                      <span className="text-muted">-</span>
-                    )}
-                  </td>
-                  <td>
-                    <div className="btn-group btn-group-sm" role="group">
-                      <button
-                        className="btn btn-outline-primary"
-                        onClick={() => onEdit(room)}
-                        title="Chỉnh sửa"
-                      >
-                        ✎
-                      </button>
-                      <button
-                        className="btn btn-outline-danger"
-                        onClick={() => onDeactivate(room._id)}
-                        title="Vô hiệu hóa"
-                      >
-                        ✕
-                      </button>
+    <>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="border-b border-slate-100 text-slate-400 font-bold text-[11px] uppercase tracking-wide">
+              <th className="pb-3 px-3">Số phòng</th>
+              <th className="pb-3 px-3">Diện tích</th>
+              <th className="pb-3 px-3">Giá thuê</th>
+              <th className="pb-3 px-3">Tối đa</th>
+              <th className="pb-3 px-3">Trạng thái</th>
+              <th className="pb-3 px-3">Tiện nghi</th>
+              <th className="pb-3 px-3 text-right">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100/70 font-medium">
+            {rooms.map(room => (
+              <tr key={room._id} className="hover:bg-emerald-50/40 transition-colors">
+                <td className="py-3.5 px-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center shadow-sm shadow-emerald-500/20">
+                      <DoorOpen size={16} />
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                    <span className="font-extrabold text-slate-900 text-sm">{room.roomNumber}</span>
+                  </div>
+                </td>
+                <td className="py-3.5 px-3 text-slate-600 font-bold">{room.area} m²</td>
+                <td className="py-3.5 px-3">
+                  <span className="font-black text-slate-900">{Number(room.price || 0).toLocaleString('vi-VN')}</span>
+                  <span className="text-slate-400 font-semibold"> đ/tháng</span>
+                </td>
+                <td className="py-3.5 px-3 text-slate-600">
+                  <span className="inline-flex items-center gap-1 font-bold">
+                    <Users size={13} className="text-slate-400" />
+                    {room.maxTenants ?? 1}
+                  </span>
+                </td>
+                <td className="py-3.5 px-3">
+                  <RoomStatusBadge status={room.status} onClick={() => setSelectedRoom(room)} />
+                </td>
+                <td className="py-3.5 px-3">
+                  {room.facilities?.length > 0 ? (
+                    <div className="flex flex-wrap gap-1 max-w-[220px]">
+                      {room.facilities.slice(0, 3).map((f, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-bold">
+                          {f}
+                        </span>
+                      ))}
+                      {room.facilities.length > 3 && (
+                        <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 text-[10px] font-bold">
+                          +{room.facilities.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
+                </td>
+                <td className="py-3.5 px-3">
+                  <div className="flex justify-end gap-1.5">
+                    <button
+                      onClick={() => onEdit(room)}
+                      title="Chỉnh sửa"
+                      className="w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-center transition cursor-pointer"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => onDeactivate(room._id)}
+                      title="Vô hiệu hóa"
+                      className="w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center transition cursor-pointer"
+                    >
+                      <Ban size={14} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      {showStatusModal && selectedRoom && (
+      {selectedRoom && (
         <RoomStatusModal
           room={selectedRoom}
-          onClose={() => setShowStatusModal(false)}
+          onClose={() => setSelectedRoom(null)}
           onStatusChanged={() => {
-            setShowStatusModal(false);
+            setSelectedRoom(null);
+            onRefresh?.();
           }}
         />
       )}
-    </div>
+    </>
   );
 }

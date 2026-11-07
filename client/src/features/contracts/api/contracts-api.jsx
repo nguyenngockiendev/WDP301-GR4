@@ -5,6 +5,11 @@ const contractsAPI = {
     return api.get(`/contracts/property/${propertyId}`);
   },
 
+  // Phòng trống, yêu cầu thuê đã duyệt, danh sách người thuê cho form tạo hợp đồng
+  getFormOptions: async (propertyId) => {
+    return api.get(`/contracts/property/${propertyId}/form-options`);
+  },
+
   getContractById: async (contractId) => {
     return api.get(`/contracts/${contractId}`);
   },
