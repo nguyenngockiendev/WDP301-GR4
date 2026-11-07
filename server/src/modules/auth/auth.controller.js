@@ -32,7 +32,6 @@ const login = async (req, res) => {
       password: req.body.password,
     };
     const result = await loginUser(data);
-    req.session.user = result;
     return sendSuccess(res, 200, 'Đăng nhập thành công!', { user: result });
   } catch (error) {
     return sendError(res, error);

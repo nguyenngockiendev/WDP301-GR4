@@ -1,7 +1,9 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { getCurrentUser } from '../../shared/utils/auth';
 import {
   LayoutDashboard,
+  Bell,
   DoorOpen,
   FileSignature,
   CalendarClock,
@@ -11,46 +13,58 @@ import {
   ChevronLeft,
   Building2,
   Sparkles,
+  ClipboardList,
 } from 'lucide-react';
 
 export default function Sidebar({ isCollapsed, setIsCollapsed }) {
+  const currentUser = getCurrentUser();
+  const isTenant = currentUser?.role?.toLowerCase() === 'tenant';
   const menuSections = [
     {
       title: 'TỔNG QUAN',
       items: [
         { to: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+        { to: '/notifications', label: 'Thông báo', icon: Bell },
       ],
     },
     {
       title: 'QUẢN LÝ CHO THUÊ',
       items: [
-        { to: '/', label: 'Danh sách phòng', icon: DoorOpen },
-        { to: '/', label: 'Hợp đồng thuê', icon: FileSignature },
+        { to: '/rooms', label: 'Danh sách phòng', icon: DoorOpen },
+        { to: '/contracts', label: 'Hợp đồng thuê', icon: FileSignature },
         {
-          to: '/',
+          to: '/rental-requests',
           label: 'Yêu cầu đặt phòng',
           icon: CalendarClock,
           badge: '2',
         },
-        { to: '/', label: 'Khách thuê', icon: Users },
+        { to: '/tenants', label: 'Khách thuê', icon: Users },
+        ...(isTenant
+          ? []
+          : [
+            {
+              to: '/manager/checkout-requests',
+              label: 'Yêu cầu trả phòng',
+              icon: ClipboardList,
+            },
+          ]),
       ],
     },
     {
       title: 'DỊCH VỤ & TÀI CHÍNH',
       items: [
-        { to: '/', label: 'Số điện & nước', icon: Zap },
-        { to: '/', label: 'Hóa đơn tiền phòng', icon: ReceiptText },
+        // Chưa có trang -> tạm vô hiệu hóa để không bị đá về /login
+        { to: null, label: 'Số điện & nước', icon: Zap },
+        { to: null, label: 'Hóa đơn tiền phòng', icon: ReceiptText },
       ],
     },
   ];
 
   return (
     <aside
-      className={`my-3 ml-3 h-[calc(100vh-1.5rem)] rounded-3xl bg-white/80 backdrop-blur-2xl border border-white/90 flex flex-col justify-between shrink-0 p-3 select-none shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-300 ease-in-out relative z-30 ${
-        isCollapsed ? 'w-20' : 'w-64'
-      }`}
+      className={`my-3 ml-3 h-[calc(100vh-1.5rem)] rounded-3xl bg-white/80 backdrop-blur-2xl border border-white/90 flex flex-col justify-between shrink-0 p-3 select-none shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-300 ease-in-out relative z-30 ${isCollapsed ? 'w-20' : 'w-64'
+        }`}
     >
-      {/* NÚT TOGGLE THU GỌN / MỞ RỘNG (GẮN NGAY MÉP BORDER - SIÊU HIỆN ĐẠI & KHÔNG BỊ LỆCH) */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="absolute -right-3.5 top-7 w-7 h-7 rounded-full bg-white border border-emerald-100 shadow-[0_2px_10px_rgba(0,0,0,0.08)] flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer z-50 group"
@@ -58,9 +72,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       >
         <ChevronLeft
           size={14}
-          className={`stroke-[2.5] transition-transform duration-300 text-slate-500 group-hover:text-emerald-600 ${
-            isCollapsed ? 'rotate-180 text-emerald-600' : ''
-          }`}
+          className={`stroke-[2.5] transition-transform duration-300 text-slate-500 group-hover:text-emerald-600 ${isCollapsed ? 'rotate-180 text-emerald-600' : ''
+            }`}
         />
       </button>
 
@@ -68,9 +81,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Brand Header */}
         <div
-          className={`flex items-center gap-3 pt-2 pb-4 mb-2 border-b border-emerald-50/80 ${
-            isCollapsed ? 'justify-center px-0' : 'px-2'
-          }`}
+          className={`flex items-center gap-3 pt-2 pb-4 mb-2 border-b border-emerald-50/80 ${isCollapsed ? 'justify-center px-0' : 'px-2'
+            }`}
         >
           {/* Logo Icon cách điệu Gradient */}
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/25 shrink-0 relative overflow-hidden group">
@@ -112,19 +124,30 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
               {/* Các liên kết trong nhóm */}
               {section.items.map((item) => {
                 const Icon = item.icon;
+                if (!item.to) {
+                  return (
+                    <div
+                      key={item.label}
+                      title={`${item.label} (sắp có)`}
+                      className={`flex items-center rounded-2xl text-xs font-bold text-slate-300 cursor-not-allowed ${isCollapsed ? 'w-11 h-11 justify-center mx-auto' : 'gap-3 px-3.5 py-2.5'
+                        }`}
+                    >
+                      <Icon size={18} className="shrink-0" />
+                      {!isCollapsed && <span className="whitespace-nowrap flex-1">{item.label}</span>}
+                    </div>
+                  );
+                }
                 return (
                   <NavLink
-                    key={item.to}
+                    key={item.label}
                     to={item.to}
                     className={({ isActive }) =>
-                      `flex items-center rounded-2xl text-xs font-bold transition-all duration-200 group relative ${
-                        isCollapsed
-                          ? 'w-11 h-11 justify-center mx-auto'
-                          : 'gap-3 px-3.5 py-2.5'
-                      } ${
-                        isActive
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-600/25 font-extrabold'
-                          : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70'
+                      `flex items-center rounded-2xl text-xs font-bold transition-all duration-200 group relative ${isCollapsed
+                        ? 'w-11 h-11 justify-center mx-auto'
+                        : 'gap-3 px-3.5 py-2.5'
+                      } ${isActive
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-600/25 font-extrabold'
+                        : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70'
                       }`
                     }
                   >
@@ -132,11 +155,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
                       <>
                         <Icon
                           size={18}
-                          className={`shrink-0 transition-transform duration-200 ${
-                            isActive
+                          className={`shrink-0 transition-transform duration-200 ${isActive
                               ? 'text-white scale-105'
                               : 'text-slate-400 group-hover:text-emerald-600 group-hover:scale-110'
-                          }`}
+                            }`}
                         />
 
                         {!isCollapsed && (
@@ -148,11 +170,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
                         {/* Badge thông báo nếu có */}
                         {item.badge && (
                           <span
-                            className={`shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-full transition ${
-                              isActive
+                            className={`shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-full transition ${isActive
                                 ? 'bg-white text-emerald-700 shadow-xs'
                                 : 'bg-emerald-100 text-emerald-800'
-                            } ${isCollapsed ? 'absolute -top-1 -right-1 ring-2 ring-white text-[9px] w-4 h-4 flex items-center justify-center p-0' : ''}`}
+                              } ${isCollapsed ? 'absolute -top-1 -right-1 ring-2 ring-white text-[9px] w-4 h-4 flex items-center justify-center p-0' : ''}`}
                           >
                             {item.badge}
                           </span>
@@ -203,9 +224,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
 
         {/* Thông tin Quản lý */}
         <div
-          className={`flex items-center gap-2.5 p-1.5 rounded-2xl hover:bg-slate-50/80 transition cursor-pointer group ${
-            isCollapsed ? 'justify-center' : 'px-2'
-          }`}
+          className={`flex items-center gap-2.5 p-1.5 rounded-2xl hover:bg-slate-50/80 transition cursor-pointer group ${isCollapsed ? 'justify-center' : 'px-2'
+            }`}
           title="Tài khoản Quản lý Tòa nhà"
         >
           <div className="relative shrink-0">

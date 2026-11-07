@@ -57,7 +57,10 @@ export default function SubmitCheckoutRequest() {
   const handleSubmit = async (payload) => {
     try {
       setLoading(true);
-      await terminationRequestsAPI.create(payload);
+      await terminationRequestsAPI.create({
+        moveOutDate: payload.moveOutDate,
+        reason: payload.reason,
+      });
       toast.success('Gửi yêu cầu trả phòng thành công');
       navigate('/checkout-requests');
     } catch (error) {
