@@ -42,6 +42,18 @@ const contractSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    paymentDueDay: {
+      type: Number,
+      min: 1,
+      max: 28,
+      default: 5,
+    },
+    paymentGraceDays: {
+      type: Number,
+      min: 0,
+      max: 60,
+      default: 3,
+    },
     status: {
       type: String,
       enum: ['active', 'expired', 'terminated', 'draft'],
@@ -55,7 +67,7 @@ const contractSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
+  }
 );
 
 const Contracts = mongoose.model('Contract', contractSchema);

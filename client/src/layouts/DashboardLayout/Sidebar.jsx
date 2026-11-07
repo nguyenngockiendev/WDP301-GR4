@@ -13,12 +13,15 @@ import {
   ChevronLeft,
   Building2,
   Sparkles,
+  Settings,
   ClipboardList,
 } from 'lucide-react';
 
 export default function Sidebar({ isCollapsed, setIsCollapsed }) {
   const currentUser = getCurrentUser();
   const isTenant = currentUser?.role?.toLowerCase() === 'tenant';
+  const isLandlord = currentUser?.role === 'landlord';
+  const isManager = currentUser?.role === 'manager';
   const menuSections = [
     {
       title: 'TỔNG QUAN',
@@ -30,6 +33,11 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       title: 'QUẢN LÝ CHO THUÊ',
       items: [
+        ...(isLandlord || isManager ? [{ to: '/properties', label: isManager ? 'Nhà trọ được giao' : 'Nhà trọ', icon: Building2 }] : []),
+        ...(isLandlord ? [
+          { to: '/managers', label: 'Quản lý viên', icon: Users },
+          { to: '/settings', label: 'Giá và chính sách', icon: Settings },
+        ] : []),
         { to: '/rooms', label: 'Danh sách phòng', icon: DoorOpen },
         { to: '/contracts', label: 'Hợp đồng thuê', icon: FileSignature },
         {
@@ -238,10 +246,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
           {!isCollapsed && (
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-xs font-extrabold text-slate-800 truncate">
-                Ban Quản Lý
+                {currentUser?.fullName || currentUser?.username || 'Tài khoản'}
               </span>
               <span className="text-[10px] font-medium text-slate-400 truncate">
-                admin@havenstay.vn
+                {currentUser?.email || currentUser?.role || ''}
               </span>
             </div>
           )}

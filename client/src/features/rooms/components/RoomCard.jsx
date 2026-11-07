@@ -8,6 +8,7 @@ export default function RoomCard({ room }) {
   const handleViewDetails = () => {
     navigate(`/rooms/${room._id}`);
   };
+  const tierNames = { basic: 'Cơ bản', standard: 'Tiêu chuẩn', premium: 'Cao cấp' };
 
   return (
     <div className="h-full flex flex-col rounded-3xl bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_8px_30px_rgb(0,0,0,0.03)] overflow-hidden hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition">
@@ -19,10 +20,11 @@ export default function RoomCard({ room }) {
         </div>
       )}
 
-      <div className="p-5 flex flex-col flex-1">
-        <h5 className="text-base font-black text-slate-900">Phòng {room.roomNumber}</h5>
-        <p className="text-[11px] font-semibold text-slate-400 mt-0.5 flex items-center gap-1 truncate">
-          <Building2 size={12} /> {room.property?.name || 'Tòa nhà'}
+      <div className="card-body">
+        <div className="d-flex justify-content-between align-items-start gap-2"><h5 className="card-title">Phòng {room.roomNumber}</h5><span className="badge bg-success-subtle text-success-emphasis">{tierNames[room.tier] || 'Tiêu chuẩn'}</span></div>
+
+        <p className="card-text text-muted mb-2">
+          <small>{room.property?.name || 'Tòa nhà'}</small>
         </p>
 
         <p className="mt-3 text-lg font-black text-emerald-600">
@@ -38,6 +40,7 @@ export default function RoomCard({ room }) {
             <Users size={12} /> Tối đa {room.maxTenants || 1} người
           </span>
         </div>
+        <p className="small text-muted">Khoảng {room.area ? Math.round(Number(room.price) / Number(room.area)).toLocaleString('vi-VN') : '—'} đ/m²/tháng · Điện, nước tính theo mức sử dụng.</p>
 
         {room.facilities && room.facilities.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1">

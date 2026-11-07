@@ -2,23 +2,12 @@ import Rooms from '../../models/Rooms.js';
 import Contracts from '../../models/Contracts.js';
 import { assertPropertyAccess } from '../properties/properties.service.js';
 
-/** Lấy phòng và kiểm tra user có quyền với nhà trọ chứa phòng. */
-const findRoomWithAccess = async (roomId, user) => {
-  const room = await Rooms.findById(roomId);
-  if (!room) {
-    throw { status: 404, message: 'Phòng không tồn tại' };
-  }
-  await assertPropertyAccess(user, room.property);
-  return room;
-};
-
-export const getRoomsByProperty = async (propertyId, user) => {
-  await assertPropertyAccess(user, propertyId);
+export const getRoomsByProperty = async propertyId => {
   const rooms = await Rooms.find({ property: propertyId }).populate('property');
   return rooms;
 };
 
-export const getRoomById = async (roomId) => {
+export const getRoomById = async roomId => {
   const room = await Rooms.findById(roomId).populate('property');
   if (!room) {
     throw { status: 404, message: 'Phòng không tồn tại' };
@@ -26,7 +15,7 @@ export const getRoomById = async (roomId) => {
   return room;
 };
 
-export const createRoom = async (data, user) => {
+export const createRoom = async data => {
   const { property, roomNumber } = data;
   await assertPropertyAccess(user, property);
 
@@ -75,8 +64,11 @@ export const updateRoomStatus = async (roomId, status, user) => {
   return room;
 };
 
-export const deactivateRoom = async (roomId, user) => {
-  const room = await findRoomWithAccess(roomId, user);
+export const deactivateRoom = async roomId => {
+  const room = await Rooms.findById(roomId);
+  if (!room) {
+    throw { status: 404, message: 'Phòng không tồn tại' };
+  }
 
   const activeContract = await Contracts.findOne({ room: roomId, status: 'active' });
   if (activeContract) {
@@ -88,17 +80,41 @@ export const deactivateRoom = async (roomId, user) => {
   return room;
 };
 
-export const searchAvailableRooms = async (filters) => {
+export const searchAvailableRooms = async filters => {
   const query = { status: 'available' };
 
   if (filters.property) {
     query.property = filters.property;
   }
 
-  if (filters.minPrice || filters.maxPrice) {
+  const minPrice =
+    filters.minPrice === undefined || filters.minPrice === ''
+      ? undefined
+      : Number(filters.minPrice);
+  const maxPrice =
+    filters.maxPrice === undefined || filters.maxPrice === ''
+      ? undefined
+      : Number(filters.maxPrice);
+  if (minPrice !== undefined && !Number.isFinite(minPrice)) {
+    throw { status: 400, message: 'Giá tối thiểu không hợp lệ.' };
+  }
+  if (maxPrice !== undefined && !Number.isFinite(maxPrice)) {
+    throw { status: 400, message: 'Giá tối đa không hợp lệ.' };
+  }
+  if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
+    throw { status: 400, message: 'Giá tối thiểu không được lớn hơn giá tối đa.' };
+  }
+  if (minPrice !== undefined || maxPrice !== undefined) {
     query.price = {};
-    if (filters.minPrice) query.price.$gte = Number(filters.minPrice);
-    if (filters.maxPrice) query.price.$lte = Number(filters.maxPrice);
+    if (minPrice !== undefined) query.price.$gte = minPrice;
+    if (maxPrice !== undefined) query.price.$lte = maxPrice;
+  }
+
+  if (filters.tier) {
+    if (!['basic', 'standard', 'premium'].includes(filters.tier)) {
+      throw { status: 400, message: 'Hạng phòng không hợp lệ.' };
+    }
+    query.tier = filters.tier;
   }
 
   const rooms = await Rooms.find(query).populate('property');

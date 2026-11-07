@@ -1,0 +1,139 @@
+/* Haven Stay - Homepage Design System & Animation Engine */
+
+:root {
+  --haven-green-deep: #063f31;
+  --haven-green-darker: #022c22;
+  --haven-emerald: #098b6c;
+  --haven-emerald-hover: #077a5e;
+  --haven-teal: #2dd4bf;
+  --haven-mint-bg: #eaf4f4;
+  --haven-input-bg: #edf3fc;
+  --haven-slate-text: #0f172a;
+  --haven-muted: #64748b;
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Keyframe Animations */
+@keyframes havenFloatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(0.5deg);
+  }
+}
+
+@keyframes havenFloatReverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(8px) rotate(-0.5deg);
+  }
+}
+
+@keyframes havenPulseGlow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes havenFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes havenDrawPath {
+  from {
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes havenShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Animation Classes */
+.animate-float-slow {
+  animation: havenFloatSlow 6s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: havenFloatReverse 7s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: havenPulseGlow 4s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: havenFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-chart-line {
+  stroke-dasharray: 1000;
+  animation: havenDrawPath 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Glassmorphism Accents */
+.haven-glass {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.haven-glass-dark {
+  background: rgba(6, 63, 49, 0.85);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Card Hover 3D Micro-interactions */
+.haven-interactive-card {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.haven-interactive-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px -15px rgba(6, 63, 49, 0.12);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #098b6c;
+}
