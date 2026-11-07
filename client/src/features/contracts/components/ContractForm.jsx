@@ -65,6 +65,13 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
     setValue('representative', req.tenant._id, { shouldValidate: true });
     if (req.room.price) setValue('monthlyRent', req.room.price, { shouldValidate: true });
     if (req.expectedDate) setValue('startDate', toInputDate(req.expectedDate));
+    applyDepositDefault(req.room);
+  };
+
+  const applyDepositDefault = room => {
+    if (!room || watch('depositAmount') !== '') return;
+    const months = Number(options.contractPolicy?.depositMonths ?? 1);
+    setValue('depositAmount', Number(room.price || 0) * months, { shouldValidate: true });
   };
 
   // Chọn phòng -> gợi ý giá thuê theo giá phòng
@@ -72,6 +79,7 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
     setValue('room', roomId, { shouldValidate: true });
     const room = options.rooms.find(r => r._id === roomId);
     if (room?.price && !watch('monthlyRent')) setValue('monthlyRent', room.price, { shouldValidate: true });
+    applyDepositDefault(room);
   };
 
   const moneyLocked = isEdit && contract.status !== 'draft';
@@ -109,6 +117,15 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
       }
     >
       <form id="contract-form" onSubmit={handleSubmit(submit)} className="space-y-4">
+        {!isEdit && options.contractPolicy && (
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+            <p className="text-[11px] font-extrabold uppercase tracking-wide text-emerald-800">Điều khoản mặc định</p>
+            {options.contractPolicy.policyNote && <p className="mt-1 whitespace-pre-wrap text-xs text-emerald-950">{options.contractPolicy.policyNote}</p>}
+            <p className="mt-2 text-[11px] text-emerald-800">
+              Hạn thanh toán ngày {options.contractPolicy.paymentDueDay ?? 5} hàng tháng · Gia hạn {options.contractPolicy.paymentGraceDays ?? 3} ngày.
+            </p>
+          </div>
+        )}
         {!isEdit && (
           <>
             {options.approvedRequests.length > 0 && (
