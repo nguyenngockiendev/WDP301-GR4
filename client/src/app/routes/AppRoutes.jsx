@@ -6,9 +6,10 @@ import contractsRoutes from '../../features/contracts/routes/ContractsRoutes';
 import rentalsRoutes from '../../features/rentals/routes/RentalsRoutes';
 import tenantsRoutes from '../../features/tenants/routes/TenantsRoutes';
 import DashboardPage from '../../features/dashboard/pages/DashboardPage';
+import terminationRequestsRoutes from '../../features/terminationrequests/routes/TerminationRequestsRoutes';
 
 export default function AppRoutes() {
-  const routes = [...roomsRoutes, ...contractsRoutes, ...rentalsRoutes, ...tenantsRoutes];
+  const routes = [...roomsRoutes, ...contractsRoutes, ...rentalsRoutes, ...tenantsRoutes,...terminationRequestsRoutes];
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
