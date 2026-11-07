@@ -14,8 +14,10 @@ import {
   Sparkles,
   Settings,
 } from 'lucide-react';
+import { getCurrentUser } from '../../shared/utils/auth';
 
-export default function Sidebar({ isCollapsed, setIsCollapsed, user }) {
+export default function Sidebar({ isCollapsed, setIsCollapsed, user: providedUser }) {
+  const user = providedUser || getCurrentUser();
   const isLandlord = user?.role === 'landlord';
   const isManager = user?.role === 'manager';
   const menuSections = [

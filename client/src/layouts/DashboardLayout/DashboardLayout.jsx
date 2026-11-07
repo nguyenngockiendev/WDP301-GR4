@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
-import { Outlet, useOutletContext } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { NotificationsProvider } from '../../features/notifications/hooks/useNotifications';
 
 export default function DashboardLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { user } = useOutletContext();
 
   return (
     <NotificationsProvider>
@@ -24,13 +23,13 @@ export default function DashboardLayout() {
       </div>
 
       {/* Sidebar bên trái có nút thu gọn */}
-      <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} user={user} />
+      <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
 
       {/* Khung nội dung chính bên phải */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto px-8 pb-8">
-          <Outlet context={{ user }} />
+          <Outlet />
         </main>
       </div>
     </div>

@@ -6,47 +6,30 @@ import roomsRoutes from '../../features/rooms/routes/RoomsRoutes';
 import contractsRoutes from '../../features/contracts/routes/ContractsRoutes';
 import rentalsRoutes from '../../features/rentals/routes/RentalsRoutes';
 import tenantsRoutes from '../../features/tenants/routes/TenantsRoutes';
-import notificationsRoutes from '../../features/notifications/routes/NotificationsRoutes';
-import propertyShortcuts from '../../features/properties/routes/RentalsRoutes';
 import DashboardPage from '../../features/dashboard/pages/DashboardPage';
-import PropertiesHome from '../../features/landlord/PropertiesHome';
-import ManagersPage from '../../features/landlord/ManagersPage';
-import SettingsPage from '../../features/landlord/SettingsPage';
-import HomePage from '../../features/home/HomePage';
-import PropertyOperationsPage from '../../features/landlord/PropertyOperationsPage';
-
+import notificationsRoutes from '../../features/notifications/routes/NotificationsRoutes';
+import shortcuts from '../../features/properties/routes/RentalsRoutes';
 export default function AppRoutes() {
-  const nestedRoutes = [
-    ...roomsRoutes.filter(route => route.path !== '/browse-rooms'),
+  const routes = [
+    ...roomsRoutes,
     ...contractsRoutes,
     ...rentalsRoutes,
     ...tenantsRoutes,
     ...notificationsRoutes,
-    ...propertyShortcuts,
+    ...shortcuts,
   ];
-
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<Navigate to="/home" replace />} />
+
       {authRoutes.map(route => (
-        <Route key={route.path} path={route.path} element={route.element} />
-      ))}
-      {roomsRoutes.filter(route => route.path === '/browse-rooms').map(route => (
         <Route key={route.path} path={route.path} element={route.element} />
       ))}
 
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route element={<ProtectedRoute roles={['landlord', 'manager']} />}>
-            <Route path="/properties" element={<PropertiesHome />} />
-            <Route path="/properties/:propertyId/operations" element={<PropertyOperationsPage />} />
-          </Route>
-          <Route element={<ProtectedRoute roles={['landlord']} />}>
-            <Route path="/managers" element={<ManagersPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Route>
-          {nestedRoutes.map(route => (
+          <Route path="dashboard" element={<DashboardPage />} />
+          {routes.map(route => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}
         </Route>
