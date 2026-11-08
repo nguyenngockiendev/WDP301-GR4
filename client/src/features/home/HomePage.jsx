@@ -34,6 +34,7 @@ import { clearAuth, getCurrentUser } from '../../shared/utils/auth';
 
 export default function HomePage() {
   const [user, setUser] = useState(getCurrentUser);
+  const isStaff = user?.role === 'landlord' || user?.role === 'manager';
   const accountPath = user?.role === 'tenant' ? '/browse-rooms' : '/dashboard';
   const accountLabel = user?.role === 'tenant' ? 'Tìm phòng' : 'Bảng điều khiển';
   useEffect(() => {
@@ -72,13 +73,32 @@ export default function HomePage() {
   const waterRate = 20000;
   const totalCost = roomBasePrice + kwh * electricRate + waterM3 * waterRate;
 
-  // Dữ liệu tòa nhà & phòng thật từ API (/properties/browse)
-  const buildings = useMemo(() => properties.map(toBuilding), [properties]);
+  const [buildings, setBuildings] = useState([]);
+  const [loadingBuildings, setLoadingBuildings] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    api.get('/properties/public', { signal: controller.signal })
+      .then(response => {
+        if (!controller.signal.aborted) setBuildings(response.data || []);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setLoadError('Không tải được dữ liệu nhà trọ. Vui lòng tải lại trang.');
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingBuildings(false);
+      });
+    return () => controller.abort();
+  }, []);
+
   const totalRoomsAll = buildings.reduce((sum, b) => sum + b.totalRooms, 0);
 
   // Active Building Object
   const currentBuilding =
-    buildings.find(b => b.id === activeBuildingId) || buildings[0] || EMPTY_BUILDING;
+    buildings.find(b => b.id === activeBuildingId) || buildings[0];
 
   // Filtered rooms inside the active building
   const filteredRooms =
@@ -298,7 +318,7 @@ export default function HomePage() {
                   </div>
 
                   <Link
-                    to={primaryPath}
+                    to={isStaff ? accountPath : '/browse-rooms'}
                     className="px-3.5 py-1.5 rounded-xl bg-[#098b6c] text-white text-xs font-bold shadow-sm hover:bg-[#077a5e] transition-colors flex items-center gap-1.5"
                   >
                     <span>{isStaff ? '+ Quản Lý Tòa Nhà' : 'Tìm phòng'}</span>
@@ -506,7 +526,7 @@ export default function HomePage() {
           {/* BỘ CHỌN TÒA NHÀ (TABS CHỌN TÒA) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
             {buildings.map(bld => {
-              const isActive = bld.id === activeBuildingId;
+              const isActive = bld.id === currentBuilding.id;
               return (
                 <button
                   key={bld.id}
@@ -1194,7 +1214,7 @@ export default function HomePage() {
                   to={user ? accountPath : "/login"}
                   className="px-8 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold border border-white/15 transition-all"
                 >
-                  {primaryLabel}
+                  {user ? accountLabel : 'Đăng nhập'}
                 </Link>
               </div>
             </div>
