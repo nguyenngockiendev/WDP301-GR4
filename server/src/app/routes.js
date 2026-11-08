@@ -13,6 +13,7 @@ import propertiesRoutes from '../modules/properties/properties.route.js';
 import terminationRequestsRoutes from '../modules/terminationrequests/terminationrequests.route.js';
 import contractTemplatesRoutes from '../modules/contracttemplates/contracttemplates.route.js';
 import managerAssignmentsRoutes from '../modules/managerassignments/managerassignments.route.js';
+import utilityReadingsRoutes from '../modules/utility-readings/utility-readings.route.js';
 
 const router = Router();
 
@@ -29,5 +30,6 @@ router.use('/properties', propertiesRoutes);
 router.use('/termination-requests', terminationRequestsRoutes);
 router.use('/contract-templates', contractTemplatesRoutes);
 router.use('/manager-assignments', managerAssignmentsRoutes);
+router.use('/utility-readings', utilityReadingsRoutes);
 
 export default router;

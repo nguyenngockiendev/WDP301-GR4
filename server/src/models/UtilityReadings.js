@@ -8,7 +8,7 @@ const utilityReadingSchema = new mongoose.Schema(
       required: true,
     },
     billingMonth: {
-      type: String, // Định dạng "YYYY-MM"
+      type: String,
       required: true,
     },
     oldElectricity: {
@@ -51,6 +51,8 @@ const utilityReadingSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+utilityReadingSchema.index({ room: 1, billingMonth: 1 }, { unique: true });
 
 const UtilityReadings = mongoose.model('UtilityReading', utilityReadingSchema);
 
