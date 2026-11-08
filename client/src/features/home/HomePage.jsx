@@ -1,3 +1,4 @@
+import RoomImage from '../rooms/components/RoomImage';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -583,7 +584,7 @@ export default function HomePage() {
                 >
                   {/* Ảnh phòng */}
                   <div className="relative h-56 overflow-hidden">
-                    <img
+                    <RoomImage
                       src={room.image}
                       alt={room.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"

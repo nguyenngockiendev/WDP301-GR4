@@ -66,7 +66,7 @@ export const getPublicProperties = async () => {
         id: String(room._id), roomNumber: room.roomNumber, name: room.name || room.roomNumber,
         floor: room.floor ?? 1, tier: ({ basic: 'Cơ bản', standard: 'Tiêu chuẩn', premium: 'Cao cấp' })[room.tier],
         area: room.area + 'm²', price: room.price, status: room.status,
-        image: room.images?.[0] || '/images/haven-room-1.jpg', amenities: room.facilities || [],
+        image: room.images?.[0] || '', amenities: room.facilities || [],
       })),
     };
   });
