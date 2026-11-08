@@ -2,6 +2,10 @@ import mongoose from 'mongoose';
 
 const propertySchema = new mongoose.Schema(
   {
+    image: { type: String, default: '' },
+    district: { type: String, default: '' },
+    code: { type: String, default: '' },
+    totalFloors: { type: Number, default: 1 },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

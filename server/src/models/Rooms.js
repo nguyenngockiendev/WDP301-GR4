@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 
 const roomSchema = new mongoose.Schema(
   {
+    name: { type: String, trim: true },
+    floor: { type: Number, default: 1, min: 0 },
     property: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Property',
