@@ -169,10 +169,37 @@ export const updateContract = async (contractId, data, user) => {
     }
   }
 
+  const previousStatus = contract.status;
+
+  if (data.status === 'active' && previousStatus !== 'active') {
+    const otherActive = await Contracts.exists({ room: contract.room, status: 'active', _id: { $ne: contract._id } });
+    if (otherActive) {
+      throw { status: 400, message: 'Phòng này đã có hợp đồng hoạt động khác' };
+    }
+  }
+
   for (const field of EDITABLE_FIELDS) {
     if (data[field] !== undefined) contract[field] = data[field];
   }
   await contract.save();
+
+  // Đồng bộ trạng thái phòng theo trạng thái hợp đồng
+  if (contract.status !== previousStatus) {
+    const room = await Rooms.findById(contract.room);
+    if (room) {
+      if (contract.status === 'active' && room.status !== 'occupied') {
+        room.status = 'occupied';
+        await room.save();
+      } else if (
+        previousStatus === 'active' &&
+        ['expired', 'terminated'].includes(contract.status) &&
+        room.status === 'occupied'
+      ) {
+        room.status = 'available';
+        await room.save();
+      }
+    }
+  }
 
   return contract.populate(populateFields);
 };
