@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Plus, Search, DoorOpen, CheckCircle2, Users, Wrench } from 'lucide-react';
 import RoomList from '../components/RoomList';
@@ -11,11 +11,14 @@ const FILTERS = [{ value: 'all', label: 'Tất cả' }, ...Object.entries(ROOM_S
 
 export default function ManageRooms() {
   const { propertyId } = useParams();
+  const [searchParams] = useSearchParams();
+  const query = searchParams.get('q') || '';
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
-  const [keyword, setKeyword] = useState('');
+  const [keyword, setKeyword] = useState(query);
+  useEffect(() => { setKeyword(query); }, [query, propertyId]);
   const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {

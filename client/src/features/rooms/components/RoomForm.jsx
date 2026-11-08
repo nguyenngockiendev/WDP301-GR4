@@ -3,15 +3,10 @@ import { useForm } from 'react-hook-form';
 import { Plus, X } from 'lucide-react';
 import Modal, { btnPrimary, btnGhost, inputCls, labelCls } from './Modal';
 
-const emptyRoom = {
-  roomNumber: '',
-  area: '',
-  price: '',
-  maxTenants: 1,
-  facilities: [],
-  description: '',
-  images: [],
-};
+const formValues = room => ({
+  roomNumber: room?.roomNumber || '', area: room?.area ?? '', price: room?.price ?? '',
+  maxTenants: room?.maxTenants ?? 1, description: room?.description || '',
+});
 
 export default function RoomForm({ room, onSubmit, onCancel }) {
   const {
@@ -19,13 +14,13 @@ export default function RoomForm({ room, onSubmit, onCancel }) {
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
-  } = useForm({ defaultValues: room || emptyRoom });
+  } = useForm({ defaultValues: formValues(room) });
 
   const [facilities, setFacilities] = useState(room?.facilities || []);
   const [facilityInput, setFacilityInput] = useState('');
 
   useEffect(() => {
-    reset(room || emptyRoom);
+    reset(formValues(room));
     setFacilities(room?.facilities || []);
   }, [room, reset]);
 
@@ -35,7 +30,10 @@ export default function RoomForm({ room, onSubmit, onCancel }) {
     setFacilityInput('');
   };
 
-  const onSubmitForm = data => onSubmit({ ...data, facilities });
+  const onSubmitForm = data => onSubmit({
+    ...formValues(data), roomNumber: data.roomNumber.trim(),
+    area: Number(data.area), price: Number(data.price), maxTenants: Number(data.maxTenants), facilities,
+  });
 
   const err = name =>
     errors[name] && <p className="mt-1 text-[11px] font-semibold text-rose-500">{errors[name].message}</p>;
