@@ -16,6 +16,10 @@ const contractSchema = new mongoose.Schema(
       ref: 'ContractTemplate',
     },
     // Bản lưu tên + nội dung mẫu lúc lập hợp đồng (sửa mẫu sau không ảnh hưởng hợp đồng cũ)
+    utilityRateSnapshot: {
+      electricityPrice: Number,
+      waterPrice: Number,
+    },
     templateTitle: {
       type: String,
       trim: true,

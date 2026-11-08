@@ -63,6 +63,7 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
       .then(res => {
         setOptions(res.data || { rooms: [], approvedRequests: [], tenants: [] });
         setOptionsLoaded(true);
+        if (!isEdit && res.data?.templates?.length === 1) setValue('template', res.data.templates[0]._id);
       })
       .catch(err => toast.error(err.response?.data?.message || 'Không tải được danh sách phòng / người thuê'))
       .finally(() => setLoadingOptions(false));
@@ -101,8 +102,15 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
   const handlePickRoom = roomId => {
     setValue('room', roomId, { shouldValidate: true });
     const room = options.rooms.find(r => r._id === roomId);
-    if (room?.price && !watch('monthlyRent')) setValue('monthlyRent', room.price, { shouldValidate: true });
+    if (room?.price) setValue('monthlyRent', room.price, { shouldValidate: true });
   };
+
+  const monthlyRent = watch('monthlyRent');
+  useEffect(() => {
+    if (!isEdit && optionsLoaded && monthlyRent !== '') {
+      setValue('depositAmount', Number(monthlyRent) * Number(options.contractPolicy?.depositMonths ?? 1));
+    }
+  }, [monthlyRent, optionsLoaded, options.contractPolicy?.depositMonths, isEdit, setValue]);
 
   const moneyLocked = isEdit && contract.status !== 'draft';
 
@@ -144,13 +152,16 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
       footer={
         <>
           <button type="button" className={btnGhost} onClick={onCancel}>Hủy</button>
-          <button type="submit" form="contract-form" className={btnPrimary} disabled={isSubmitting || (!isEdit && (loadingOptions || noTemplates))}>
+          <button type="submit" form="contract-form" className={btnPrimary} disabled={isSubmitting || (!isEdit && (loadingOptions || !optionsLoaded || noTemplates))}>
             {isEdit ? 'Cập nhật' : 'Tạo hợp đồng'}
           </button>
         </>
       }
     >
       <form id="contract-form" onSubmit={handleSubmit(submit)} className="space-y-4">
+        {!isEdit && optionsLoaded && <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">
+          Dùng mẫu do chủ tòa nhà cấu hình. Ngày đóng tiền: {options.contractPolicy?.paymentDueDay ?? 5}; tiền cọc gợi ý: {options.contractPolicy?.depositMonths ?? 1} tháng tiền thuê. Điền phòng, người thuê và thời hạn bên dưới.
+        </p>}
         {canChooseTemplate ? (
           <div>
             <label className={labelCls}>Mẫu hợp đồng {!isEdit && '*'}</label>
@@ -168,7 +179,7 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
             </select>
             {noTemplates && (
               <p className="mt-1 text-[11px] font-semibold text-amber-600">
-                Chủ trọ chưa có mẫu hợp đồng nào đang dùng. Cần chủ trọ tạo mẫu ở mục "Mẫu hợp đồng" trước.
+                Tòa nhà này chưa có mẫu hợp đồng đang dùng. Chủ trọ cần cấu hình mẫu cho tòa nhà ở mục "Mẫu hợp đồng" trước.
               </p>
             )}
             {err('template')}

@@ -42,20 +42,18 @@ export const createRoom = async (data, user) => {
 export const updateRoom = async (roomId, data, user) => {
   const room = await findRoomWithAccess(roomId, user);
 
-  // Không cho chuyển phòng sang nhà trọ mà user không quản lý
-  if (data.property && String(data.property) !== String(room.property)) {
-    await assertPropertyAccess(user, data.property);
+  // Older clients may send a populated property; authorize its ID.
+  const targetProperty = data.property?._id || data.property || room.property;
+  if (String(targetProperty) !== String(room.property)) await assertPropertyAccess(user, targetProperty);
+  const roomNumber = data.roomNumber === undefined ? room.roomNumber : String(data.roomNumber).trim();
+  if (!roomNumber) throw { status: 400, message: 'Số phòng không được để trống' };
+  const duplicate = await Rooms.exists({ property: targetProperty, roomNumber, _id: { $ne: room._id } });
+  if (duplicate) throw { status: 400, message: 'Số phòng đã tồn tại trong tòa nhà này' };
+  const editable = ['roomNumber', 'area', 'price', 'maxTenants', 'description', 'facilities', 'images', 'tier', 'name', 'floor'];
+  for (const field of editable) {
+    if (data[field] !== undefined) room[field] = field === 'roomNumber' ? roomNumber : data[field];
   }
-
-  const { roomNumber, property } = data;
-  if (roomNumber && roomNumber !== room.roomNumber) {
-    const existingRoom = await Rooms.findOne({ property: property || room.property, roomNumber });
-    if (existingRoom) {
-      throw { status: 400, message: 'Số phòng đã tồn tại trong tòa nhà này' };
-    }
-  }
-
-  Object.assign(room, data);
+  room.property = targetProperty;
   await room.save();
   return room.populate('property');
 };

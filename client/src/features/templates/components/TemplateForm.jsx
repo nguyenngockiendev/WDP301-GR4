@@ -50,8 +50,9 @@ Người lập hợp đồng: {{createdByName}}
 const fill = (content, values) =>
   String(content || '').replace(/\{\{\s*([a-zA-Z]+)\s*\}\}/g, (whole, key) => (key in values ? values[key] : whole));
 
-export default function TemplateForm({ template, placeholders, onSubmit, onCancel }) {
+export default function TemplateForm({ template, properties = [], placeholders, onSubmit, onCancel }) {
   const isEdit = Boolean(template);
+  const [property, setProperty] = useState(String(template?.property?._id || template?.property || localStorage.getItem('currentPropertyId') || ''));
   const [title, setTitle] = useState(template?.title || '');
   const [content, setContent] = useState(template?.content || DEFAULT_CONTENT);
   const [status, setStatus] = useState(template?.status || 'active');
@@ -88,6 +89,7 @@ export default function TemplateForm({ template, placeholders, onSubmit, onCance
   const handleSubmit = async e => {
     e.preventDefault();
     const nextErrors = {};
+    if (!properties.some(p => p._id === property)) nextErrors.property = 'Vui lòng chọn tòa nhà áp dụng';
     if (!title.trim()) nextErrors.title = 'Vui lòng nhập tên mẫu';
     if (!content.trim()) nextErrors.content = 'Vui lòng nhập nội dung mẫu';
     if (unknownKeys.length) nextErrors.content = `Biến không hợp lệ: ${unknownKeys.map(k => `{{${k}}}`).join(', ')}`;
@@ -98,7 +100,7 @@ export default function TemplateForm({ template, placeholders, onSubmit, onCance
     }
     try {
       setSubmitting(true);
-      await onSubmit({ title: title.trim(), content, status });
+      await onSubmit({ title: title.trim(), content, status, property });
     } catch {
       toast.error('Lỗi khi lưu mẫu hợp đồng');
     } finally {
@@ -123,6 +125,15 @@ export default function TemplateForm({ template, placeholders, onSubmit, onCance
       }
     >
       <form id="template-form" onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className={labelCls}>Tòa nhà áp dụng *</label>
+          <select className={inputCls} value={property} onChange={e => setProperty(e.target.value)}>
+            <option value="">— Chọn tòa nhà —</option>
+            {properties.map(p => <option key={p._id} value={p._id}>{p.name} — {p.address}</option>)}
+          </select>
+          {errors.property && <p className="mt-1 text-xs text-rose-500">{errors.property}</p>}
+          <p className="mt-1 text-xs text-slate-500">Chỉ quản lý được phân công cho tòa nhà này được dùng mẫu để lập hợp đồng.</p>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="sm:col-span-2">
             <label className={labelCls}>Tên mẫu *</label>
