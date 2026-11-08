@@ -1,3 +1,4 @@
+import * as rentals from '../src/modules/rentalrequests/rentalrequests.service.js';
 import express from 'express';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
@@ -119,4 +120,22 @@ test('profile shows only own safe fields, updates contacts and verifies old pass
   assert.equal((await request(app).post('/auth/password').set('Authorization', header).send({ currentPassword: 'WrongPass123', newPassword: 'NewPass123' })).status, 400);
   assert.equal((await request(app).post('/auth/password').set('Authorization', header).send({ currentPassword: 'OldPass123', newPassword: 'NewPass123' })).status, 200);
   assert.ok(await bcrypt.compare('NewPass123', (await Users.findById(tenant.id)).password));
+});
+
+
+test('landlord views requests but only assigned manager processes and creates from them', async () => {
+  const vacant = await Rooms.create({ property: building.id, roomNumber: '303', area: 25, price: 2500000 });
+  const req = await rentals.createRentalRequest({ room: vacant.id, expectedDate: '2026-12-01' }, { userId: tenant.id, role: 'tenant' });
+  assert.ok((await rentals.getRentalRequestsByProperty(building.id, owner)).some(item => item.id === req.id));
+  await assert.rejects(rentals.processRentalRequest(req.id, { status: 'approved' }, owner), e => e.status === 403);
+  await assert.rejects(rentals.processRentalRequest(req.id, { status: 'rejected' }, owner), e => e.status === 403);
+  await assert.rejects(rentals.processRentalRequest(req.id, { status: 'approved' }, outsider), e => e.status === 403);
+  assert.equal((await rentals.processRentalRequest(req.id, { status: 'approved' }, manager)).status, 'approved');
+  const options = await contracts.getContractFormOptions(building.id, manager);
+  assert.ok(options.templates[0].content);
+  assert.ok(options.approvedRequests.some(item => item.id === req.id));
+  const data = { room: vacant.id, representative: tenant.id, template: template.id, rentalRequest: req.id, monthlyRent: 2500000, startDate: '2026-12-01', endDate: '2027-12-01' };
+  await assert.rejects(contracts.createContract(data, owner), e => e.status === 403);
+  const result = await contracts.createContract(data, manager);
+  assert.equal(String(result.rentalRequest._id), req.id);
 });

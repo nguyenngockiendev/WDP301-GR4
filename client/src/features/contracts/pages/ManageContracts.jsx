@@ -18,12 +18,15 @@ export default function ManageContracts() {
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     if (searchParams.get('create') !== '1') return;
+    setInitialRequestId(searchParams.get('request') || '');
     setSelectedContract(null);
     setShowForm(true);
     const next = new URLSearchParams(searchParams);
     next.delete('create');
+    next.delete('request');
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
+  const [initialRequestId, setInitialRequestId] = useState('');
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -80,6 +83,7 @@ export default function ManageContracts() {
   }, [contracts, keyword, statusFilter]);
 
   const openForm = (contract = null) => {
+    setInitialRequestId('');
     setSelectedContract(contract);
     setShowForm(true);
   };
@@ -187,6 +191,7 @@ export default function ManageContracts() {
         <ContractForm
           contract={selectedContract}
           propertyId={propertyId}
+          initialRequestId={initialRequestId}
           onSubmit={handleSaveContract}
           onCancel={handleCloseForm}
         />
