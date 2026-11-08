@@ -2,7 +2,18 @@ import Rooms from '../../models/Rooms.js';
 import Contracts from '../../models/Contracts.js';
 import { assertPropertyAccess } from '../properties/properties.service.js';
 
-export const getRoomsByProperty = async propertyId => {
+/** Lấy phòng và kiểm tra user có quyền với nhà trọ chứa phòng. */
+const findRoomWithAccess = async (roomId, user) => {
+  const room = await Rooms.findById(roomId);
+  if (!room) {
+    throw { status: 404, message: 'Phòng không tồn tại' };
+  }
+  await assertPropertyAccess(user, room.property);
+  return room;
+};
+
+export const getRoomsByProperty = async (propertyId, user) => {
+  await assertPropertyAccess(user, propertyId);
   const rooms = await Rooms.find({ property: propertyId }).populate('property');
   return rooms;
 };
@@ -15,7 +26,7 @@ export const getRoomById = async roomId => {
   return room;
 };
 
-export const createRoom = async data => {
+export const createRoom = async (data, user) => {
   const { property, roomNumber } = data;
   await assertPropertyAccess(user, property);
 
@@ -64,11 +75,8 @@ export const updateRoomStatus = async (roomId, status, user) => {
   return room;
 };
 
-export const deactivateRoom = async roomId => {
-  const room = await Rooms.findById(roomId);
-  if (!room) {
-    throw { status: 404, message: 'Phòng không tồn tại' };
-  }
+export const deactivateRoom = async (roomId, user) => {
+  const room = await findRoomWithAccess(roomId, user);
 
   const activeContract = await Contracts.findOne({ room: roomId, status: 'active' });
   if (activeContract) {
