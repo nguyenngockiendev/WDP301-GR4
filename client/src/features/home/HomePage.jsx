@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
 import {
   Building,
   Building2,
@@ -116,13 +115,18 @@ function HomeContent({ user }) {
 
   const [properties, setProperties] = useState([]);
   const [loadingBuildings, setLoadingBuildings] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     propertiesAPI
       .getBrowseProperties()
       .then(res => !cancelled && setProperties(res.data || []))
-      .catch(err => !cancelled && toast.error(err.response?.data?.message || 'Không tải được danh sách tòa nhà'))
+      .catch(err => {
+        if (!cancelled) {
+          setLoadError(err.response?.data?.message || 'Không tải được danh sách tòa nhà');
+        }
+      })
       .finally(() => !cancelled && setLoadingBuildings(false));
     return () => {
       cancelled = true;
@@ -587,9 +591,9 @@ function HomeContent({ user }) {
             </p>
           </div>
 
-          {loading && <p role="status" className="text-center py-8">Đang tải dữ liệu nhà trọ...</p>}
+          {loadingBuildings && <p role="status" className="text-center py-8">Đang tải dữ liệu nhà trọ...</p>}
           {loadError && <p role="alert" className="text-center py-8 text-red-600">{loadError}</p>}
-          {!loading && !loadError && !buildings.length && <p className="text-center py-8">Chưa có nhà trọ được công bố.</p>}
+          {!loadingBuildings && !loadError && !buildings.length && <p className="text-center py-8">Chưa có nhà trọ được công bố.</p>}
           {currentBuilding && <>
           {/* BỘ CHỌN TÒA NHÀ (TABS CHỌN TÒA) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
