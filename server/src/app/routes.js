@@ -26,4 +26,5 @@ router.use('/operations', propertyOperationsRoutes);
 router.use('/notifications', notificationsRoutes);
 router.use('/properties', propertiesRoutes);
 router.use('/termination-requests', terminationRequestsRoutes);
+
 export default router;
