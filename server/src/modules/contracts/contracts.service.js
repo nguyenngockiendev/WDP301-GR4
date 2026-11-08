@@ -2,7 +2,6 @@ import Contracts from '../../models/Contracts.js';
 import RentalRequests from '../../models/RentalRequests.js';
 import Rooms from '../../models/Rooms.js';
 import Users from '../../models/Users.js';
-import Properties from '../../models/Properties.js';
 import { assertPropertyAccess } from '../properties/properties.service.js';
 
 const populateFields = [
@@ -15,7 +14,15 @@ const populateFields = [
 ];
 
 // Các trường được phép sửa qua API cập nhật
-const EDITABLE_FIELDS = ['startDate', 'endDate', 'monthlyRent', 'depositAmount', 'status', 'otherMembers', 'template'];
+const EDITABLE_FIELDS = [
+  'startDate',
+  'endDate',
+  'monthlyRent',
+  'depositAmount',
+  'status',
+  'otherMembers',
+  'template',
+];
 
 /** Lấy hợp đồng và kiểm tra user có quyền với nhà trọ chứa phòng của hợp đồng. */
 const findContractWithAccess = async (contractId, user) => {
@@ -41,12 +48,13 @@ export const getContractsByProperty = async (propertyId, user) => {
 export const getContractFormOptions = async (propertyId, user) => {
   await assertPropertyAccess(user, propertyId);
 
-  const [rooms, property] = await Promise.all([
-    Rooms.find({ property: propertyId }).select('roomNumber price status').sort({ roomNumber: 1 }),
-    Properties.findById(propertyId).select('contractPolicy'),
-  ]);
+  const rooms = await Rooms.find({ property: propertyId })
+    .select('roomNumber price status')
+    .sort({ roomNumber: 1 });
   const roomIds = rooms.map(r => r._id);
-  const busyRoomIds = await Contracts.find({ room: { $in: roomIds }, status: 'active' }).distinct('room');
+  const busyRoomIds = await Contracts.find({ room: { $in: roomIds }, status: 'active' }).distinct(
+    'room',
+  );
   const busy = new Set(busyRoomIds.map(String));
 
   const approvedRequests = await RentalRequests.find({ room: { $in: roomIds }, status: 'approved' })
@@ -60,9 +68,10 @@ export const getContractFormOptions = async (propertyId, user) => {
 
   return {
     rooms: rooms.filter(r => !busy.has(String(r._id))),
-    approvedRequests: approvedRequests.filter(r => r.room && r.tenant && !busy.has(String(r.room._id))),
+    approvedRequests: approvedRequests.filter(
+      r => r.room && r.tenant && !busy.has(String(r.room._id)),
+    ),
     tenants,
-    contractPolicy: property?.contractPolicy || null,
   };
 };
 
@@ -77,8 +86,6 @@ export const createContract = async (data, user) => {
     throw { status: 404, message: 'Phòng không tồn tại' };
   }
   await assertPropertyAccess(user, room.property);
-  const property = await Properties.findById(room.property).select('contractPolicy');
-  const contractPolicy = property?.contractPolicy || {};
 
   const activeContract = await Contracts.findOne({ room: data.room, status: 'active' });
   if (activeContract) {
@@ -100,28 +107,16 @@ export const createContract = async (data, user) => {
     }
   }
 
-  const otherMembers = [...new Set((data.otherMembers || []).map(String))].filter(
-    id => id !== String(data.representative),
-  );
-  if (otherMembers.length > 0) {
-    const validCount = await Users.countDocuments({ _id: { $in: otherMembers }, role: 'tenant' });
-    if (validCount !== otherMembers.length) {
-      throw { status: 400, message: 'Có người ở cùng không tồn tại hoặc không phải người thuê' };
-    }
-  }
-
   const contract = await Contracts.create({
     room: data.room,
     rentalRequest: data.rentalRequest || undefined,
     template: data.template || undefined,
     representative: data.representative,
-    otherMembers,
+    otherMembers: data.otherMembers || [],
     startDate: data.startDate,
     endDate: data.endDate,
     monthlyRent: data.monthlyRent,
     depositAmount: data.depositAmount || 0,
-    paymentDueDay: contractPolicy.paymentDueDay ?? 5,
-    paymentGraceDays: contractPolicy.paymentGraceDays ?? 3,
     status: data.status || 'active',
     createdBy: user.userId,
   });
@@ -139,15 +134,37 @@ export const updateContract = async (contractId, data, user) => {
 
   const lockedFields = ['monthlyRent', 'depositAmount'];
   for (const field of lockedFields) {
-    if (data[field] !== undefined && Number(data[field]) !== contract[field] && contract.status !== 'draft') {
-      throw { status: 400, message: 'Không thể chỉnh sửa tiền thuê / tiền cọc sau khi ký hợp đồng' };
+    if (
+      data[field] !== undefined &&
+      Number(data[field]) !== contract[field] &&
+      contract.status !== 'draft'
+    ) {
+      throw {
+        status: 400,
+        message: 'Không thể chỉnh sửa tiền thuê / tiền cọc sau khi ký hợp đồng',
+      };
     }
   }
+
+  for (const field of EDITABLE_FIELDS) {
+    if (data[field] !== undefined) contract[field] = data[field];
+  }
+  await contract.save();
+
+  return contract.populate(populateFields);
+};
+
+export const renewContract = async (contractId, newEndDate, user) => {
+  const contract = await findContractWithAccess(contractId, user);
 
   const previousStatus = contract.status;
 
   if (data.status === 'active' && previousStatus !== 'active') {
-    const otherActive = await Contracts.exists({ room: contract.room, status: 'active', _id: { $ne: contract._id } });
+    const otherActive = await Contracts.exists({
+      room: contract.room,
+      status: 'active',
+      _id: { $ne: contract._id },
+    });
     if (otherActive) {
       throw { status: 400, message: 'Phòng này đã có hợp đồng hoạt động khác' };
     }
@@ -179,24 +196,6 @@ export const updateContract = async (contractId, data, user) => {
   return contract.populate(populateFields);
 };
 
-export const renewContract = async (contractId, newEndDate, user) => {
-  const contract = await findContractWithAccess(contractId, user);
-
-  if (contract.status !== 'active') {
-    throw { status: 400, message: 'Chỉ có thể gia hạn hợp đồng hoạt động' };
-  }
-
-  const newEndDateObj = new Date(newEndDate);
-  if (newEndDateObj <= contract.endDate) {
-    throw { status: 400, message: 'Ngày kết thúc mới phải sau ngày kết thúc hiện tại' };
-  }
-
-  contract.endDate = newEndDate;
-  await contract.save();
-
-  return contract.populate(populateFields);
-};
-
 export const changeRepresentative = async (contractId, newRepresentativeId, user) => {
   const contract = await findContractWithAccess(contractId, user);
 
@@ -212,7 +211,9 @@ export const changeRepresentative = async (contractId, newRepresentativeId, user
   if (!contract.otherMembers.some(m => m.toString() === oldRepresentative.toString())) {
     contract.otherMembers.push(oldRepresentative);
   }
-  contract.otherMembers = contract.otherMembers.filter(member => member.toString() !== newRepresentativeId);
+  contract.otherMembers = contract.otherMembers.filter(
+    member => member.toString() !== newRepresentativeId,
+  );
 
   await contract.save();
 

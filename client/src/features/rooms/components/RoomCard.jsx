@@ -20,11 +20,10 @@ export default function RoomCard({ room }) {
         </div>
       )}
 
-      <div className="card-body">
-        <div className="d-flex justify-content-between align-items-start gap-2"><h5 className="card-title">Phòng {room.roomNumber}</h5><span className="badge bg-success-subtle text-success-emphasis">{tierNames[room.tier] || 'Tiêu chuẩn'}</span></div>
-
-        <p className="card-text text-muted mb-2">
-          <small>{room.property?.name || 'Tòa nhà'}</small>
+      <div className="p-5 flex flex-col flex-1">
+        <h5 className="text-base font-black text-slate-900">Phòng {room.roomNumber}</h5>
+        <p className="text-[11px] font-semibold text-slate-400 mt-0.5 flex items-center gap-1 truncate">
+          <Building2 size={12} /> {room.property?.name || 'Tòa nhà'}
         </p>
 
         <p className="mt-3 text-lg font-black text-emerald-600">

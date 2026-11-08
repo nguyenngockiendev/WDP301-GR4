@@ -45,44 +45,16 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
   });
 
   const [options, setOptions] = useState({ rooms: [], approvedRequests: [], tenants: [] });
-  const [loadingOptions, setLoadingOptions] = useState(true);
-  const [optionsLoaded, setOptionsLoaded] = useState(false);
-
-  // Người ở cùng (otherMembers) — cần để đổi người đại diện sau này
-  const [members, setMembers] = useState(() =>
-    isEdit ? (contract.otherMembers || []).map(m => String(m?._id || m)) : [],
-  );
-  const [memberKeyword, setMemberKeyword] = useState('');
+  const [loadingOptions, setLoadingOptions] = useState(!isEdit);
 
   useEffect(() => {
-    // Sửa hợp đồng cũng cần danh sách người thuê để chọn người ở cùng
+    if (isEdit) return;
     contractsAPI
       .getFormOptions(propertyId)
-      .then(res => {
-        setOptions(res.data || { rooms: [], approvedRequests: [], tenants: [] });
-        setOptionsLoaded(true);
-      })
+      .then(res => setOptions(res.data || { rooms: [], approvedRequests: [], tenants: [] }))
       .catch(err => toast.error(err.response?.data?.message || 'Không tải được danh sách phòng / người thuê'))
       .finally(() => setLoadingOptions(false));
-  }, [propertyId]);
-
-  const representativeId = isEdit ? String(contract.representative?._id || contract.representative || '') : watch('representative');
-
-  // Danh sách để chọn người ở cùng: người thuê đang hoạt động + người ở cùng hiện tại (nếu có người không còn trong list)
-  const memberChoices = (() => {
-    const map = new Map();
-    options.tenants.forEach(t => map.set(String(t._id), t));
-    if (isEdit) (contract.otherMembers || []).forEach(m => m?._id && !map.has(String(m._id)) && map.set(String(m._id), m));
-    const kw = memberKeyword.trim().toLowerCase();
-    return Array.from(map.values()).filter(
-      t =>
-        String(t._id) !== String(representativeId) &&
-        (!kw || [t.fullName, t.email, t.phone].filter(Boolean).some(v => String(v).toLowerCase().includes(kw))),
-    );
-  })();
-
-  const toggleMember = id =>
-    setMembers(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  }, [isEdit, propertyId]);
 
   // Chọn yêu cầu thuê đã duyệt -> tự điền phòng, người đại diện, giá thuê
   const handlePickRequest = requestId => {
@@ -93,13 +65,6 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
     setValue('representative', req.tenant._id, { shouldValidate: true });
     if (req.room.price) setValue('monthlyRent', req.room.price, { shouldValidate: true });
     if (req.expectedDate) setValue('startDate', toInputDate(req.expectedDate));
-    applyDepositDefault(req.room);
-  };
-
-  const applyDepositDefault = room => {
-    if (!room || watch('depositAmount') !== '') return;
-    const months = Number(options.contractPolicy?.depositMonths ?? 1);
-    setValue('depositAmount', Number(room.price || 0) * months, { shouldValidate: true });
   };
 
   // Chọn phòng -> gợi ý giá thuê theo giá phòng
@@ -107,7 +72,6 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
     setValue('room', roomId, { shouldValidate: true });
     const room = options.rooms.find(r => r._id === roomId);
     if (room?.price && !watch('monthlyRent')) setValue('monthlyRent', room.price, { shouldValidate: true });
-    applyDepositDefault(room);
   };
 
   const moneyLocked = isEdit && contract.status !== 'draft';
@@ -115,10 +79,6 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
   const submit = data => {
     const payload = { ...data };
     if (!payload.rentalRequest) delete payload.rentalRequest;
-    // Khi sửa mà không tải được danh sách người thuê thì không gửi otherMembers (tránh xóa nhầm)
-    if (!isEdit || optionsLoaded) {
-      payload.otherMembers = members.filter(id => id !== String(representativeId));
-    }
     if (moneyLocked) {
       delete payload.monthlyRent;
       delete payload.depositAmount;
@@ -142,22 +102,13 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
       footer={
         <>
           <button type="button" className={btnGhost} onClick={onCancel}>Hủy</button>
-          <button type="submit" form="contract-form" className={btnPrimary} disabled={isSubmitting || (!isEdit && loadingOptions)}>
+          <button type="submit" form="contract-form" className={btnPrimary} disabled={isSubmitting || loadingOptions}>
             {isEdit ? 'Cập nhật' : 'Tạo hợp đồng'}
           </button>
         </>
       }
     >
       <form id="contract-form" onSubmit={handleSubmit(submit)} className="space-y-4">
-        {!isEdit && options.contractPolicy && (
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
-            <p className="text-[11px] font-extrabold uppercase tracking-wide text-emerald-800">Điều khoản mặc định</p>
-            {options.contractPolicy.policyNote && <p className="mt-1 whitespace-pre-wrap text-xs text-emerald-950">{options.contractPolicy.policyNote}</p>}
-            <p className="mt-2 text-[11px] text-emerald-800">
-              Hạn thanh toán ngày {options.contractPolicy.paymentDueDay ?? 5} hàng tháng · Gia hạn {options.contractPolicy.paymentGraceDays ?? 3} ngày.
-            </p>
-          </div>
-        )}
         {!isEdit && (
           <>
             {options.approvedRequests.length > 0 && (
@@ -219,45 +170,6 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
             </div>
           </>
         )}
-
-        <div>
-          <label className={labelCls}>
-            Người ở cùng {members.filter(id => id !== String(representativeId)).length > 0 && `(${members.filter(id => id !== String(representativeId)).length})`}
-          </label>
-          <input
-            className={`${inputCls} mb-2`}
-            placeholder="Tìm theo tên, email, SĐT..."
-            value={memberKeyword}
-            onChange={e => setMemberKeyword(e.target.value)}
-            disabled={loadingOptions}
-          />
-          <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
-            {loadingOptions ? (
-              <p className="px-3 py-2.5 text-xs font-semibold text-slate-400">Đang tải...</p>
-            ) : memberChoices.length === 0 ? (
-              <p className="px-3 py-2.5 text-xs font-semibold text-slate-400">Không có người thuê phù hợp</p>
-            ) : (
-              memberChoices.map(t => {
-                const id = String(t._id);
-                return (
-                  <label key={id} className="flex items-center gap-2.5 px-3 py-2 text-xs cursor-pointer hover:bg-emerald-50/50">
-                    <input
-                      type="checkbox"
-                      className="accent-emerald-600"
-                      checked={members.includes(id)}
-                      onChange={() => toggleMember(id)}
-                    />
-                    <span className="font-bold text-slate-700">{t.fullName}</span>
-                    <span className="text-slate-400">{t.phone || t.email}</span>
-                  </label>
-                );
-              })
-            )}
-          </div>
-          <p className="mt-1 text-[11px] font-semibold text-slate-400">
-            Người ở cùng có thể được chọn làm người đại diện mới khi đổi đại diện.
-          </p>
-        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
