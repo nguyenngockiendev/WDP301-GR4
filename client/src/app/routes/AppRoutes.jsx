@@ -1,3 +1,4 @@
+import Profile from '../../features/profile/pages/Profile';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout/DashboardLayout';
 import ProtectedRoute from './ProtectedRoute';
@@ -35,6 +36,7 @@ export default function AppRoutes() {
       ))}
 
       <Route element={<ProtectedRoute />}>
+        <Route path="/profile" element={<Profile />} />
         <Route element={<DashboardLayout />}>
           <Route path="dashboard" element={<DashboardPage />} />
           {routes.map(route => (

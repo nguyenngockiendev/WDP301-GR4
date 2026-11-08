@@ -29,8 +29,31 @@ import {
 } from 'lucide-react';
 import './home.css';
 import api from '../../shared/api/axiosClient';
+import { clearAuth, getCurrentUser } from '../../shared/utils/auth';
 
 export default function HomePage() {
+  const [user, setUser] = useState(getCurrentUser);
+  const accountPath = user?.role === 'tenant' ? '/browse-rooms' : '/dashboard';
+  const accountLabel = user?.role === 'tenant' ? 'Tìm phòng' : 'Bảng điều khiển';
+  useEffect(() => {
+    const syncAuth = () => setUser(getCurrentUser());
+    window.addEventListener('auth-changed', syncAuth);
+    window.addEventListener('storage', syncAuth);
+    window.addEventListener('focus', syncAuth);
+    const expiryTimer = user?.exp ? setTimeout(syncAuth, Math.min(Math.max(user.exp * 1000 - Date.now(), 0) + 50, 2147483647)) : undefined;
+    return () => {
+      window.removeEventListener('auth-changed', syncAuth);
+      window.removeEventListener('storage', syncAuth);
+      window.removeEventListener('focus', syncAuth);
+      clearTimeout(expiryTimer);
+    };
+  }, [user?.exp]);
+  const logout = () => {
+    clearAuth();
+    setUser(null);
+    setMobileMenuOpen(false);
+    window.dispatchEvent(new Event('auth-changed'));
+  };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Multi-building state: Active building
@@ -118,21 +141,15 @@ export default function HomePage() {
             </Link>
           </nav>
 
-          {/* Action Buttons */}
           <div className="hidden sm:flex items-center gap-3.5">
-            <Link
-              to="/login"
-              className="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-[#098b6c] transition-colors"
-            >
-              Đăng Nhập
-            </Link>
-            <Link
-              to="/register"
-              className="px-5 py-2.5 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-900/15 hover:shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
-            >
-              <span>Bắt Đầu Ngay</span>
-              <ArrowRight size={16} />
-            </Link>
+            {user ? <>
+              <Link to="/profile" className="px-5 py-2.5 rounded-2xl bg-[#098b6c] text-white text-sm font-bold">Tài khoản của tôi</Link>
+              {user.role !== 'tenant' && <Link to="/dashboard" className="text-sm font-bold text-slate-700">Bảng điều khiển</Link>}
+              <button type="button" onClick={logout} className="px-4 py-2 text-sm font-bold text-slate-700 hover:text-rose-600">Đăng xuất</button>
+            </> : <>
+              <Link to={user ? accountPath : "/login"} className="px-4 py-2 text-sm font-bold text-slate-700">Đăng nhập</Link>
+              <Link to={user ? accountPath : "/register"} className="px-5 py-2.5 rounded-2xl bg-[#098b6c] text-white text-sm font-bold">Bắt đầu ngay</Link>
+            </>}
           </div>
 
           {/* Mobile Menu Button */}
@@ -184,18 +201,14 @@ export default function HomePage() {
               Tìm phòng ngay
             </Link>
             <div className="pt-2 flex flex-col gap-2">
-              <Link
-                to="/login"
-                className="w-full text-center py-2.5 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl"
-              >
-                Đăng Nhập
-              </Link>
-              <Link
-                to="/register"
-                className="w-full text-center py-2.5 text-sm font-bold bg-[#098b6c] text-white rounded-xl shadow-sm"
-              >
-                Bắt Đầu Ngay
-              </Link>
+              {user ? <>
+                <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-2.5 font-bold bg-[#098b6c] text-white rounded-xl">Tài khoản của tôi</Link>
+                {user.role !== 'tenant' && <Link to="/dashboard" className="text-center font-bold">Bảng điều khiển</Link>}
+                <button type="button" onClick={logout} className="w-full py-2.5 font-bold border rounded-xl">Đăng xuất</button>
+              </> : <>
+                <Link to={user ? accountPath : "/login"} className="w-full text-center py-2.5 font-bold border rounded-xl">Đăng nhập</Link>
+                <Link to={user ? accountPath : "/register"} className="w-full text-center py-2.5 font-bold bg-[#098b6c] text-white rounded-xl">Bắt đầu ngay</Link>
+              </>}
             </div>
           </div>
         )}
@@ -245,11 +258,11 @@ export default function HomePage() {
                   />
                 </a>
                 <Link
-                  to="/login"
+                  to={user ? accountPath : "/login"}
                   className="px-6 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-800 hover:border-[#098b6c] hover:text-[#098b6c] text-sm font-bold shadow-sm transition-all flex items-center gap-2"
                 >
                   <Home size={18} className="text-[#098b6c]" />
-                  <span>Vào Bảng Điều Khiển</span>
+                  <span>{user ? accountLabel : 'Vào Bảng Điều Khiển'}</span>
                 </Link>
               </div>
 
@@ -653,7 +666,7 @@ export default function HomePage() {
 
                       {room.status === 'available' ? (
                         <Link
-                          to="/login"
+                          to={user ? (user.role === 'tenant' ? `/rooms/${room.id}/rental-request` : accountPath) : "/login"}
                           className="px-4 py-2 rounded-xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs font-bold shadow-md shadow-emerald-900/15 transition-all"
                         >
                           Đăng ký thuê
@@ -963,7 +976,7 @@ export default function HomePage() {
                 </div>
 
                 <Link
-                  to="/register"
+                  to={user ? accountPath : "/register"}
                   className="w-full py-3 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs font-bold text-center shadow-lg transition-colors"
                 >
                   Đăng Ký Thuê Ngay
@@ -992,13 +1005,13 @@ export default function HomePage() {
               </p>
               <div className="flex flex-wrap items-center justify-center gap-4 pt-3">
                 <Link
-                  to="/register"
+                  to={user ? accountPath : "/register"}
                   className="px-8 py-3.5 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-sm font-bold shadow-lg shadow-black/20 transition-all"
                 >
-                  Tạo Tài Khoản Ngay
+                  {user ? accountLabel : 'Tạo Tài Khoản Ngay'}
                 </Link>
                 <Link
-                  to="/login"
+                  to={user ? accountPath : "/login"}
                   className="px-8 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold border border-white/15 transition-all"
                 >
                   Vào Bảng Điều Khiển
@@ -1038,11 +1051,11 @@ export default function HomePage() {
             <a href="#tinh-nang" className="hover:text-[#098b6c]">
               Tính năng
             </a>
-            <Link to="/login" className="hover:text-[#098b6c]">
-              Bảng điều khiển
+            <Link to={user ? accountPath : "/login"} className="hover:text-[#098b6c]">
+              {user ? accountLabel : 'Đăng nhập'}
             </Link>
-            <Link to="/register" className="hover:text-[#098b6c]">
-              Đăng ký
+            <Link to={user ? accountPath : "/register"} className="hover:text-[#098b6c]">
+              {user ? 'Tìm phòng' : 'Đăng ký'}
             </Link>
           </div>
 
