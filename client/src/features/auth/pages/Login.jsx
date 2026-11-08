@@ -3,10 +3,8 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom'
 import useLogin from '../hooks/uselogin';
 import LoginForm from '../components/LoginForm';
-import { toast } from 'react-toastify';
-import { saveToken } from '../../../shared/utils/auth';
+import { saveToken, getCurrentUser } from '../../../shared/utils/auth';
 
-import { jwtDecode } from 'jwt-decode';
 const Login = () => {
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -30,7 +28,7 @@ const Login = () => {
     if (result) {
       const token = result.data?.token || result.data?.user;
       saveToken(token);
-      navigate('/dashboard');
+      navigate(getCurrentUser()?.role === 'tenant' ? '/home' : '/dashboard', { replace: true });
     }
   };
 
