@@ -10,6 +10,15 @@ export const getMyProperties = async (req, res) => {
   }
 };
 
+export const getPublicProperties = async (_req, res) => {
+  try {
+    const properties = await propertiesService.getPublicProperties();
+    return sendSuccess(res, 200, 'Thành công', properties);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
+
 export const getBrowseProperties = async (_req, res) => {
   try {
     const properties = await propertiesService.getBrowseProperties();
