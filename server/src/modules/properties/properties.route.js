@@ -14,4 +14,7 @@ router.get(
   propertiesController.getMyProperties,
 );
 
+// Nhà trọ + phòng cho trang Home (mọi tài khoản đã đăng nhập, kể cả người thuê)
+router.get('/browse', authMiddleware, propertiesController.getBrowseProperties);
+
 export default router;

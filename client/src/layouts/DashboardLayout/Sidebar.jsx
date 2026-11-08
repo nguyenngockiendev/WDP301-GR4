@@ -31,7 +31,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       title: 'TỔNG QUAN',
       items: [
-        { to: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+        { to: '/home', label: 'Trang chủ', icon: Building2, roles: ['tenant'] },
+        { to: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard, roles: STAFF },
         { to: '/notifications', label: 'Thông báo', icon: Bell },
       ],
     },
