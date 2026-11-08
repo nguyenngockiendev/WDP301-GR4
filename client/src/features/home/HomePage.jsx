@@ -644,7 +644,7 @@ export default function HomePage() {
 
                     <div className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between">
                       <Link
-                        to="/browse-rooms"
+                        to={`/rooms/${room.id}`}
                         className="text-xs font-bold text-[#098b6c] hover:underline flex items-center gap-1"
                       >
                         <span>Chi tiết phòng</span>
