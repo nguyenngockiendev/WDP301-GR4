@@ -32,6 +32,9 @@ const resolveTemplateForProperty = async (templateId, propertyId) => {
   if (!property || String(property.owner) !== String(template.createdBy)) {
     throw { status: 403, message: 'Chỉ được dùng mẫu hợp đồng do chủ nhà trọ này tạo' };
   }
+  if (String(template.property || '') !== String(propertyId)) {
+    throw { status: 403, message: 'Mẫu hợp đồng không được cấu hình cho tòa nhà này' };
+  }
   return template;
 };
 
@@ -89,8 +92,8 @@ export const getContractFormOptions = async (propertyId, user) => {
     .limit(500);
 
   // Mẫu hợp đồng đang dùng của chủ nhà trọ (landlord tạo, manager chọn để điền)
-  const property = await Properties.findById(propertyId).select('owner');
-  const templates = await ContractTemplates.find({ createdBy: property?.owner, status: 'active' })
+  const property = await Properties.findById(propertyId).select('owner contractPolicy utilityRate');
+  const templates = await ContractTemplates.find({ createdBy: property?.owner, property: propertyId, status: 'active' })
     .select('title updatedAt')
     .sort({ updatedAt: -1 });
 
@@ -101,6 +104,8 @@ export const getContractFormOptions = async (propertyId, user) => {
     ),
     tenants,
     templates,
+    contractPolicy: property?.contractPolicy,
+    utilityRate: property?.utilityRate,
   };
 };
 
@@ -167,6 +172,9 @@ export const createContract = async (data, user) => {
     if (!rentalRequest) {
       throw { status: 404, message: 'Yêu cầu thuê không tồn tại' };
     }
+    if (String(rentalRequest.room) !== String(data.room) || String(rentalRequest.tenant) !== String(data.representative)) {
+      throw { status: 400, message: 'Yêu cầu thuê không khớp phòng hoặc người đại diện' };
+    }
     if (rentalRequest.status !== 'approved') {
       throw { status: 400, message: 'Yêu cầu thuê phải được phê duyệt' };
     }
@@ -182,7 +190,14 @@ export const createContract = async (data, user) => {
     }
   }
 
+  const propertyConfig = await Properties.findById(room.property).select('contractPolicy utilityRate');
   const contract = await Contracts.create({
+    paymentDueDay: propertyConfig?.contractPolicy?.paymentDueDay ?? 5,
+    paymentGraceDays: propertyConfig?.contractPolicy?.paymentGraceDays ?? 3,
+    utilityRateSnapshot: {
+      electricityPrice: propertyConfig?.utilityRate?.electricityPrice ?? 0,
+      waterPrice: propertyConfig?.utilityRate?.waterPrice ?? 0,
+    },
     room: data.room,
     rentalRequest: data.rentalRequest || undefined,
     template: template._id,

@@ -26,6 +26,8 @@ export const getTemplates = async (user, filters = {}) => {
   }
 
   const query = { createdBy: { $in: ownerIds } };
+  if (filters.property) query.property = filters.property;
+  else if (user.role === 'manager') query.property = { $in: (await getMyProperties(user)).map(p => p._id) };
   if (user.role !== 'landlord') {
     query.status = 'active';
   } else if (filters.status) {
@@ -35,7 +37,7 @@ export const getTemplates = async (user, filters = {}) => {
   const kw = String(filters.q || '').trim();
   if (kw) query.title = { $regex: kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
 
-  return ContractTemplates.find(query).sort({ updatedAt: -1 }).populate('createdBy', 'fullName email');
+  return ContractTemplates.find(query).sort({ updatedAt: -1 }).populate('createdBy', 'fullName email').populate('property', 'name address');
 };
 
 /** Lấy mẫu và kiểm tra quyền xem (landlord: mẫu của mình; manager: mẫu active của chủ trọ được giao). */
@@ -52,6 +54,10 @@ export const getTemplateById = async (templateId, user) => {
   const ownerId = String(template.createdBy?._id || template.createdBy);
   if (!ownerIds.includes(ownerId) || (user.role !== 'landlord' && template.status !== 'active')) {
     throw { status: 403, message: 'Bạn không có quyền xem mẫu hợp đồng này!' };
+  }
+  if (user.role === 'manager') {
+    if (!template.property) throw { status: 403, message: 'Mẫu chưa được chủ trọ cấu hình cho tòa nhà' };
+    await assertPropertyAccess(user, template.property._id || template.property);
   }
   return template;
 };
@@ -71,8 +77,16 @@ const findOwnTemplate = async (templateId, user) => {
   return template;
 };
 
+const validateTemplateProperty = async (propertyId, user) => {
+  if (user.role !== 'landlord') throw { status: 403, message: 'Chỉ chủ trọ được cấu hình mẫu hợp đồng' };
+  if (!mongoose.isValidObjectId(propertyId)) throw { status: 400, message: 'Vui lòng chọn tòa nhà áp dụng mẫu' };
+  await assertPropertyAccess(user, propertyId);
+};
+
 export const createTemplate = async (data, user) => {
+  await validateTemplateProperty(data.property, user);
   const template = await ContractTemplates.create({
+    property: data.property,
     title: String(data.title).trim(),
     content: data.content,
     status: data.status || 'active',
@@ -83,6 +97,10 @@ export const createTemplate = async (data, user) => {
 
 export const updateTemplate = async (templateId, data, user) => {
   const template = await findOwnTemplate(templateId, user);
+  if (data.property !== undefined) {
+    await validateTemplateProperty(data.property, user);
+    template.property = data.property;
+  }
   if (data.title !== undefined) template.title = String(data.title).trim();
   if (data.content !== undefined) template.content = data.content;
   if (data.status !== undefined) template.status = data.status;

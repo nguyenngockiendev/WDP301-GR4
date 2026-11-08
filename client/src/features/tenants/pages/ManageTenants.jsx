@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Search, Users, Crown, DoorOpen, CalendarClock, X } from 'lucide-react';
 import tenantsAPI from '../api/tenants-api';
@@ -15,9 +15,12 @@ const DAY = 24 * 60 * 60 * 1000;
 
 export default function ManageTenants() {
   const { propertyId } = useParams();
+  const [searchParams] = useSearchParams();
+  const query = searchParams.get('q') || '';
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(query);
+  useEffect(() => { setSearchTerm(query); }, [query, propertyId]);
   const [roleFilter, setRoleFilter] = useState('all');
   const [selectedTenant, setSelectedTenant] = useState(null);
 

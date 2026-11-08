@@ -21,7 +21,7 @@ export function validateCreateRoom(body) {
 }
 
 export function validateUpdateRoom(body) {
-  if (body?.roomNumber && String(body.roomNumber).trim().length === 0) {
+  if (body?.roomNumber !== undefined && String(body.roomNumber).trim().length === 0) {
     return 'Số phòng không được để trống';
   }
   if (body?.area !== undefined) {

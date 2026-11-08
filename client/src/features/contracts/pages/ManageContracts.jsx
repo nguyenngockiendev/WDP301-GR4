@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Plus, Search, FileSignature, FileCheck2, CalendarClock, FileX2 } from 'lucide-react';
 import contractsAPI from '../api/contracts-api';
@@ -15,6 +15,15 @@ const DAY = 24 * 60 * 60 * 1000;
 
 export default function ManageContracts() {
   const { propertyId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('create') !== '1') return;
+    setSelectedContract(null);
+    setShowForm(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('create');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);

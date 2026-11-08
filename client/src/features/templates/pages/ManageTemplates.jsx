@@ -1,3 +1,4 @@
+import api from '../../../shared/api/axiosClient';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Plus, Search, FileText, FileCheck2, FileX2, Pencil, EyeOff, Eye } from 'lucide-react';
@@ -15,6 +16,7 @@ const card = 'rounded-3xl bg-white/85 backdrop-blur-md border border-white/90 sh
 
 /** Trang chủ trọ (landlord) tạo và quản lý mẫu hợp đồng. */
 export default function ManageTemplates() {
+  const [properties, setProperties] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [placeholders, setPlaceholders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -36,6 +38,7 @@ export default function ManageTemplates() {
 
   useEffect(() => {
     fetchTemplates();
+    api.get('/properties/my').then(res => setProperties(res.data || [])).catch(() => toast.error('Không tải được danh sách tòa nhà'));
     templatesAPI
       .getPlaceholders()
       .then(res => setPlaceholders(res.data || []))
@@ -71,6 +74,7 @@ export default function ManageTemplates() {
       fetchTemplates();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Lỗi khi lưu mẫu hợp đồng');
+      throw error;
     }
   };
 
@@ -167,6 +171,7 @@ export default function ManageTemplates() {
             <div key={t._id} className={`${card} p-5 flex flex-col`}>
               <div className="flex items-start justify-between gap-3">
                 <h3 className="text-sm font-black text-slate-900">{t.title}</h3>
+                <p className="mt-1 text-xs font-semibold text-emerald-700">{t.property?.name || 'Chưa gắn tòa nhà — cần cấu hình trước khi sử dụng'}</p>
                 <span
                   className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-extrabold border ${
                     t.status === 'active'
@@ -205,6 +210,7 @@ export default function ManageTemplates() {
       {editing !== undefined && (
         <TemplateForm
           template={editing}
+          properties={properties}
           placeholders={placeholders}
           onSubmit={handleSave}
           onCancel={() => setEditing(undefined)}
