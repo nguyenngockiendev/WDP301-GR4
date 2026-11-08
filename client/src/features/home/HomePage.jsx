@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../../shared/api/axiosClient';
 import {
   Building,
   Building2,
@@ -10,271 +11,96 @@ import {
   Droplets,
   ArrowRight,
   CheckCircle2,
-  Users,
   Sparkles,
   ChevronRight,
   Menu,
   X,
-  Clock,
   Calculator,
   MapPin,
   Check,
   Layers,
   LayoutGrid,
-  ListFilter,
-  CheckCircle,
-  AlertCircle,
-  Phone,
-  UserCheck,
 } from 'lucide-react';
 import './home.css';
 
+const buildingImages = [
+  '/images/haven-building-1.jpg',
+  '/images/haven-building-2.jpg',
+  '/images/haven-building-3.jpg',
+];
+
+const emptyBuilding = {
+  id: '',
+  name: 'Chưa có nhà trọ',
+  code: '',
+  district: '',
+  address: '',
+  description: '',
+  totalFloors: 0,
+  totalRooms: 0,
+  availableRooms: 0,
+  occupiedRooms: 0,
+  reservedRooms: 0,
+  occupancyRate: 0,
+  electricPrice: 0,
+  waterPrice: 0,
+  image: buildingImages[0],
+  rooms: [],
+};
+
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  // Multi-building state: Active building
-  const [activeBuildingId, setActiveBuildingId] = useState('bld-1');
-  // Floor filter within the active building
+  const [buildings, setBuildings] = useState([]);
+  const [activeBuildingId, setActiveBuildingId] = useState('');
   const [activeFloor, setActiveFloor] = useState('all');
-  // View mode: 'cards' or 'matrix'
   const [viewMode, setViewMode] = useState('cards');
+  const [loadingBuildings, setLoadingBuildings] = useState(true);
+  const [propertyError, setPropertyError] = useState('');
 
-  // Interactive Electric & Water Calculator States
   const [kwh, setKwh] = useState(120);
   const [waterM3, setWaterM3] = useState(6);
-  const roomBasePrice = 3500000;
-  const electricRate = 3500;
-  const waterRate = 20000;
+
+  useEffect(() => {
+    api.get('/properties/public')
+      .then(response => {
+        const properties = (response.data || []).map((property, index) => ({
+          ...property,
+          image: buildingImages[index % buildingImages.length],
+          rooms: (property.rooms || []).map((room, roomIndex) => ({
+            ...room,
+            image: room.image || `/images/haven-room-${(roomIndex % 3) + 1}.jpg`,
+          })),
+        }));
+        setBuildings(properties);
+        setActiveBuildingId(properties[0]?.id || '');
+      })
+      .catch(error => {
+        setPropertyError(error.response?.data?.message || 'Không tải được danh sách nhà trọ.');
+      })
+      .finally(() => setLoadingBuildings(false));
+  }, []);
+
+  const currentBuilding =
+    buildings.find(building => building.id === activeBuildingId) || buildings[0] || emptyBuilding;
+
+  const totalRooms = buildings.reduce(
+    (total, building) => total + building.totalRooms,
+    0
+  );
+  const availableRooms = buildings.reduce(
+    (total, building) => total + building.availableRooms,
+    0
+  );
+  const occupiedRooms = buildings.reduce(
+    (total, building) => total + building.occupiedRooms,
+    0
+  );
+  const occupancyRate = totalRooms ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+  const roomBasePrice = currentBuilding.rooms.find(room => room.status === 'available')?.price || 0;
+  const electricRate = currentBuilding.electricPrice;
+  const waterRate = currentBuilding.waterPrice;
   const totalCost = roomBasePrice + kwh * electricRate + waterM3 * waterRate;
 
-  // Dữ liệu Hệ thống: Nhiều Tòa nhà (Buildings / Properties)
-  const buildings = [
-    {
-      id: 'bld-1',
-      name: 'Haven Oasis Residence',
-      code: 'TÒA A',
-      address: 'Đường Nguyễn Thị Thập, Tân Phú, Quận 7, TP. HCM',
-      district: 'Quận 7',
-      totalFloors: 4,
-      totalRooms: 24,
-      availableRooms: 5,
-      occupiedRooms: 18,
-      reservedRooms: 1,
-      occupancyRate: 75,
-      electricPrice: 3500,
-      waterPrice: 20000,
-      manager: 'Nguyễn Văn Hùng (0903 123 456)',
-      image: '/images/haven-building-1.jpg',
-      description:
-        'Tòa nhà chung cư mini cao cấp 4 tầng với bảo vệ 24/7, thang máy tốc độ cao, hệ thống PCCC tự động và bãi xe tầng hầm rộng rãi.',
-      rooms: [
-        {
-          id: 'b1-101',
-          roomNumber: 'Phòng 101',
-          floor: 1,
-          name: 'Studio Ban Công Thoáng Mát',
-          tier: 'Studio cao cấp',
-          area: '28m²',
-          price: 4500000,
-          status: 'available', // available, occupied, reserved
-          image: '/images/haven-hero-apartment.jpg',
-          amenities: ['Ban công riêng', 'Máy giặt riêng', 'Khóa vân tay', 'Tủ lạnh Inverter'],
-        },
-        {
-          id: 'b1-102',
-          roomNumber: 'Phòng 102',
-          floor: 1,
-          name: 'Phòng Tiêu Chuẩn Hiện Đại',
-          tier: 'Phòng Deluxe',
-          area: '24m²',
-          price: 3800000,
-          status: 'occupied',
-          image: '/images/haven-room-1.jpg',
-          amenities: ['Máy lạnh Inverter', 'Giường nệm cao cấp', 'Wifi tốc độ cao'],
-        },
-        {
-          id: 'b1-201',
-          roomNumber: 'Phòng 201',
-          floor: 2,
-          name: 'Căn Hộ Mini Gác Lửng',
-          tier: 'Căn hộ Mini',
-          area: '32m²',
-          price: 5200000,
-          status: 'available',
-          image: '/images/haven-room-2.jpg',
-          amenities: ['Gác lửng đúc', 'Khu bếp riêng', 'Bàn làm việc', 'Cửa sổ lớn'],
-        },
-        {
-          id: 'b1-202',
-          roomNumber: 'Phòng 202',
-          floor: 2,
-          name: 'Studio View Thoáng Lầu 2',
-          tier: 'Studio cao cấp',
-          area: '26m²',
-          price: 4200000,
-          status: 'reserved',
-          image: '/images/haven-room-3.jpg',
-          amenities: ['Full nội thất gỗ', 'Bình nước nóng', 'Tủ quần áo âm tường'],
-        },
-        {
-          id: 'b1-301',
-          roomNumber: 'Phòng 301',
-          floor: 3,
-          name: 'Phòng Master Ban Công Lớn',
-          tier: 'Căn hộ Mini',
-          area: '35m²',
-          price: 5500000,
-          status: 'available',
-          image: '/images/haven-hero-apartment.jpg',
-          amenities: ['Ban công góc', 'Khu giặt phơi riêng', 'Smart TV', 'Máy hút mùi'],
-        },
-        {
-          id: 'b1-302',
-          roomNumber: 'Phòng 302',
-          floor: 3,
-          name: 'Phòng Deluxe Yên Tĩnh',
-          tier: 'Phòng Deluxe',
-          area: '25m²',
-          price: 4000000,
-          status: 'available',
-          image: '/images/haven-room-1.jpg',
-          amenities: ['Cửa kính cách âm', 'Bàn trà nhỏ', 'Khóa thẻ từ thông minh'],
-        },
-      ],
-    },
-    {
-      id: 'bld-2',
-      name: 'Haven Eco Tower',
-      code: 'TÒA B',
-      address: 'Đường Điện Biên Phủ, Phường 25, Quận Bình Thạnh, TP. HCM',
-      district: 'Bình Thạnh',
-      totalFloors: 5,
-      totalRooms: 20,
-      availableRooms: 3,
-      occupiedRooms: 16,
-      reservedRooms: 1,
-      occupancyRate: 80,
-      electricPrice: 3500,
-      waterPrice: 20000,
-      manager: 'Trần Thị Mai (0918 654 321)',
-      image: '/images/haven-building-2.jpg',
-      description:
-        'Tòa căn hộ dịch vụ vị trí trung tâm giáp Quận 1, khu dân trí cao, gần các trường đại học HUTECH, Ngoại Thương và ga Metro.',
-      rooms: [
-        {
-          id: 'b2-101',
-          roomNumber: 'Phòng 101',
-          floor: 1,
-          name: 'Studio Tầng Trệt Tiện Lợi',
-          tier: 'Studio cao cấp',
-          area: '26m²',
-          price: 4300000,
-          status: 'occupied',
-          image: '/images/haven-room-1.jpg',
-          amenities: ['Lối đi riêng', 'Bếp từ đôi', 'Máy lạnh Daikin', 'Máy giặt'],
-        },
-        {
-          id: 'b2-201',
-          roomNumber: 'Phòng 201',
-          floor: 2,
-          name: 'Căn Hộ Mini Ban Công Xanh',
-          tier: 'Căn hộ Mini',
-          area: '30m²',
-          price: 4800000,
-          status: 'available',
-          image: '/images/haven-room-2.jpg',
-          amenities: ['Cây xanh ban công', 'Sofa bed', 'Bàn ăn 2 ghế', 'Wifi 200Mbps'],
-        },
-        {
-          id: 'b2-301',
-          roomNumber: 'Phòng 301',
-          floor: 3,
-          name: 'Phòng Deluxe View Thành Phố',
-          tier: 'Phòng Deluxe',
-          area: '25m²',
-          price: 4100000,
-          status: 'available',
-          image: '/images/haven-hero-apartment.jpg',
-          amenities: ['Cửa sổ kính Low-E', 'Tủ lạnh 180L', 'Bàn làm việc lớn'],
-        },
-        {
-          id: 'b2-401',
-          roomNumber: 'Phòng 401',
-          floor: 4,
-          name: 'Studio Penthouse Haven',
-          tier: 'Studio cao cấp',
-          area: '34m²',
-          price: 5400000,
-          status: 'available',
-          image: '/images/haven-room-3.jpg',
-          amenities: ['Sân thượng riêng', 'Phòng tắm đứng kính', 'Khóa vân tay'],
-        },
-      ],
-    },
-    {
-      id: 'bld-3',
-      name: 'Haven Urban Living',
-      code: 'TÒA C',
-      address: 'Đường Song Hành Xa Lộ Hà Nội, TP. Thủ Đức, TP. HCM',
-      district: 'TP. Thủ Đức',
-      totalFloors: 6,
-      totalRooms: 32,
-      availableRooms: 6,
-      occupiedRooms: 24,
-      reservedRooms: 2,
-      occupancyRate: 75,
-      electricPrice: 3200,
-      waterPrice: 18000,
-      manager: 'Lê Hoàng Nam (0987 888 999)',
-      image: '/images/haven-building-3.jpg',
-      description:
-        'Tòa nhà thế hệ mới với phong cách thiết kế tối giản Nordic, tích hợp phòng gym mini miễn phí, sân phơi chung và trạm sạc xe điện.',
-      rooms: [
-        {
-          id: 'b3-101',
-          roomNumber: 'Phòng 101',
-          floor: 1,
-          name: 'Phòng Tiêu Chuẩn Năng Động',
-          tier: 'Phòng Deluxe',
-          area: '23m²',
-          price: 3600000,
-          status: 'available',
-          image: '/images/haven-room-1.jpg',
-          amenities: ['Máy lạnh', 'Tủ lạnh mini', 'Giường thông minh có hộc'],
-        },
-        {
-          id: 'b3-201',
-          roomNumber: 'Phòng 201',
-          floor: 2,
-          name: 'Studio Gác Cao Đón Nắng',
-          tier: 'Studio cao cấp',
-          area: '29m²',
-          price: 4400000,
-          status: 'available',
-          image: '/images/haven-room-2.jpg',
-          amenities: ['Gác cao đứng thẳng', 'Cửa sổ giếng trời', 'Bếp đá hoa cương'],
-        },
-        {
-          id: 'b3-301',
-          roomNumber: 'Phòng 301',
-          floor: 3,
-          name: 'Căn Hộ Mini 1 Phòng Ngủ',
-          tier: 'Căn hộ Mini',
-          area: '36m²',
-          price: 5300000,
-          status: 'available',
-          image: '/images/haven-hero-apartment.jpg',
-          amenities: ['Vách ngăn phòng ngủ', 'Khu giặt riêng', 'Máy hút mùi', 'Bàn ăn'],
-        },
-      ],
-    },
-  ];
-
-  // Active Building Object
-  const currentBuilding =
-    buildings.find(b => b.id === activeBuildingId) || buildings[0];
-
-  // Filtered rooms inside the active building
   const filteredRooms =
     activeFloor === 'all'
       ? currentBuilding.rooms
@@ -282,12 +108,8 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#eaf4f4] text-slate-800 font-sans selection:bg-[#098b6c] selection:text-white">
-      {/* ========================================================================= */}
-      {/* 1. HEADER / NAVIGATION (Sticky Glassmorphic Header) */}
-      {/* ========================================================================= */}
       <header className="sticky top-0 z-50 haven-glass border-b border-slate-200/80 transition-all duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          {/* Logo & Brand Name */}
           <Link to="/home" className="flex items-center gap-3 group">
             <div className="w-11 h-11 rounded-2xl bg-[#098b6c] flex items-center justify-center text-white shadow-md shadow-emerald-800/20 group-hover:scale-105 transition-transform">
               <Home size={24} className="stroke-[2.5]" />
@@ -301,8 +123,6 @@ export default function HomePage() {
               </span>
             </div>
           </Link>
-
-          {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
             <a href="#tong-quan" className="hover:text-[#098b6c] transition-colors">
               Tổng quan
@@ -324,8 +144,6 @@ export default function HomePage() {
               <ChevronRight size={15} />
             </Link>
           </nav>
-
-          {/* Action Buttons */}
           <div className="hidden sm:flex items-center gap-3.5">
             <Link
               to="/login"
@@ -341,8 +159,6 @@ export default function HomePage() {
               <ArrowRight size={16} />
             </Link>
           </div>
-
-          {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden p-2.5 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 transition-colors"
@@ -351,8 +167,6 @@ export default function HomePage() {
             {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
-
-        {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden px-4 pt-2 pb-6 space-y-3 bg-white border-b border-slate-200 shadow-xl animate-fade-in-up">
             <a
@@ -407,10 +221,6 @@ export default function HomePage() {
           </div>
         )}
       </header>
-
-      {/* ========================================================================= */}
-      {/* 2. HERO SECTION */}
-      {/* ========================================================================= */}
       <section
         id="tong-quan"
         className="relative pt-8 pb-16 sm:pt-14 sm:pb-24 overflow-hidden"
@@ -420,8 +230,6 @@ export default function HomePage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
-            
-            {/* Cột trái: Tiêu đề & Thông tin */}
             <div className="lg:col-span-6 space-y-6">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 border border-emerald-200 text-xs font-bold text-[#098b6c] shadow-sm backdrop-blur-sm">
                 <span className="w-2 h-2 rounded-full bg-[#098b6c] animate-ping" />
@@ -475,8 +283,6 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-
-            {/* Cột phải: Live Preview Dashboard */}
             <div className="lg:col-span-6 relative">
               <div className="absolute inset-0 bg-gradient-to-tr from-teal-400/20 to-emerald-400/30 rounded-[36px] filter blur-xl transform rotate-1 scale-95" />
 
@@ -496,7 +302,7 @@ export default function HomePage() {
                         </span>
                       </div>
                       <span className="text-[10px] text-slate-400 block -mt-0.5">
-                        Tổng hợp: 3 Tòa nhà · 76 Phòng
+                        Tổng hợp: {buildings.length} tòa nhà · {totalRooms} phòng
                       </span>
                     </div>
                   </div>
@@ -508,138 +314,102 @@ export default function HomePage() {
                     <span>+ Quản Lý Tòa Nhà</span>
                   </Link>
                 </div>
-
-                {/* 4 Stat Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-4">
                   <div className="p-3 rounded-2xl bg-[#f8fbfa] border border-slate-100">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight block">
-                      DOANH THU T10
+                      SỐ TÒA NHÀ
                     </span>
                     <span className="text-sm sm:text-base font-black text-slate-900 block mt-0.5">
-                      54.500.000 đ
+                      {buildings.length}
                     </span>
                     <span className="inline-block mt-1 text-[9px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded-md">
-                      +14% tháng trước
+                      đang hoạt động
                     </span>
                   </div>
 
                   <div className="p-3 rounded-2xl bg-[#eefaf5] border border-emerald-100">
                     <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-tight block">
-                      TỶ LỆ LẤP ĐẦY
+                      TỔNG SỐ PHÒNG
                     </span>
                     <span className="text-sm sm:text-base font-black text-emerald-900 block mt-0.5">
-                      78%
+                      {totalRooms}
                     </span>
                     <span className="text-[9px] font-semibold text-emerald-700 block mt-1">
-                      58/76 phòng đang thuê
+                      tại {buildings.length} tòa nhà
                     </span>
                   </div>
 
                   <div className="p-3 rounded-2xl bg-[#fffbf0] border border-amber-100">
                     <span className="text-[10px] font-bold text-amber-800 uppercase tracking-tight block">
-                      HỢP ĐỒNG HẾT
+                      PHÒNG CÒN TRỐNG
                     </span>
                     <span className="text-sm sm:text-base font-black text-amber-900 block mt-0.5">
-                      3
+                      {availableRooms}
                     </span>
                     <span className="text-[9px] font-semibold text-amber-700 block mt-1">
-                      phòng cần gia hạn
+                      sẵn sàng cho thuê
                     </span>
                   </div>
 
                   <div className="p-3 rounded-2xl bg-[#f8fbfa] border border-slate-100">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight block">
-                      SỐ TÒA ĐANG VẬN HÀNH
+                      TỶ LỆ ĐANG THUÊ
                     </span>
                     <span className="text-sm sm:text-base font-black text-slate-900 block mt-0.5">
-                      3 Tòa
+                      {occupancyRate}%
                     </span>
                     <span className="text-[9px] font-semibold text-slate-500 block mt-1">
-                      Q7, Bình Thạnh, Thủ Đức
+                      {occupiedRooms}/{totalRooms} phòng
                     </span>
                   </div>
                 </div>
-
-                {/* Growth Chart & Quick Utility Widgets */}
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-1">
                   <div className="sm:col-span-7 p-3.5 rounded-2xl bg-white border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <span className="text-xs font-black text-slate-800 block">
-                          Biểu Đồ Tăng Trưởng Doanh Thu
+                          Phòng trống theo tòa
                         </span>
                         <span className="text-[10px] text-slate-400">
-                          Dữ liệu 3 tòa nhà 6 tháng gần nhất
+                          Số phòng hiện sẵn sàng cho thuê
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#098b6c]">
                         <span className="w-2 h-2 rounded-full bg-[#098b6c]" />
-                        <span>Thực thu (54.5 tr)</span>
+                        <span>{availableRooms} phòng trống</span>
                       </div>
                     </div>
 
-                    <div className="h-28 w-full relative">
-                      <svg
-                        viewBox="0 0 300 100"
-                        className="w-full h-full overflow-visible"
-                        preserveAspectRatio="none"
-                      >
-                        <defs>
-                          <linearGradient
-                            id="emeraldGrad2"
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="1"
-                          >
-                            <stop
-                              offset="0%"
-                              stopColor="#098b6c"
-                              stopOpacity="0.25"
-                            />
-                            <stop
-                              offset="100%"
-                              stopColor="#098b6c"
-                              stopOpacity="0.0"
-                            />
-                          </linearGradient>
-                        </defs>
-                        <path
-                          d="M0 65 Q75 60, 150 50 T300 35"
-                          fill="none"
-                          stroke="#f59e0b"
-                          strokeWidth="2"
-                          strokeDasharray="4 4"
-                          opacity="0.7"
-                        />
-                        <path
-                          d="M0 80 Q60 78, 120 65 T240 38 T300 15 L300 100 L0 100 Z"
-                          fill="url(#emeraldGrad2)"
-                        />
-                        <path
-                          d="M0 80 Q60 78, 120 65 T240 38 T300 15"
-                          fill="none"
-                          stroke="#098b6c"
-                          strokeWidth="3.5"
-                          strokeLinecap="round"
-                          className="animate-chart-line"
-                        />
-                        <circle cx="300" cy="15" r="4.5" fill="#098b6c" />
-                      </svg>
-                    </div>
-                    <div className="flex justify-between text-[9px] text-slate-400 font-medium px-1">
-                      <span>T5</span>
-                      <span>T6</span>
-                      <span>T7</span>
-                      <span>T8</span>
-                      <span>T9</span>
-                      <span className="font-bold text-[#098b6c]">T10 (Hiện tại)</span>
+                    <div className="space-y-3 pt-2">
+                      {buildings.map(building => {
+                        const percent = building.totalRooms
+                          ? (building.availableRooms / building.totalRooms) * 100
+                          : 0;
+
+                        return (
+                          <div key={building.id}>
+                            <div className="mb-1 flex justify-between text-[10px] text-slate-600">
+                              <span>{building.name}</span>
+                              <span>{building.availableRooms}/{building.totalRooms}</span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className="h-full rounded-full bg-[#098b6c]"
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {!buildings.length && (
+                        <p className="text-xs text-slate-400">Chưa có dữ liệu nhà trọ.</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="sm:col-span-5 p-3.5 rounded-2xl bg-white border border-slate-100 shadow-sm flex flex-col justify-between">
                     <span className="text-xs font-black text-slate-800 block mb-2">
-                      Đơn Giá Điện Nước Chuẩn
+                      Đơn giá điện nước
                     </span>
                     <div className="space-y-2">
                       <div className="p-2.5 rounded-xl bg-[#eefaf5] flex items-center justify-between">
@@ -650,7 +420,7 @@ export default function HomePage() {
                           <span className="text-[11px] font-bold text-slate-700">Điện</span>
                         </div>
                         <span className="text-xs font-black text-slate-900">
-                          3.500 <small className="text-[9px] font-normal">đ/kWh</small>
+                          {currentBuilding.electricPrice.toLocaleString('vi-VN')} <small className="text-[9px] font-normal">đ/kWh</small>
                         </span>
                       </div>
 
@@ -662,19 +432,19 @@ export default function HomePage() {
                           <span className="text-[11px] font-bold text-slate-700">Nước</span>
                         </div>
                         <span className="text-xs font-black text-slate-900">
-                          20.000 <small className="text-[9px] font-normal">đ/m³</small>
+                          {currentBuilding.waterPrice.toLocaleString('vi-VN')} <small className="text-[9px] font-normal">đ/m³</small>
                         </span>
                       </div>
                     </div>
                     <span className="text-[9px] text-slate-400 block text-center mt-2">
-                      Áp dụng chung toàn hệ thống Haven Stay
+                      Đơn giá của {currentBuilding.name}
                     </span>
                   </div>
                 </div>
 
                 <div className="absolute -bottom-5 -left-3 sm:-left-6 p-2.5 px-3.5 rounded-2xl bg-slate-900/90 text-white text-xs font-semibold shadow-xl flex items-center gap-2.5 backdrop-blur-md animate-float-reverse">
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                  <span>Tòa A (Q7): Vừa nhận yêu cầu thuê Phòng 101</span>
+                  <span>{currentBuilding.name}: {currentBuilding.availableRooms} phòng trống</span>
                 </div>
               </div>
             </div>
@@ -682,14 +452,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ========================================================================= */}
-      {/* 3. HỆ THỐNG NHIỀU TÒA NHÀ & 1 TÒA NHIỀU PHÒNG (MULTI-BUILDING SHOWCASE) */}
-      {/* ========================================================================= */}
       <section id="he-thong-toa-nha" className="py-20 bg-white relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          {/* Section Header */}
           <div className="text-center max-w-3xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#098b6c] mb-3">
               <Building2 size={15} />
@@ -699,11 +463,14 @@ export default function HomePage() {
               Quản Lý Nhiều Tòa Nhà — Một Tòa Nhiều Phòng
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
-              Chọn tòa nhà bên dưới để xem chi tiết danh sách phòng, sơ đồ tầng và tình trạng phòng trống theo thời gian thực.
+              Chọn tòa nhà để xem danh sách phòng, sơ đồ tầng và trạng thái phòng hiện tại.
             </p>
           </div>
-
-          {/* BỘ CHỌN TÒA NHÀ (TABS CHỌN TÒA) */}
+          {loadingBuildings && <p className="mb-6 text-center text-sm text-slate-500">Đang tải danh sách nhà trọ...</p>}
+          {propertyError && <p className="mb-6 text-center text-sm text-red-600">{propertyError}</p>}
+          {!loadingBuildings && !propertyError && !buildings.length && (
+            <p className="mb-6 text-center text-sm text-slate-500">Chưa có nhà trọ đang hoạt động.</p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
             {buildings.map(bld => {
               const isActive = bld.id === activeBuildingId;
@@ -729,7 +496,7 @@ export default function HomePage() {
                             : 'bg-slate-200 text-slate-700'
                         }`}
                       >
-                        {bld.code} · {bld.district}
+                        {bld.code}{bld.district && ` · ${bld.district}`}
                       </span>
                       <span
                         className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
@@ -773,11 +540,8 @@ export default function HomePage() {
               );
             })}
           </div>
-
-          {/* CHI TIẾT TÒA NHÀ ĐANG CHỌN (HERO CARD CỦA TÒA) */}
           <div className="bg-[#f8fbfa] border border-slate-200 rounded-[32px] p-6 sm:p-8 mb-10 shadow-lg">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              {/* Ảnh mặt tiền tòa nhà */}
               <div className="lg:col-span-5 relative rounded-2xl overflow-hidden shadow-md h-64 sm:h-72">
                 <img
                   src={currentBuilding.image}
@@ -786,7 +550,7 @@ export default function HomePage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                 <div className="absolute top-3.5 left-3.5 bg-black/60 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-xl">
-                  {currentBuilding.code} — {currentBuilding.district}
+                  {currentBuilding.code}{currentBuilding.district && ` — ${currentBuilding.district}`}
                 </div>
                 <div className="absolute bottom-3.5 left-3.5 right-3.5 text-white">
                   <span className="text-lg font-black block leading-tight">
@@ -797,8 +561,6 @@ export default function HomePage() {
                   </span>
                 </div>
               </div>
-
-              {/* Thông tin vận hành của tòa nhà này */}
               <div className="lg:col-span-7 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -811,16 +573,16 @@ export default function HomePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 rounded-xl bg-emerald-100 text-[#098b6c] text-xs font-bold">
-                      Đang hoạt động 24/7
+                      Đang hoạt động
                     </span>
                   </div>
                 </div>
 
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  {currentBuilding.description}
-                </p>
-
-                {/* Grid mini stats của tòa */}
+                {currentBuilding.description && (
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    {currentBuilding.description}
+                  </p>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                   <div className="p-3 rounded-2xl bg-white border border-slate-200">
                     <span className="text-[10px] text-slate-400 font-bold block uppercase">
@@ -867,17 +629,9 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="pt-2 flex items-center gap-2 text-xs text-slate-600 font-medium">
-                  <UserCheck size={16} className="text-[#098b6c]" />
-                  <span>Quản lý phụ trách tòa: <strong>{currentBuilding.manager}</strong></span>
-                </div>
               </div>
             </div>
           </div>
-
-          {/* ========================================================= */}
-          {/* DANH SÁCH CÁC PHÒNG TRONG TÒA NHÀ ĐANG CHỌN (1 TÒA NHIỀU PHÒNG) */}
-          {/* ========================================================= */}
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
@@ -892,10 +646,7 @@ export default function HomePage() {
                 Lọc theo tầng để duyệt các phòng đang trống hoặc đang có người thuê.
               </p>
             </div>
-
-            {/* Bộ lọc tầng & Chế độ xem */}
             <div className="flex flex-wrap items-center gap-3">
-              {/* Lọc tầng */}
               <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 border border-slate-200">
                 <button
                   onClick={() => setActiveFloor('all')}
@@ -924,8 +675,6 @@ export default function HomePage() {
                   );
                 })}
               </div>
-
-              {/* Chế độ xem: Thẻ ảnh (Cards) vs Sơ đồ tầng (Matrix) */}
               <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100 border border-slate-200">
                 <button
                   onClick={() => setViewMode('cards')}
@@ -952,8 +701,6 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-
-          {/* CHẾ ĐỘ 1: THẺ PHÒNG TRONG TÒA (CARD VIEW VỚI ẢNH THỰC TẾ) */}
           {viewMode === 'cards' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in-up">
               {filteredRooms.map(room => (
@@ -961,7 +708,6 @@ export default function HomePage() {
                   key={room.id}
                   className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-lg shadow-slate-200/50 hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col group"
                 >
-                  {/* Ảnh phòng */}
                   <div className="relative h-56 overflow-hidden">
                     <img
                       src={room.image}
@@ -969,8 +715,6 @@ export default function HomePage() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
-                    
-                    {/* Badge số phòng & tầng */}
                     <div className="absolute top-3.5 left-3.5 flex items-center gap-2">
                       <span className="px-3 py-1 rounded-xl bg-slate-900/85 backdrop-blur-md text-white text-xs font-black">
                         {room.roomNumber}
@@ -979,8 +723,6 @@ export default function HomePage() {
                         Tầng {room.floor}
                       </span>
                     </div>
-
-                    {/* Trạng thái phòng */}
                     <div className="absolute top-3.5 right-3.5">
                       {room.status === 'available' && (
                         <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-500 text-white shadow-md">
@@ -998,8 +740,6 @@ export default function HomePage() {
                         </span>
                       )}
                     </div>
-
-                    {/* Giá thuê & Diện tích */}
                     <div className="absolute bottom-3.5 left-3.5 text-white">
                       <span className="text-xl font-black drop-shadow-md">
                         {room.price.toLocaleString('vi-VN')} đ
@@ -1011,8 +751,6 @@ export default function HomePage() {
                       {room.area}
                     </div>
                   </div>
-
-                  {/* Nội dung thông tin phòng */}
                   <div className="p-5 flex-1 flex flex-col justify-between">
                     <div>
                       <div className="text-[11px] font-bold text-[#098b6c] uppercase tracking-wider mb-1">
@@ -1021,8 +759,6 @@ export default function HomePage() {
                       <h4 className="font-extrabold text-base text-slate-900 group-hover:text-[#098b6c] transition-colors leading-snug">
                         {room.name}
                       </h4>
-
-                      {/* Tiện nghi phòng */}
                       <div className="flex flex-wrap gap-1.5 my-3.5">
                         {room.amenities.map(amenity => (
                           <span
@@ -1062,8 +798,6 @@ export default function HomePage() {
               ))}
             </div>
           )}
-
-          {/* CHẾ ĐỘ 2: MA TRẬN SƠ ĐỒ PHÒNG CỦA TÒA (MATRIX VIEW) */}
           {viewMode === 'matrix' && (
             <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-md animate-fade-in-up">
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
@@ -1147,7 +881,7 @@ export default function HomePage() {
               to="/browse-rooms"
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-slate-900 hover:bg-[#098b6c] text-white text-sm font-bold shadow-md transition-all group"
             >
-              <span>Xem Toàn Bộ Danh Sách Phòng Của Cả 3 Tòa Nhà</span>
+              <span>Xem toàn bộ danh sách phòng của {buildings.length} tòa nhà</span>
               <ArrowRight
                 size={16}
                 className="group-hover:translate-x-1 transition-transform"
@@ -1156,10 +890,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ========================================================================= */}
-      {/* 4. BỘ 3 TÍNH NĂNG CỐT LÕI (NỀN XANH LÁ ĐẬM #063f31 - TỪ ẢNH 1) */}
-      {/* ========================================================================= */}
       <section id="tinh-nang" className="py-20 bg-[#063f31] text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(#2dd4bf_1px,transparent_1px)] [background-size:24px_24px] opacity-10 pointer-events-none" />
         <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-emerald-500/15 filter blur-3xl pointer-events-none" />
@@ -1247,10 +977,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ========================================================================= */}
-      {/* 5. CÔNG CỤ TÍNH THỬ ĐIỆN NƯỚC (Interactive Calculator) */}
-      {/* ========================================================================= */}
       <section id="dien-nuoc" className="py-20 bg-[#eaf4f4] relative">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-[32px] p-6 sm:p-10 border border-slate-200/90 shadow-2xl shadow-emerald-900/10">
@@ -1276,7 +1002,7 @@ export default function HomePage() {
                       <span>Số điện tiêu thụ hàng tháng</span>
                     </span>
                     <span className="text-[#098b6c] font-black text-sm">
-                      {kwh} kWh <small className="text-slate-500 font-normal">(@3.500đ)</small>
+                      {kwh} kWh <small className="text-slate-500 font-normal">(@{electricRate.toLocaleString('vi-VN')}đ)</small>
                     </span>
                   </div>
                   <input
@@ -1302,7 +1028,7 @@ export default function HomePage() {
                       <span>Số nước tiêu thụ hàng tháng</span>
                     </span>
                     <span className="text-teal-700 font-black text-sm">
-                      {waterM3} m³ <small className="text-slate-500 font-normal">(@20.000đ)</small>
+                      {waterM3} m³ <small className="text-slate-500 font-normal">(@{waterRate.toLocaleString('vi-VN')}đ)</small>
                     </span>
                   </div>
                   <input
@@ -1331,7 +1057,7 @@ export default function HomePage() {
                     {totalCost.toLocaleString('vi-VN')} đ
                   </div>
                   <p className="text-[11px] text-emerald-200/80 mt-1">
-                    Đã bao gồm tiền phòng cơ bản 3.500.000 đ
+                    Tiền phòng mẫu tại {currentBuilding.name}: {roomBasePrice.toLocaleString('vi-VN')} đ
                   </p>
                 </div>
 
@@ -1349,8 +1075,8 @@ export default function HomePage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Internet & Rác:</span>
-                    <span className="font-bold text-[#2dd4bf]">Miễn phí</span>
+                    <span>Phí dịch vụ khác:</span>
+                    <span className="font-bold text-[#2dd4bf]">Chưa tính</span>
                   </div>
                 </div>
 
@@ -1365,10 +1091,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ========================================================================= */}
-      {/* 6. CALL TO ACTION BANNER */}
-      {/* ========================================================================= */}
       <section className="py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="rounded-[36px] bg-gradient-to-r from-[#022c22] via-[#063f31] to-[#042f2e] text-white p-8 sm:p-14 text-center relative overflow-hidden shadow-2xl">
@@ -1400,10 +1122,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ========================================================================= */}
-      {/* 7. FOOTER */}
-      {/* ========================================================================= */}
       <footer className="bg-white border-t border-slate-200 py-12 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">

@@ -5,15 +5,35 @@ import { toast } from 'react-toastify';
 import api from '../../shared/api/axiosClient';
 
 const money = value => `${Number(value || 0).toLocaleString('vi-VN')} đ`;
-const assetStatus = { in_stock: 'Trong kho', in_use: 'Đang sử dụng', maintenance: 'Đang bảo trì', retired: 'Ngừng sử dụng' };
-const ticketStatus = { reported: 'Mới báo', approved: 'Đã duyệt', in_progress: 'Đang xử lý', completed: 'Hoàn tất', rejected: 'Từ chối' };
-const priorityLabel = { low: 'Thấp', normal: 'Bình thường', high: 'Cao', urgent: 'Khẩn cấp' };
+const assetStatus = {
+  in_stock: 'Trong kho',
+  in_use: 'Đang sử dụng',
+  maintenance: 'Đang bảo trì',
+  retired: 'Ngừng sử dụng',
+};
+const ticketStatus = {
+  reported: 'Mới báo',
+  approved: 'Đã duyệt',
+  in_progress: 'Đang xử lý',
+  completed: 'Hoàn tất',
+  rejected: 'Từ chối',
+};
+const priorityLabel = {
+  low: 'Thấp',
+  normal: 'Bình thường',
+  high: 'Cao',
+  urgent: 'Khẩn cấp',
+};
 
 export default function PropertyOperationsPage() {
   const { propertyId } = useParams();
-  const [assets, setAssets] = useState([]); const [tickets, setTickets] = useState([]); const [rooms, setRooms] = useState([]);
-  const [loading, setLoading] = useState(true); const [tab, setTab] = useState('assets');
-  const [assetForm, setAssetForm] = useState(false); const [ticketForm, setTicketForm] = useState(false);
+  const [assets, setAssets] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('assets');
+  const [assetForm, setAssetForm] = useState(false);
+  const [ticketForm, setTicketForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [ticketRoom, setTicketRoom] = useState('');
 
@@ -25,28 +45,55 @@ export default function PropertyOperationsPage() {
         api.get(`/operations/properties/${propertyId}/maintenance`),
         api.get(`/operations/properties/${propertyId}/rooms`),
       ]);
-      setAssets(assetData.data || []); setTickets(ticketData.data || []); setRooms(roomData.data || []);
-    } catch (error) { toast.error(error.response?.data?.message || 'Không tải được thiết bị và lịch bảo trì.'); }
-    finally { setLoading(false); }
+      setAssets(assetData.data || []);
+      setTickets(ticketData.data || []);
+      setRooms(roomData.data || []);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Không tải được thiết bị và lịch bảo trì.');
+    } finally {
+      setLoading(false);
+    }
   }
-  useEffect(() => { load(); }, [propertyId]);
+  useEffect(() => {
+    load();
+  }, [propertyId]);
 
   async function submitAsset(event) {
-    event.preventDefault(); setSaving(true);
+    event.preventDefault();
+    setSaving(true);
     const payload = Object.fromEntries(new FormData(event.currentTarget));
-    payload.purchasePrice = Number(payload.purchasePrice || 0); payload.room = payload.room || null;
-    try { await api.post(`/operations/properties/${propertyId}/assets`, payload); toast.success('Đã thêm thiết bị.'); setAssetForm(false); await load(); }
-    catch (error) { toast.error(error.response?.data?.message || 'Không thêm được thiết bị.'); }
-    finally { setSaving(false); }
+    payload.purchasePrice = Number(payload.purchasePrice || 0);
+    payload.room = payload.room || null;
+
+    try {
+      await api.post(`/operations/properties/${propertyId}/assets`, payload);
+      toast.success('Đã thêm thiết bị.');
+      setAssetForm(false);
+      await load();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Không thêm được thiết bị.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function submitTicket(event) {
-    event.preventDefault(); setSaving(true);
+    event.preventDefault();
+    setSaving(true);
     const payload = Object.fromEntries(new FormData(event.currentTarget));
-    payload.asset = payload.asset || null; payload.estimatedCost = Number(payload.estimatedCost || 0);
-    try { await api.post(`/operations/properties/${propertyId}/maintenance`, payload); toast.success('Đã ghi nhận yêu cầu bảo trì.'); setTicketForm(false); await load(); }
-    catch (error) { toast.error(error.response?.data?.message || 'Không tạo được yêu cầu bảo trì.'); }
-    finally { setSaving(false); }
+    payload.asset = payload.asset || null;
+    payload.estimatedCost = Number(payload.estimatedCost || 0);
+
+    try {
+      await api.post(`/operations/properties/${propertyId}/maintenance`, payload);
+      toast.success('Đã ghi nhận yêu cầu bảo trì.');
+      setTicketForm(false);
+      await load();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Không tạo được yêu cầu bảo trì.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function moveTicket(ticket, status) {
@@ -55,23 +102,44 @@ export default function PropertyOperationsPage() {
       const actualCost = window.prompt('Chi phí thực tế (VNĐ)', String(ticket.estimatedCost || 0));
       if (actualCost === null) return;
       payload.actualCost = Number(actualCost);
-      if (!Number.isFinite(payload.actualCost) || payload.actualCost < 0) { toast.error('Chi phí phải là số không âm.'); return; }
+      if (!Number.isFinite(payload.actualCost) || payload.actualCost < 0) {
+        toast.error('Chi phí phải là số không âm.');
+        return;
+      }
       const resolutionNote = window.prompt('Ghi chú xử lý', ticket.resolutionNote || '');
       if (resolutionNote === null) return;
       payload.resolutionNote = resolutionNote;
     }
-    try { await api.patch(`/operations/properties/${propertyId}/maintenance/${ticket._id}`, payload); toast.success('Đã cập nhật yêu cầu.'); await load(); }
-    catch (error) { toast.error(error.response?.data?.message || 'Không cập nhật được yêu cầu.'); }
+    try {
+      await api.patch(`/operations/properties/${propertyId}/maintenance/${ticket._id}`, payload);
+      toast.success('Đã cập nhật yêu cầu.');
+      await load();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Không cập nhật được yêu cầu.');
+    }
   }
 
   async function setAssetStatus(asset, status) {
-    try { await api.put(`/operations/properties/${propertyId}/assets/${asset._id}`, { status }); toast.success('Đã cập nhật thiết bị.'); await load(); }
-    catch (error) { toast.error(error.response?.data?.message || 'Không cập nhật được thiết bị.'); }
+    try {
+      await api.put(`/operations/properties/${propertyId}/assets/${asset._id}`, { status });
+      toast.success('Đã cập nhật thiết bị.');
+      await load();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Không cập nhật được thiết bị.');
+    }
   }
 
   async function setAssetRoom(asset, roomId) {
-    try { await api.put(`/operations/properties/${propertyId}/assets/${asset._id}`, { room: roomId || null, status: roomId ? 'in_use' : 'in_stock' }); toast.success('Đã cập nhật vị trí thiết bị.'); await load(); }
-    catch (error) { toast.error(error.response?.data?.message || 'Không cập nhật được vị trí thiết bị.'); }
+    try {
+      await api.put(`/operations/properties/${propertyId}/assets/${asset._id}`, {
+        room: roomId || null,
+        status: roomId ? 'in_use' : 'in_stock',
+      });
+      toast.success('Đã cập nhật vị trí thiết bị.');
+      await load();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Không cập nhật được vị trí thiết bị.');
+    }
   }
 
   const activeTickets = tickets.filter(ticket => !['completed', 'rejected'].includes(ticket.status)).length;
