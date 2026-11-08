@@ -66,9 +66,9 @@ export const buildPlaceholderValues = contract => {
     endDate: formatDate(contract.endDate),
     monthlyRent: formatMoney(contract.monthlyRent),
     depositAmount: formatMoney(contract.depositAmount),
-    paymentDueDay: property.contractPolicy?.paymentDueDay != null ? String(property.contractPolicy.paymentDueDay) : '',
-    electricityPrice: property.utilityRate?.electricityPrice != null ? Number(property.utilityRate.electricityPrice).toLocaleString('vi-VN') : '',
-    waterPrice: property.utilityRate?.waterPrice != null ? Number(property.utilityRate.waterPrice).toLocaleString('vi-VN') : '',
+    paymentDueDay: String(contract.paymentDueDay ?? property.contractPolicy?.paymentDueDay ?? ''),
+    electricityPrice: Number(contract.utilityRateSnapshot?.electricityPrice ?? property.utilityRate?.electricityPrice ?? 0).toLocaleString('vi-VN'),
+    waterPrice: Number(contract.utilityRateSnapshot?.waterPrice ?? property.utilityRate?.waterPrice ?? 0).toLocaleString('vi-VN'),
     createdByName: contract.createdBy?.fullName || '',
     today: formatDate(new Date()),
   };

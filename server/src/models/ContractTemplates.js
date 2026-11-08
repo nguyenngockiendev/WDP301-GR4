@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const contractTemplateSchema = new mongoose.Schema(
   {
+    property: { type: mongoose.Schema.Types.ObjectId, ref: 'Property', default: null },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
