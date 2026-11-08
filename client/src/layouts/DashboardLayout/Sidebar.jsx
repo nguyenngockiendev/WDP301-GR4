@@ -23,7 +23,8 @@ import {
 const STAFF = ['landlord', 'manager'];
 
 export default function Sidebar({ isCollapsed, setIsCollapsed }) {
-  const role = getCurrentUser()?.role;
+  const currentUser = getCurrentUser();
+  const role = currentUser?.role;
 
   // roles: vai trò được thấy mục menu (bỏ trống = mọi vai trò)
   const allSections = [
