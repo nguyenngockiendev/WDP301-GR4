@@ -15,6 +15,7 @@ import terminationRequestsRoutes from '../../features/terminationrequests/routes
 import managerTerminationRequestsRoutes from '../../features/terminationrequests/routes/ManagerTerminationRequestsRoutes';
 import templatesRoutes from '../../features/templates/routes/TemplatesRoutes';
 import managersRoutes from '../../features/managers/routes/ManagersRoutes';
+import SettingsPage from '../../features/landlord/SettingsPage';
 // Người thuê không dùng trang quản lý: /dashboard chuyển về trang Home
 function DashboardEntry() {
   return getCurrentUser()?.role === 'tenant' ? <Navigate to="/home" replace /> : <DashboardPage />;
@@ -45,6 +46,7 @@ export default function AppRoutes() {
         <Route path="/profile" element={<Profile />} />
         <Route element={<DashboardLayout />}>
           <Route path="dashboard" element={<DashboardEntry />} />
+          <Route path="settings" element={<ProtectedRoute roles={['landlord']}><SettingsPage /></ProtectedRoute>} />
           {routes.map(route => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}
