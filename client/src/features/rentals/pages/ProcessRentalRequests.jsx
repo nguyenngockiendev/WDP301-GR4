@@ -1,3 +1,4 @@
+import { getCurrentUser } from '../../../shared/utils/auth';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -9,6 +10,7 @@ import { RENTAL_STATUS } from '../components/RentalStatusBadge';
 export default function ProcessRentalRequests() {
   const { propertyId } = useParams();
   const navigate = useNavigate();
+  const readOnly = getCurrentUser()?.role !== 'manager';
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('pending');
@@ -47,7 +49,7 @@ export default function ProcessRentalRequests() {
   };
 
   // Yêu cầu đã duyệt -> sang trang hợp đồng, form tạo có sẵn mục "Từ yêu cầu thuê đã duyệt"
-  const handleCreateContract = () => navigate(`/properties/${propertyId}/contracts`);
+  const handleCreateContract = request => navigate(`/properties/${propertyId}/contracts?create=1&request=${request._id}`);
 
   const counts = useMemo(() => {
     const c = { all: requests.length };
@@ -87,7 +89,7 @@ export default function ProcessRentalRequests() {
       {/* Tiêu đề */}
       <div>
         <h2 className="text-xl font-black text-slate-900 tracking-tight">Yêu cầu đặt phòng</h2>
-        <p className="text-xs font-semibold text-slate-400 mt-0.5">Duyệt hoặc từ chối yêu cầu thuê phòng của khách</p>
+        <p className="text-xs font-semibold text-slate-400 mt-0.5">{readOnly ? 'Theo dõi yêu cầu thuê phòng. Quản lý được phân công sẽ xử lý yêu cầu.' : 'Duyệt hoặc từ chối yêu cầu thuê phòng của khách'}</p>
       </div>
 
       {/* Thẻ thống kê */}
@@ -150,6 +152,7 @@ export default function ProcessRentalRequests() {
         </div>
       ) : (
         <RentalRequestList
+          readOnly={readOnly}
           requests={filteredRequests}
           onProcess={handleProcessRequest}
           onCreateContract={handleCreateContract}
