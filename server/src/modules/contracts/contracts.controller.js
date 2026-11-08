@@ -80,3 +80,12 @@ export const searchContracts = async (req, res) => {
     return sendError(res, error);
   }
 };
+
+export const getContractDocument = async (req, res) => {
+  try {
+    const document = await contractsService.getContractDocument(req.params.contractId, req.user);
+    return sendSuccess(res, 200, 'Lấy văn bản hợp đồng thành công', document);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { CalendarDays, Pencil, RefreshCw, UserRoundCog, Users, Wallet, DoorOpen } from 'lucide-react';
+import { CalendarDays, Pencil, RefreshCw, UserRoundCog, Users, Wallet, DoorOpen, FileText } from 'lucide-react';
+import ContractDocumentModal from './ContractDocumentModal';
 import contractsAPI from '../api/contracts-api';
 import RenewContractModal from './RenewContractModal';
 import ChangeRepresentativeModal from './ChangeRepresentativeModal';
@@ -12,6 +13,7 @@ const DAY = 24 * 60 * 60 * 1000;
 export default function ContractItem({ contract, onEdit, onRefresh }) {
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showChangeRepModal, setShowChangeRepModal] = useState(false);
+  const [showDocument, setShowDocument] = useState(false);
 
   const daysLeft = Math.ceil((new Date(contract.endDate) - Date.now()) / DAY);
   const expiringSoon = contract.status === 'active' && daysLeft >= 0 && daysLeft <= 30;
@@ -95,6 +97,19 @@ export default function ContractItem({ contract, onEdit, onRefresh }) {
           </div>
         </div>
 
+        {/* Văn bản hợp đồng theo mẫu */}
+        {contract.template || contract.templateTitle ? (
+          <button
+            className="mb-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold border border-emerald-100 text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+            onClick={() => setShowDocument(true)}
+            title={contract.templateTitle || contract.template?.title}
+          >
+            <FileText size={13} /> Xem hợp đồng
+          </button>
+        ) : (
+          <p className="mb-2 text-center text-[10px] font-semibold text-amber-600">Chưa gắn mẫu hợp đồng — bấm Sửa để chọn mẫu</p>
+        )}
+
         {/* Thao tác */}
         <div className="mt-auto flex gap-2">
           <button
@@ -121,6 +136,8 @@ export default function ContractItem({ contract, onEdit, onRefresh }) {
           )}
         </div>
       </div>
+
+      {showDocument && <ContractDocumentModal contract={contract} onClose={() => setShowDocument(false)} />}
 
       {showRenewModal && (
         <RenewContractModal contract={contract} onClose={() => setShowRenewModal(false)} onRenew={handleRenew} />

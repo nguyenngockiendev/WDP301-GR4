@@ -5,6 +5,9 @@ export function validateCreateContract(body) {
   if (!body?.representative || String(body.representative).trim().length === 0) {
     return 'Người đại diện không được để trống';
   }
+  if (!body?.template || String(body.template).trim().length === 0) {
+    return 'Vui lòng chọn mẫu hợp đồng';
+  }
   if (!body?.startDate) {
     return 'Ngày bắt đầu không được để trống';
   }
