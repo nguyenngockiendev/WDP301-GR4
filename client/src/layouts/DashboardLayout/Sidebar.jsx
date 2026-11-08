@@ -16,14 +16,17 @@ import {
   Settings,
   ClipboardList,
   Search,
+  FileText,
+  UserCog,
 } from 'lucide-react';
 
+const STAFF = ['landlord', 'manager'];
+
 export default function Sidebar({ isCollapsed, setIsCollapsed }) {
-  const currentUser = getCurrentUser();
-  const isTenant = currentUser?.role?.toLowerCase() === 'tenant';
-  const isLandlord = currentUser?.role === 'landlord';
-  const isManager = currentUser?.role === 'manager';
-  const menuSections = [
+  const role = getCurrentUser()?.role;
+
+  // roles: vai trò được thấy mục menu (bỏ trống = mọi vai trò)
+  const allSections = [
     {
       title: 'TỔNG QUAN',
       items: [
@@ -34,51 +37,39 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       title: 'QUẢN LÝ CHO THUÊ',
       items: [
-        ...(isLandlord || isManager
-          ? [
-              {
-                to: '/properties',
-                label: isManager ? 'Nhà trọ được giao' : 'Nhà trọ',
-                icon: Building2,
-              },
-            ]
-          : []),
-        ...(isLandlord
-          ? [
-              { to: '/managers', label: 'Quản lý viên', icon: Users },
-              { to: '/settings', label: 'Giá và chính sách', icon: Settings },
-            ]
-          : []),
-        { to: '/rooms', label: 'Danh sách phòng', icon: DoorOpen },
-        { to: '/contracts', label: 'Hợp đồng thuê', icon: FileSignature },
+        { to: '/rooms', label: 'Danh sách phòng', icon: DoorOpen, roles: STAFF },
+        { to: '/contracts', label: 'Hợp đồng thuê', icon: FileSignature, roles: STAFF },
         {
           to: '/rental-requests',
           label: 'Yêu cầu đặt phòng',
           icon: CalendarClock,
           badge: '2',
+          roles: STAFF,
         },
-        { to: '/tenants', label: 'Khách thuê', icon: Users },
-        ...(isTenant
-          ? []
-          : [
-              {
-                to: '/manager/checkout-requests',
-                label: 'Yêu cầu trả phòng',
-                icon: ClipboardList,
-              },
-            ]),
+        { to: '/tenants', label: 'Khách thuê', icon: Users, roles: STAFF },
         { to: '/browse-rooms', label: 'Tìm phòng trống', icon: Search },
+      ],
+    },
+    {
+      title: 'CHỦ TRỌ',
+      items: [
+        { to: '/contract-templates', label: 'Mẫu hợp đồng', icon: FileText, roles: ['landlord'] },
+        { to: '/managers', label: 'Quản lý viên', icon: UserCog, roles: ['landlord'] },
       ],
     },
     {
       title: 'DỊCH VỤ & TÀI CHÍNH',
       items: [
         // Chưa có trang -> tạm vô hiệu hóa để không bị đá về /login
-        { to: null, label: 'Số điện & nước', icon: Zap },
-        { to: null, label: 'Hóa đơn tiền phòng', icon: ReceiptText },
+        { to: null, label: 'Số điện & nước', icon: Zap, roles: STAFF },
+        { to: null, label: 'Hóa đơn tiền phòng', icon: ReceiptText, roles: STAFF },
       ],
     },
   ];
+
+  const menuSections = allSections
+    .map(section => ({ ...section, items: section.items.filter(item => !item.roles || item.roles.includes(role)) }))
+    .filter(section => section.items.length > 0);
 
   return (
     <aside
