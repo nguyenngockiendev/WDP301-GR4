@@ -12,7 +12,7 @@ const initials = name =>
     .map(w => w.charAt(0).toUpperCase())
     .join('');
 
-export default function RentalRequestItem({ request, onProcess, onCreateContract }) {
+export default function RentalRequestItem({ request, onProcess, onCreateContract, readOnly = false }) {
   const [action, setAction] = useState(null); // 'approved' | 'rejected' | null
 
   const handleConfirm = async reason => {
@@ -83,7 +83,7 @@ export default function RentalRequestItem({ request, onProcess, onCreateContract
 
         {/* Thao tác */}
         <div className="mt-auto flex gap-2">
-          {request.status === 'pending' && (
+          {!readOnly && request.status === 'pending' && (
             <>
               <button
                 onClick={() => setAction('approved')}
@@ -99,7 +99,7 @@ export default function RentalRequestItem({ request, onProcess, onCreateContract
               </button>
             </>
           )}
-          {request.status === 'approved' && (
+          {!readOnly && request.status === 'approved' && (
             <button
               onClick={() => onCreateContract(request)}
               className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold transition cursor-pointer"
@@ -110,7 +110,7 @@ export default function RentalRequestItem({ request, onProcess, onCreateContract
         </div>
       </div>
 
-      {action && (
+      {!readOnly && action && (
         <ProcessRequestModal request={request} action={action} onClose={() => setAction(null)} onConfirm={handleConfirm} />
       )}
     </>

@@ -62,6 +62,7 @@ export const createRentalRequest = async (data, user) => {
 };
 
 export const processRentalRequest = async (requestId, data, user) => {
+  if (user.role !== 'manager') throw { status: 403, message: 'Chỉ quản lý được phân công được xử lý yêu cầu thuê' };
   const { request } = await findRequestWithAccess(requestId, user);
 
   if (request.status !== 'pending') {

@@ -17,6 +17,6 @@ router.get('/property/:propertyId', requirePropertyManager, rentalRequestsContro
 router.get('/pending/:propertyId', requirePropertyManager, rentalRequestsController.getPendingRequests);
 router.get('/:requestId', requirePropertyManager, rentalRequestsController.getRentalRequestById);
 router.post('/', checkRole('tenant'), validate(validateCreateRentalRequest), rentalRequestsController.createRentalRequest);
-router.patch('/:requestId/process', requirePropertyManager, validate(validateProcessRentalRequest), rentalRequestsController.processRentalRequest);
+router.patch('/:requestId/process', checkRole('manager'), validate(validateProcessRentalRequest), rentalRequestsController.processRentalRequest);
 
 export default router;
