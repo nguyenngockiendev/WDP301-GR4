@@ -12,6 +12,7 @@ import shortcuts from '../../features/properties/routes/RentalsRoutes';
 import terminationRequestsRoutes from '../../features/terminationrequests/routes/TerminationRequestsRoutes';
 import managerTerminationRequestsRoutes from '../../features/terminationrequests/routes/ManagerTerminationRequestsRoutes';
 import templatesRoutes from '../../features/templates/routes/TemplatesRoutes';
+import managersRoutes from '../../features/managers/routes/ManagersRoutes';
 export default function AppRoutes() {
   const routes = [
     ...roomsRoutes,
@@ -23,6 +24,7 @@ export default function AppRoutes() {
     ...terminationRequestsRoutes,
     ...managerTerminationRequestsRoutes,
     ...templatesRoutes,
+    ...managersRoutes,
   ];
   return (
     <Routes>

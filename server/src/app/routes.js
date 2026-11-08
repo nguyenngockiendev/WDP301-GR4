@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 
 import authRoutes from '../modules/auth/auth.route.js';
@@ -11,11 +10,9 @@ import managerRoutes from '../modules/manager/manager.route.js';
 import propertyOperationsRoutes from '../modules/property-operations/property-operations.route.js';
 import notificationsRoutes from '../modules/notifications/notifications.route.js';
 import propertiesRoutes from '../modules/properties/properties.route.js';
-<<<<<<< HEAD
 import terminationRequestsRoutes from '../modules/terminationrequests/terminationrequests.route.js';
-=======
 import contractTemplatesRoutes from '../modules/contracttemplates/contracttemplates.route.js';
->>>>>>> origin/Hien-feature-contract-templates
+import managerAssignmentsRoutes from '../modules/managerassignments/managerassignments.route.js';
 
 const router = Router();
 
@@ -31,5 +28,6 @@ router.use('/notifications', notificationsRoutes);
 router.use('/properties', propertiesRoutes);
 router.use('/termination-requests', terminationRequestsRoutes);
 router.use('/contract-templates', contractTemplatesRoutes);
+router.use('/manager-assignments', managerAssignmentsRoutes);
 
 export default router;
