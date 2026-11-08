@@ -1,3 +1,8 @@
+import express from 'express';
+import request from 'supertest';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import authRouter from '../src/modules/auth/auth.route.js';
 import * as roomsService from '../src/modules/rooms/rooms.service.js';
 import { before, after, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -92,4 +97,26 @@ test('room update rejects unauthorized buildings and duplicate room numbers', as
   await assert.rejects(roomsService.updateRoom(room.id, { roomNumber: duplicate.roomNumber }, manager), e => e.status === 400);
   await assert.rejects(roomsService.updateRoom(room.id, { roomNumber: '' }, manager), e => e.status === 400);
   assert.equal((await Rooms.findById(room.id)).roomNumber, 'Phòng 102');
+});
+
+
+test('profile shows only own safe fields, updates contacts and verifies old password', async () => {
+  process.env.JWT_SECRET = 'profile-test-secret';
+  const app = express(); app.use(express.json()); app.use('/auth', authRouter);
+  const token = jwt.sign({ userId: tenant.id, role: 'tenant' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  const header = 'Bearer ' + token;
+  assert.equal((await request(app).get('/auth/profile')).status, 401);
+  const profile = await request(app).get('/auth/profile').set('Authorization', header);
+  assert.equal(profile.status, 200);
+  assert.equal(profile.body.data.email, tenant.email);
+  assert.equal('password' in profile.body.data, false);
+  const edited = await request(app).patch('/auth/profile').set('Authorization', header).send({ fullName: 'Updated Tenant', phone: '0901234567', role: 'landlord', email: 'bad@test.local' });
+  assert.equal(edited.status, 200);
+  assert.equal(edited.body.data.fullName, 'Updated Tenant');
+  assert.equal(edited.body.data.email, tenant.email);
+  assert.equal(edited.body.data.role, 'tenant');
+  await Users.findByIdAndUpdate(tenant.id, { password: await bcrypt.hash('OldPass123', 4) });
+  assert.equal((await request(app).post('/auth/password').set('Authorization', header).send({ currentPassword: 'WrongPass123', newPassword: 'NewPass123' })).status, 400);
+  assert.equal((await request(app).post('/auth/password').set('Authorization', header).send({ currentPassword: 'OldPass123', newPassword: 'NewPass123' })).status, 200);
+  assert.ok(await bcrypt.compare('NewPass123', (await Users.findById(tenant.id)).password));
 });
