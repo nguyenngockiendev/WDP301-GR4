@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout/DashboardLayout';
 import ProtectedRoute from './ProtectedRoute';
+import { getCurrentUser } from '../../shared/utils/auth';
 import { authRoutes } from '../../features/auth/routes/AuthRoutes';
 import roomsRoutes from '../../features/rooms/routes/RoomsRoutes';
 import contractsRoutes from '../../features/contracts/routes/ContractsRoutes';
@@ -13,6 +14,11 @@ import terminationRequestsRoutes from '../../features/terminationrequests/routes
 import managerTerminationRequestsRoutes from '../../features/terminationrequests/routes/ManagerTerminationRequestsRoutes';
 import templatesRoutes from '../../features/templates/routes/TemplatesRoutes';
 import managersRoutes from '../../features/managers/routes/ManagersRoutes';
+// Người thuê không dùng trang quản lý: /dashboard chuyển về trang Home
+function DashboardEntry() {
+  return getCurrentUser()?.role === 'tenant' ? <Navigate to="/home" replace /> : <DashboardPage />;
+}
+
 export default function AppRoutes() {
   const routes = [
     ...roomsRoutes,
@@ -36,7 +42,7 @@ export default function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
-          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="dashboard" element={<DashboardEntry />} />
           {routes.map(route => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}

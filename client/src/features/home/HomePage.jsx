@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   Building,
   Building2,
@@ -28,13 +29,109 @@ import {
   UserCheck,
 } from 'lucide-react';
 import './home.css';
-import api from '../../shared/api/axiosClient';
+import propertiesAPI from '../properties/api/properties-api';
+import { getCurrentUser, clearAuth } from '../../shared/utils/auth';
+
+const STAFF_ROLES = ['landlord', 'manager'];
+const ROLE_LABELS = { tenant: 'Người thuê', landlord: 'Chủ trọ', manager: 'Quản lý' };
+const BUILDING_IMAGES = ['/images/haven-building-1.jpg', '/images/haven-building-2.jpg', '/images/haven-building-3.jpg'];
+const ROOM_IMAGES = ['/images/haven-room-1.jpg', '/images/haven-room-2.jpg', '/images/haven-room-3.jpg', '/images/haven-hero-apartment.jpg'];
+const EMPTY_BUILDING = {
+  id: '', name: 'Chưa có tòa nhà', code: '', address: '', district: '', totalFloors: 1, totalRooms: 0,
+  availableRooms: 0, occupiedRooms: 0, reservedRooms: 0, occupancyRate: 0, electricPrice: 0, waterPrice: 0,
+  manager: 'Đang cập nhật', image: BUILDING_IMAGES[0], description: '', rooms: [],
+};
+
+// Tầng suy ra từ số phòng: 101 -> tầng 1, A205 -> tầng 2, 1203 -> tầng 12; số phòng ngắn coi là tầng 1
+const floorFromRoomNumber = roomNumber => {
+  const digits = String(roomNumber || '').match(/\d+/)?.[0] || '';
+  return digits.length >= 3 ? Number(digits.slice(0, -2)) || 1 : 1;
+};
+
+const districtFromAddress = address => {
+  const parts = String(address || '').split(',').map(x => x.trim()).filter(Boolean);
+  return parts.find(x => /^(Quận|Huyện|Thị xã|TP\.?|Thành phố)/i.test(x)) || parts[parts.length - 1] || '';
+};
+
+/** Chuyển dữ liệu nhà trọ từ API sang dạng trang Home đang dùng để hiển thị. */
+const toBuilding = (p, index) => {
+  const rooms = (p.rooms || [])
+    .filter(r => r.status !== 'maintenance')
+    .map((r, j) => ({
+      id: r._id,
+      roomNumber: `Phòng ${r.roomNumber}`,
+      floor: floorFromRoomNumber(r.roomNumber),
+      name: r.description || `Phòng ${r.roomNumber}`,
+      tier: `Tối đa ${r.maxTenants || 1} người`,
+      area: `${r.area}m²`,
+      price: Number(r.price || 0),
+      status: r.status,
+      image: r.images?.[0] || ROOM_IMAGES[j % ROOM_IMAGES.length],
+      amenities: r.facilities || [],
+    }));
+  const count = status => rooms.filter(r => r.status === status).length;
+  const occupied = count('occupied');
+  return {
+    id: p._id,
+    name: p.name,
+    code: `TÒA ${String.fromCharCode(65 + (index % 26))}`,
+    address: p.address,
+    district: districtFromAddress(p.address),
+    totalFloors: Math.max(1, ...rooms.map(r => r.floor)),
+    totalRooms: rooms.length,
+    availableRooms: count('available'),
+    occupiedRooms: occupied,
+    reservedRooms: count('reserved'),
+    occupancyRate: rooms.length ? Math.round((occupied / rooms.length) * 100) : 0,
+    electricPrice: Number(p.utilityRate?.electricityPrice || 0),
+    waterPrice: Number(p.utilityRate?.waterPrice || 0),
+    manager: p.contact ? `${p.contact.fullName}${p.contact.phone ? ` (${p.contact.phone})` : ''}` : 'Đang cập nhật',
+    image: BUILDING_IMAGES[index % BUILDING_IMAGES.length],
+    description: p.description || '',
+    rooms,
+  };
+};
+
 
 export default function HomePage() {
+  const location = useLocation();
+  const user = getCurrentUser();
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+  return <HomeContent user={user} />;
+}
+
+function HomeContent({ user }) {
+  const navigate = useNavigate();
+  const isStaff = STAFF_ROLES.includes(user.role);
+  // Chủ trọ / quản lý: nút chính vào trang quản lý; người thuê: đi tìm phòng
+  const primaryPath = isStaff ? '/dashboard' : '/browse-rooms';
+  const primaryLabel = isStaff ? 'Vào Trang Quản Lý' : 'Tìm Phòng Trống';
+
+  const handleLogout = () => {
+    clearAuth();
+    navigate('/login', { replace: true, state: { from: { pathname: '/home' } } });
+  };
+
+  const [properties, setProperties] = useState([]);
+  const [loadingBuildings, setLoadingBuildings] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    propertiesAPI
+      .getBrowseProperties()
+      .then(res => !cancelled && setProperties(res.data || []))
+      .catch(err => !cancelled && toast.error(err.response?.data?.message || 'Không tải được danh sách tòa nhà'))
+      .finally(() => !cancelled && setLoadingBuildings(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Multi-building state: Active building
-  const [activeBuildingId, setActiveBuildingId] = useState('bld-1');
+  const [activeBuildingId, setActiveBuildingId] = useState('');
   // Floor filter within the active building
   const [activeFloor, setActiveFloor] = useState('all');
   // View mode: 'cards' or 'matrix'
@@ -48,24 +145,13 @@ export default function HomePage() {
   const waterRate = 20000;
   const totalCost = roomBasePrice + kwh * electricRate + waterM3 * waterRate;
 
-  // Dữ liệu Hệ thống: Nhiều Tòa nhà (Buildings / Properties)
-  const [buildings, setBuildings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-  useEffect(() => {
-    const controller = new AbortController();
-    api.get('/properties/public', { signal: controller.signal }).then(response => {
-      setBuildings(response.data || []);
-      setActiveBuildingId(response.data?.[0]?.id || '');
-    }).catch(() => {
-      if (!controller.signal.aborted) setLoadError('Không tải được dữ liệu nhà trọ. Vui lòng tải lại trang.');
-    }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
-  }, []);
+  // Dữ liệu tòa nhà & phòng thật từ API (/properties/browse)
+  const buildings = useMemo(() => properties.map(toBuilding), [properties]);
+  const totalRoomsAll = buildings.reduce((sum, b) => sum + b.totalRooms, 0);
 
   // Active Building Object
   const currentBuilding =
-    buildings.find(b => b.id === activeBuildingId) || buildings[0];
+    buildings.find(b => b.id === activeBuildingId) || buildings[0] || EMPTY_BUILDING;
 
   // Filtered rooms inside the active building
   const filteredRooms =
@@ -120,17 +206,21 @@ export default function HomePage() {
 
           {/* Action Buttons */}
           <div className="hidden sm:flex items-center gap-3.5">
-            <Link
-              to="/login"
-              className="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-[#098b6c] transition-colors"
+            <span className="text-xs sm:text-sm font-bold text-slate-700">
+              {ROLE_LABELS[user.role] || 'Tài khoản'}
+            </span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-[#098b6c] transition-colors cursor-pointer"
             >
-              Đăng Nhập
-            </Link>
+              Đăng Xuất
+            </button>
             <Link
-              to="/register"
+              to={primaryPath}
               className="px-5 py-2.5 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-900/15 hover:shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
             >
-              <span>Bắt Đầu Ngay</span>
+              <span>{primaryLabel}</span>
               <ArrowRight size={16} />
             </Link>
           </div>
@@ -184,17 +274,18 @@ export default function HomePage() {
               Tìm phòng ngay
             </Link>
             <div className="pt-2 flex flex-col gap-2">
-              <Link
-                to="/login"
-                className="w-full text-center py-2.5 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl"
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full text-center py-2.5 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl cursor-pointer"
               >
-                Đăng Nhập
-              </Link>
+                Đăng Xuất
+              </button>
               <Link
-                to="/register"
+                to={primaryPath}
                 className="w-full text-center py-2.5 text-sm font-bold bg-[#098b6c] text-white rounded-xl shadow-sm"
               >
-                Bắt Đầu Ngay
+                {primaryLabel}
               </Link>
             </div>
           </div>
@@ -245,11 +336,11 @@ export default function HomePage() {
                   />
                 </a>
                 <Link
-                  to="/login"
+                  to={primaryPath}
                   className="px-6 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-800 hover:border-[#098b6c] hover:text-[#098b6c] text-sm font-bold shadow-sm transition-all flex items-center gap-2"
                 >
                   <Home size={18} className="text-[#098b6c]" />
-                  <span>Vào Bảng Điều Khiển</span>
+                  <span>{primaryLabel}</span>
                 </Link>
               </div>
 
@@ -269,17 +360,207 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="lg:col-span-6 rounded-3xl bg-white p-8 shadow-xl border border-emerald-100">
-              <h2 className="text-xl font-black mb-6">Tổng quan hệ thống</h2>
-              {loading ? <p>Đang tải dữ liệu...</p> : loadError ? <p role="alert">{loadError}</p> :
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    ['Tòa nhà', buildings.length],
-                    ['Tổng số phòng', buildings.reduce((n, b) => n + b.totalRooms, 0)],
-                    ['Phòng trống', buildings.reduce((n, b) => n + b.availableRooms, 0)],
-                    ['Phòng đang thuê', buildings.reduce((n, b) => n + b.occupiedRooms, 0)],
-                  ].map(([label, value]) => <div key={label} className="rounded-2xl bg-emerald-50 p-5"><p className="text-sm">{label}</p><p className="text-3xl font-black text-emerald-800 mt-2">{value}</p></div>)}
-                </div>}
+            {/* Cột phải: Live Preview Dashboard */}
+            <div className="lg:col-span-6 relative">
+              <div className="absolute inset-0 bg-gradient-to-tr from-teal-400/20 to-emerald-400/30 rounded-[36px] filter blur-xl transform rotate-1 scale-95" />
+
+              <div className="relative bg-white border border-slate-200/90 rounded-[32px] p-4 sm:p-6 shadow-2xl shadow-emerald-950/15 backdrop-blur-md animate-float-slow">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-[#098b6c] flex items-center justify-center text-white font-bold shadow-sm">
+                      <Building size={18} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-sm text-slate-900">
+                          HavenStay
+                        </span>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-[#098b6c]">
+                          MULTI-BUILDING PRO
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 block -mt-0.5">
+                        Tổng hợp: {buildings.length} Tòa nhà · {totalRoomsAll} Phòng
+                      </span>
+                    </div>
+                  </div>
+
+                  <Link
+                    to={primaryPath}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#098b6c] text-white text-xs font-bold shadow-sm hover:bg-[#077a5e] transition-colors flex items-center gap-1.5"
+                  >
+                    <span>{isStaff ? '+ Quản Lý Tòa Nhà' : 'Tìm phòng'}</span>
+                  </Link>
+                </div>
+
+                {/* 4 Stat Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-4">
+                  <div className="p-3 rounded-2xl bg-[#f8fbfa] border border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight block">
+                      DOANH THU T10
+                    </span>
+                    <span className="text-sm sm:text-base font-black text-slate-900 block mt-0.5">
+                      54.500.000 đ
+                    </span>
+                    <span className="inline-block mt-1 text-[9px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded-md">
+                      +14% tháng trước
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-[#eefaf5] border border-emerald-100">
+                    <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-tight block">
+                      TỶ LỆ LẤP ĐẦY
+                    </span>
+                    <span className="text-sm sm:text-base font-black text-emerald-900 block mt-0.5">
+                      78%
+                    </span>
+                    <span className="text-[9px] font-semibold text-emerald-700 block mt-1">
+                      58/76 phòng đang thuê
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-[#fffbf0] border border-amber-100">
+                    <span className="text-[10px] font-bold text-amber-800 uppercase tracking-tight block">
+                      HỢP ĐỒNG HẾT
+                    </span>
+                    <span className="text-sm sm:text-base font-black text-amber-900 block mt-0.5">
+                      3
+                    </span>
+                    <span className="text-[9px] font-semibold text-amber-700 block mt-1">
+                      phòng cần gia hạn
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-[#f8fbfa] border border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight block">
+                      SỐ TÒA ĐANG VẬN HÀNH
+                    </span>
+                    <span className="text-sm sm:text-base font-black text-slate-900 block mt-0.5">
+                      3 Tòa
+                    </span>
+                    <span className="text-[9px] font-semibold text-slate-500 block mt-1">
+                      Q7, Bình Thạnh, Thủ Đức
+                    </span>
+                  </div>
+                </div>
+
+                {/* Growth Chart & Quick Utility Widgets */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-1">
+                  <div className="sm:col-span-7 p-3.5 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <span className="text-xs font-black text-slate-800 block">
+                          Biểu Đồ Tăng Trưởng Doanh Thu
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          Dữ liệu 3 tòa nhà 6 tháng gần nhất
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#098b6c]">
+                        <span className="w-2 h-2 rounded-full bg-[#098b6c]" />
+                        <span>Thực thu (54.5 tr)</span>
+                      </div>
+                    </div>
+
+                    <div className="h-28 w-full relative">
+                      <svg
+                        viewBox="0 0 300 100"
+                        className="w-full h-full overflow-visible"
+                        preserveAspectRatio="none"
+                      >
+                        <defs>
+                          <linearGradient
+                            id="emeraldGrad2"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="0%"
+                              stopColor="#098b6c"
+                              stopOpacity="0.25"
+                            />
+                            <stop
+                              offset="100%"
+                              stopColor="#098b6c"
+                              stopOpacity="0.0"
+                            />
+                          </linearGradient>
+                        </defs>
+                        <path
+                          d="M0 65 Q75 60, 150 50 T300 35"
+                          fill="none"
+                          stroke="#f59e0b"
+                          strokeWidth="2"
+                          strokeDasharray="4 4"
+                          opacity="0.7"
+                        />
+                        <path
+                          d="M0 80 Q60 78, 120 65 T240 38 T300 15 L300 100 L0 100 Z"
+                          fill="url(#emeraldGrad2)"
+                        />
+                        <path
+                          d="M0 80 Q60 78, 120 65 T240 38 T300 15"
+                          fill="none"
+                          stroke="#098b6c"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          className="animate-chart-line"
+                        />
+                        <circle cx="300" cy="15" r="4.5" fill="#098b6c" />
+                      </svg>
+                    </div>
+                    <div className="flex justify-between text-[9px] text-slate-400 font-medium px-1">
+                      <span>T5</span>
+                      <span>T6</span>
+                      <span>T7</span>
+                      <span>T8</span>
+                      <span>T9</span>
+                      <span className="font-bold text-[#098b6c]">T10 (Hiện tại)</span>
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-5 p-3.5 rounded-2xl bg-white border border-slate-100 shadow-sm flex flex-col justify-between">
+                    <span className="text-xs font-black text-slate-800 block mb-2">
+                      Đơn Giá Điện Nước Chuẩn
+                    </span>
+                    <div className="space-y-2">
+                      <div className="p-2.5 rounded-xl bg-[#eefaf5] flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-[#098b6c] text-white flex items-center justify-center">
+                            <Zap size={14} />
+                          </div>
+                          <span className="text-[11px] font-bold text-slate-700">Điện</span>
+                        </div>
+                        <span className="text-xs font-black text-slate-900">
+                          3.500 <small className="text-[9px] font-normal">đ/kWh</small>
+                        </span>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-[#e8f6f8] flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-teal-600 text-white flex items-center justify-center">
+                            <Droplets size={14} />
+                          </div>
+                          <span className="text-[11px] font-bold text-slate-700">Nước</span>
+                        </div>
+                        <span className="text-xs font-black text-slate-900">
+                          20.000 <small className="text-[9px] font-normal">đ/m³</small>
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[9px] text-slate-400 block text-center mt-2">
+                      Áp dụng chung toàn hệ thống Haven Stay
+                    </span>
+                  </div>
+                </div>
+
+                <div className="absolute -bottom-5 -left-3 sm:-left-6 p-2.5 px-3.5 rounded-2xl bg-slate-900/90 text-white text-xs font-semibold shadow-xl flex items-center gap-2.5 backdrop-blur-md animate-float-reverse">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span>Tòa A (Q7): Vừa nhận yêu cầu thuê Phòng 101</span>
+                </div>
+              </div>
             </div>
 
           </div>
@@ -644,7 +925,7 @@ export default function HomePage() {
 
                     <div className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between">
                       <Link
-                        to="/browse-rooms"
+                        to={`/rooms/${room.id}`}
                         className="text-xs font-bold text-[#098b6c] hover:underline flex items-center gap-1"
                       >
                         <span>Chi tiết phòng</span>
@@ -653,7 +934,7 @@ export default function HomePage() {
 
                       {room.status === 'available' ? (
                         <Link
-                          to="/login"
+                          to={`/rooms/${room.id}`}
                           className="px-4 py-2 rounded-xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs font-bold shadow-md shadow-emerald-900/15 transition-all"
                         >
                           Đăng ký thuê
@@ -963,7 +1244,7 @@ export default function HomePage() {
                 </div>
 
                 <Link
-                  to="/register"
+                  to="/browse-rooms"
                   className="w-full py-3 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs font-bold text-center shadow-lg transition-colors"
                 >
                   Đăng Ký Thuê Ngay
@@ -992,16 +1273,16 @@ export default function HomePage() {
               </p>
               <div className="flex flex-wrap items-center justify-center gap-4 pt-3">
                 <Link
-                  to="/register"
+                  to="/browse-rooms"
                   className="px-8 py-3.5 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-sm font-bold shadow-lg shadow-black/20 transition-all"
                 >
-                  Tạo Tài Khoản Ngay
+                  Tìm Phòng Ngay
                 </Link>
                 <Link
-                  to="/login"
+                  to={primaryPath}
                   className="px-8 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold border border-white/15 transition-all"
                 >
-                  Vào Bảng Điều Khiển
+                  {primaryLabel}
                 </Link>
               </div>
             </div>
@@ -1038,11 +1319,11 @@ export default function HomePage() {
             <a href="#tinh-nang" className="hover:text-[#098b6c]">
               Tính năng
             </a>
-            <Link to="/login" className="hover:text-[#098b6c]">
-              Bảng điều khiển
+            <Link to={primaryPath} className="hover:text-[#098b6c]">
+              {primaryLabel}
             </Link>
-            <Link to="/register" className="hover:text-[#098b6c]">
-              Đăng ký
+            <Link to="/browse-rooms" className="hover:text-[#098b6c]">
+              Tìm phòng
             </Link>
           </div>
 
