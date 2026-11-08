@@ -57,6 +57,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       items: [
         { to: '/contract-templates', label: 'Mẫu hợp đồng', icon: FileText, roles: ['landlord'] },
         { to: '/managers', label: 'Quản lý viên', icon: UserCog, roles: ['landlord'] },
+        { to: '/settings', label: 'Giá và chính sách', icon: Settings, roles: ['landlord'] },
       ],
     },
     {
