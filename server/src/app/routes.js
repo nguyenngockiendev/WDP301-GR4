@@ -11,7 +11,11 @@ import managerRoutes from '../modules/manager/manager.route.js';
 import propertyOperationsRoutes from '../modules/property-operations/property-operations.route.js';
 import notificationsRoutes from '../modules/notifications/notifications.route.js';
 import propertiesRoutes from '../modules/properties/properties.route.js';
+<<<<<<< HEAD
 import terminationRequestsRoutes from '../modules/terminationrequests/terminationrequests.route.js';
+=======
+import contractTemplatesRoutes from '../modules/contracttemplates/contracttemplates.route.js';
+>>>>>>> origin/Hien-feature-contract-templates
 
 const router = Router();
 
@@ -26,5 +30,6 @@ router.use('/operations', propertyOperationsRoutes);
 router.use('/notifications', notificationsRoutes);
 router.use('/properties', propertiesRoutes);
 router.use('/termination-requests', terminationRequestsRoutes);
+router.use('/contract-templates', contractTemplatesRoutes);
 
 export default router;

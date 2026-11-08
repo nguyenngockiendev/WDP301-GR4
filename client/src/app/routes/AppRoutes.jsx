@@ -11,6 +11,7 @@ import notificationsRoutes from '../../features/notifications/routes/Notificatio
 import shortcuts from '../../features/properties/routes/RentalsRoutes';
 import terminationRequestsRoutes from '../../features/terminationrequests/routes/TerminationRequestsRoutes';
 import managerTerminationRequestsRoutes from '../../features/terminationrequests/routes/ManagerTerminationRequestsRoutes';
+import templatesRoutes from '../../features/templates/routes/TemplatesRoutes';
 export default function AppRoutes() {
   const routes = [
     ...roomsRoutes,
@@ -20,7 +21,8 @@ export default function AppRoutes() {
     ...notificationsRoutes,
     ...shortcuts,
     ...terminationRequestsRoutes,
-    ...managerTerminationRequestsRoutes
+    ...managerTerminationRequestsRoutes,
+    ...templatesRoutes,
   ];
   return (
     <Routes>
