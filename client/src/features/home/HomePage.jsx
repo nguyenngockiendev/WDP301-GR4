@@ -28,110 +28,32 @@ import {
   UserCheck,
 } from 'lucide-react';
 import './home.css';
-import propertiesAPI from '../properties/api/properties-api';
-import { getCurrentUser, clearAuth } from '../../shared/utils/auth';
-
-const STAFF_ROLES = ['landlord', 'manager'];
-const ROLE_LABELS = { tenant: 'Người thuê', landlord: 'Chủ trọ', manager: 'Quản lý' };
-const BUILDING_IMAGES = ['/images/haven-building-1.jpg', '/images/haven-building-2.jpg', '/images/haven-building-3.jpg'];
-const ROOM_IMAGES = ['/images/haven-room-1.jpg', '/images/haven-room-2.jpg', '/images/haven-room-3.jpg', '/images/haven-hero-apartment.jpg'];
-const EMPTY_BUILDING = {
-  id: '', name: 'Chưa có tòa nhà', code: '', address: '', district: '', totalFloors: 1, totalRooms: 0,
-  availableRooms: 0, occupiedRooms: 0, reservedRooms: 0, occupancyRate: 0, electricPrice: 0, waterPrice: 0,
-  manager: 'Đang cập nhật', image: BUILDING_IMAGES[0], description: '', rooms: [],
-};
-
-// Tầng suy ra từ số phòng: 101 -> tầng 1, A205 -> tầng 2, 1203 -> tầng 12; số phòng ngắn coi là tầng 1
-const floorFromRoomNumber = roomNumber => {
-  const digits = String(roomNumber || '').match(/\d+/)?.[0] || '';
-  return digits.length >= 3 ? Number(digits.slice(0, -2)) || 1 : 1;
-};
-
-const districtFromAddress = address => {
-  const parts = String(address || '').split(',').map(x => x.trim()).filter(Boolean);
-  return parts.find(x => /^(Quận|Huyện|Thị xã|TP\.?|Thành phố)/i.test(x)) || parts[parts.length - 1] || '';
-};
-
-/** Chuyển dữ liệu nhà trọ từ API sang dạng trang Home đang dùng để hiển thị. */
-const toBuilding = (p, index) => {
-  const rooms = (p.rooms || [])
-    .filter(r => r.status !== 'maintenance')
-    .map((r, j) => ({
-      id: r._id,
-      roomNumber: `Phòng ${r.roomNumber}`,
-      floor: floorFromRoomNumber(r.roomNumber),
-      name: r.description || `Phòng ${r.roomNumber}`,
-      tier: `Tối đa ${r.maxTenants || 1} người`,
-      area: `${r.area}m²`,
-      price: Number(r.price || 0),
-      status: r.status,
-      image: r.images?.[0] || ROOM_IMAGES[j % ROOM_IMAGES.length],
-      amenities: r.facilities || [],
-    }));
-  const count = status => rooms.filter(r => r.status === status).length;
-  const occupied = count('occupied');
-  return {
-    id: p._id,
-    name: p.name,
-    code: `TÒA ${String.fromCharCode(65 + (index % 26))}`,
-    address: p.address,
-    district: districtFromAddress(p.address),
-    totalFloors: Math.max(1, ...rooms.map(r => r.floor)),
-    totalRooms: rooms.length,
-    availableRooms: count('available'),
-    occupiedRooms: occupied,
-    reservedRooms: count('reserved'),
-    occupancyRate: rooms.length ? Math.round((occupied / rooms.length) * 100) : 0,
-    electricPrice: Number(p.utilityRate?.electricityPrice || 0),
-    waterPrice: Number(p.utilityRate?.waterPrice || 0),
-    manager: p.contact ? `${p.contact.fullName}${p.contact.phone ? ` (${p.contact.phone})` : ''}` : 'Đang cập nhật',
-    image: BUILDING_IMAGES[index % BUILDING_IMAGES.length],
-    description: p.description || '',
-    rooms,
-  };
-};
-
+import api from '../../shared/api/axiosClient';
+import { clearAuth, getCurrentUser } from '../../shared/utils/auth';
 
 export default function HomePage() {
-  const location = useLocation();
-  const user = getCurrentUser();
-  if (!user) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
-  }
-  return <HomeContent user={user} />;
-}
-
-function HomeContent({ user }) {
-  const navigate = useNavigate();
-  const isStaff = STAFF_ROLES.includes(user.role);
-  // Chủ trọ / quản lý: nút chính vào trang quản lý; người thuê: đi tìm phòng
-  const primaryPath = isStaff ? '/dashboard' : '/browse-rooms';
-  const primaryLabel = isStaff ? 'Vào Trang Quản Lý' : 'Tìm Phòng Trống';
-
-  const handleLogout = () => {
-    clearAuth();
-    navigate('/login', { replace: true, state: { from: { pathname: '/home' } } });
-  };
-
-  const [properties, setProperties] = useState([]);
-  const [loadingBuildings, setLoadingBuildings] = useState(true);
-  const [loadError, setLoadError] = useState(null);
-
+  const [user, setUser] = useState(getCurrentUser);
+  const accountPath = user?.role === 'tenant' ? '/browse-rooms' : '/dashboard';
+  const accountLabel = user?.role === 'tenant' ? 'Tìm phòng' : 'Bảng điều khiển';
   useEffect(() => {
-    let cancelled = false;
-    propertiesAPI
-      .getBrowseProperties()
-      .then(res => !cancelled && setProperties(res.data || []))
-      .catch(err => {
-        if (!cancelled) {
-          setLoadError(err.response?.data?.message || 'Không tải được danh sách tòa nhà');
-        }
-      })
-      .finally(() => !cancelled && setLoadingBuildings(false));
+    const syncAuth = () => setUser(getCurrentUser());
+    window.addEventListener('auth-changed', syncAuth);
+    window.addEventListener('storage', syncAuth);
+    window.addEventListener('focus', syncAuth);
+    const expiryTimer = user?.exp ? setTimeout(syncAuth, Math.min(Math.max(user.exp * 1000 - Date.now(), 0) + 50, 2147483647)) : undefined;
     return () => {
-      cancelled = true;
+      window.removeEventListener('auth-changed', syncAuth);
+      window.removeEventListener('storage', syncAuth);
+      window.removeEventListener('focus', syncAuth);
+      clearTimeout(expiryTimer);
     };
-  }, []);
+  }, [user?.exp]);
+  const logout = () => {
+    clearAuth();
+    setUser(null);
+    setMobileMenuOpen(false);
+    window.dispatchEvent(new Event('auth-changed'));
+  };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Multi-building state: Active building
@@ -208,25 +130,15 @@ function HomeContent({ user }) {
             </Link>
           </nav>
 
-          {/* Action Buttons */}
           <div className="hidden sm:flex items-center gap-3.5">
-            <span className="text-xs sm:text-sm font-bold text-slate-700">
-              {ROLE_LABELS[user.role] || 'Tài khoản'}
-            </span>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-[#098b6c] transition-colors cursor-pointer"
-            >
-              Đăng Xuất
-            </button>
-            <Link
-              to={primaryPath}
-              className="px-5 py-2.5 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-900/15 hover:shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
-            >
-              <span>{primaryLabel}</span>
-              <ArrowRight size={16} />
-            </Link>
+            {user ? <>
+              <Link to="/profile" className="px-5 py-2.5 rounded-2xl bg-[#098b6c] text-white text-sm font-bold">Tài khoản của tôi</Link>
+              {user.role !== 'tenant' && <Link to="/dashboard" className="text-sm font-bold text-slate-700">Bảng điều khiển</Link>}
+              <button type="button" onClick={logout} className="px-4 py-2 text-sm font-bold text-slate-700 hover:text-rose-600">Đăng xuất</button>
+            </> : <>
+              <Link to={user ? accountPath : "/login"} className="px-4 py-2 text-sm font-bold text-slate-700">Đăng nhập</Link>
+              <Link to={user ? accountPath : "/register"} className="px-5 py-2.5 rounded-2xl bg-[#098b6c] text-white text-sm font-bold">Bắt đầu ngay</Link>
+            </>}
           </div>
 
           {/* Mobile Menu Button */}
@@ -278,19 +190,14 @@ function HomeContent({ user }) {
               Tìm phòng ngay
             </Link>
             <div className="pt-2 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full text-center py-2.5 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl cursor-pointer"
-              >
-                Đăng Xuất
-              </button>
-              <Link
-                to={primaryPath}
-                className="w-full text-center py-2.5 text-sm font-bold bg-[#098b6c] text-white rounded-xl shadow-sm"
-              >
-                {primaryLabel}
-              </Link>
+              {user ? <>
+                <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-2.5 font-bold bg-[#098b6c] text-white rounded-xl">Tài khoản của tôi</Link>
+                {user.role !== 'tenant' && <Link to="/dashboard" className="text-center font-bold">Bảng điều khiển</Link>}
+                <button type="button" onClick={logout} className="w-full py-2.5 font-bold border rounded-xl">Đăng xuất</button>
+              </> : <>
+                <Link to={user ? accountPath : "/login"} className="w-full text-center py-2.5 font-bold border rounded-xl">Đăng nhập</Link>
+                <Link to={user ? accountPath : "/register"} className="w-full text-center py-2.5 font-bold bg-[#098b6c] text-white rounded-xl">Bắt đầu ngay</Link>
+              </>}
             </div>
           </div>
         )}
@@ -340,11 +247,11 @@ function HomeContent({ user }) {
                   />
                 </a>
                 <Link
-                  to={primaryPath}
+                  to={user ? accountPath : "/login"}
                   className="px-6 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-800 hover:border-[#098b6c] hover:text-[#098b6c] text-sm font-bold shadow-sm transition-all flex items-center gap-2"
                 >
                   <Home size={18} className="text-[#098b6c]" />
-                  <span>{primaryLabel}</span>
+                  <span>{user ? accountLabel : 'Vào Bảng Điều Khiển'}</span>
                 </Link>
               </div>
 
@@ -938,7 +845,11 @@ function HomeContent({ user }) {
 
                       {room.status === 'available' ? (
                         <Link
+<<<<<<< HEAD
                           to={`/rooms/${room.id}`}
+=======
+                          to={user ? (user.role === 'tenant' ? `/rooms/${room.id}/rental-request` : accountPath) : "/login"}
+>>>>>>> origin/Hien-account-profile
                           className="px-4 py-2 rounded-xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs font-bold shadow-md shadow-emerald-900/15 transition-all"
                         >
                           Đăng ký thuê
@@ -1248,7 +1159,11 @@ function HomeContent({ user }) {
                 </div>
 
                 <Link
+<<<<<<< HEAD
                   to="/browse-rooms"
+=======
+                  to={user ? accountPath : "/register"}
+>>>>>>> origin/Hien-account-profile
                   className="w-full py-3 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs font-bold text-center shadow-lg transition-colors"
                 >
                   Đăng Ký Thuê Ngay
@@ -1277,6 +1192,7 @@ function HomeContent({ user }) {
               </p>
               <div className="flex flex-wrap items-center justify-center gap-4 pt-3">
                 <Link
+<<<<<<< HEAD
                   to="/browse-rooms"
                   className="px-8 py-3.5 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-sm font-bold shadow-lg shadow-black/20 transition-all"
                 >
@@ -1284,6 +1200,15 @@ function HomeContent({ user }) {
                 </Link>
                 <Link
                   to={primaryPath}
+=======
+                  to={user ? accountPath : "/register"}
+                  className="px-8 py-3.5 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-sm font-bold shadow-lg shadow-black/20 transition-all"
+                >
+                  {user ? accountLabel : 'Tạo Tài Khoản Ngay'}
+                </Link>
+                <Link
+                  to={user ? accountPath : "/login"}
+>>>>>>> origin/Hien-account-profile
                   className="px-8 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold border border-white/15 transition-all"
                 >
                   {primaryLabel}
@@ -1323,11 +1248,19 @@ function HomeContent({ user }) {
             <a href="#tinh-nang" className="hover:text-[#098b6c]">
               Tính năng
             </a>
+<<<<<<< HEAD
             <Link to={primaryPath} className="hover:text-[#098b6c]">
               {primaryLabel}
             </Link>
             <Link to="/browse-rooms" className="hover:text-[#098b6c]">
               Tìm phòng
+=======
+            <Link to={user ? accountPath : "/login"} className="hover:text-[#098b6c]">
+              {user ? accountLabel : 'Đăng nhập'}
+            </Link>
+            <Link to={user ? accountPath : "/register"} className="hover:text-[#098b6c]">
+              {user ? 'Tìm phòng' : 'Đăng ký'}
+>>>>>>> origin/Hien-account-profile
             </Link>
           </div>
 
