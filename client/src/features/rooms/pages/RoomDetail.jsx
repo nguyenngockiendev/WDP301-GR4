@@ -1,3 +1,4 @@
+import RoomImage from '../components/RoomImage';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -24,6 +25,7 @@ export default function RoomDetail() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setActiveImage(0);
     roomsAPI
       .getRoomById(roomId)
       .then(res => {
@@ -122,7 +124,7 @@ export default function RoomDetail() {
         <div className={`${card} p-4 lg:col-span-3`}>
           {images.length > 0 ? (
             <>
-              <img
+              <RoomImage
                 src={images[activeImage]}
                 alt={`Phòng ${room.roomNumber}`}
                 className="w-full h-72 object-cover rounded-2xl"
@@ -137,7 +139,7 @@ export default function RoomDetail() {
                         i === activeImage ? 'border-emerald-500' : 'border-transparent opacity-70 hover:opacity-100'
                       }`}
                     >
-                      <img src={src} alt="" className="w-20 h-14 object-cover" />
+                      <RoomImage src={src} alt="" className="w-20 h-14 object-cover" />
                     </button>
                   ))}
                 </div>
