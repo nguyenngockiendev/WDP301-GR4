@@ -9,3 +9,12 @@ export const getMyProperties = async (req, res) => {
     return sendError(res, error);
   }
 };
+
+export const getBrowseProperties = async (_req, res) => {
+  try {
+    const properties = await propertiesService.getBrowseProperties();
+    return sendSuccess(res, 200, 'Lấy danh sách nhà trọ thành công', properties);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
