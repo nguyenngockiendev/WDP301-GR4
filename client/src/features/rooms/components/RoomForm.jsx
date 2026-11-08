@@ -17,11 +17,13 @@ export default function RoomForm({ room, onSubmit, onCancel }) {
   } = useForm({ defaultValues: formValues(room) });
 
   const [facilities, setFacilities] = useState(room?.facilities || []);
+  const [imageUrls, setImageUrls] = useState((room?.images || []).join('\n'));
   const [facilityInput, setFacilityInput] = useState('');
 
   useEffect(() => {
     reset(formValues(room));
     setFacilities(room?.facilities || []);
+    setImageUrls((room?.images || []).join('\n'));
   }, [room, reset]);
 
   const handleAddFacility = () => {
@@ -33,6 +35,7 @@ export default function RoomForm({ room, onSubmit, onCancel }) {
   const onSubmitForm = data => onSubmit({
     ...formValues(data), roomNumber: data.roomNumber.trim(),
     area: Number(data.area), price: Number(data.price), maxTenants: Number(data.maxTenants), facilities,
+    images: [...new Set(imageUrls.split(/\r?\n/).map(url => url.trim()).filter(Boolean))],
   });
 
   const err = name =>
@@ -53,6 +56,11 @@ export default function RoomForm({ room, onSubmit, onCancel }) {
       }
     >
       <form id="room-form" onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
+        <div>
+          <label className={labelCls}>Đường dẫn ảnh phòng (mỗi dòng một ảnh)</label>
+          <textarea rows="3" className={inputCls} value={imageUrls} onChange={e => setImageUrls(e.target.value)} placeholder="https://example.com/phong.jpg" />
+          <p className="mt-1 text-xs text-slate-500">Dán URL ảnh hoặc đường dẫn ảnh có sẵn, ví dụ /images/haven-room-1.jpg. Ảnh đầu tiên dùng trên Home.</p>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>Số phòng *</label>

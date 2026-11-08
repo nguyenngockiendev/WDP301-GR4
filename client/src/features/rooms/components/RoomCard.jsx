@@ -1,3 +1,4 @@
+import RoomImage from './RoomImage';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, ImageOff, Ruler, Users } from 'lucide-react';
@@ -13,7 +14,7 @@ export default function RoomCard({ room }) {
   return (
     <div className="h-full flex flex-col rounded-3xl bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_8px_30px_rgb(0,0,0,0.03)] overflow-hidden hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition">
       {room.images && room.images.length > 0 ? (
-        <img src={room.images[0]} className="w-full h-40 object-cover" alt={`Phòng ${room.roomNumber}`} />
+        <RoomImage src={room.images[0]} className="w-full h-40 object-cover" alt={`Phòng ${room.roomNumber}`} />
       ) : (
         <div className="w-full h-40 bg-slate-100/70 flex items-center justify-center text-slate-300">
           <ImageOff size={28} />

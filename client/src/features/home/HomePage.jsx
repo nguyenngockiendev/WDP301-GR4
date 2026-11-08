@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import RoomImage from '../rooms/components/RoomImage';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Building,
   Building2,
@@ -762,7 +763,7 @@ export default function HomePage() {
                 >
                   {/* Ảnh phòng */}
                   <div className="relative h-56 overflow-hidden">
-                    <img
+                    <RoomImage
                       src={room.image}
                       alt={room.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
@@ -845,11 +846,7 @@ export default function HomePage() {
 
                       {room.status === 'available' ? (
                         <Link
-<<<<<<< HEAD
-                          to={`/rooms/${room.id}`}
-=======
                           to={user ? (user.role === 'tenant' ? `/rooms/${room.id}/rental-request` : accountPath) : "/login"}
->>>>>>> origin/Hien-account-profile
                           className="px-4 py-2 rounded-xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs font-bold shadow-md shadow-emerald-900/15 transition-all"
                         >
                           Đăng ký thuê
@@ -1159,11 +1156,7 @@ export default function HomePage() {
                 </div>
 
                 <Link
-<<<<<<< HEAD
-                  to="/browse-rooms"
-=======
                   to={user ? accountPath : "/register"}
->>>>>>> origin/Hien-account-profile
                   className="w-full py-3 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs font-bold text-center shadow-lg transition-colors"
                 >
                   Đăng Ký Thuê Ngay
@@ -1192,15 +1185,6 @@ export default function HomePage() {
               </p>
               <div className="flex flex-wrap items-center justify-center gap-4 pt-3">
                 <Link
-<<<<<<< HEAD
-                  to="/browse-rooms"
-                  className="px-8 py-3.5 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-sm font-bold shadow-lg shadow-black/20 transition-all"
-                >
-                  Tìm Phòng Ngay
-                </Link>
-                <Link
-                  to={primaryPath}
-=======
                   to={user ? accountPath : "/register"}
                   className="px-8 py-3.5 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-sm font-bold shadow-lg shadow-black/20 transition-all"
                 >
@@ -1208,7 +1192,6 @@ export default function HomePage() {
                 </Link>
                 <Link
                   to={user ? accountPath : "/login"}
->>>>>>> origin/Hien-account-profile
                   className="px-8 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold border border-white/15 transition-all"
                 >
                   {primaryLabel}
@@ -1248,19 +1231,11 @@ export default function HomePage() {
             <a href="#tinh-nang" className="hover:text-[#098b6c]">
               Tính năng
             </a>
-<<<<<<< HEAD
-            <Link to={primaryPath} className="hover:text-[#098b6c]">
-              {primaryLabel}
-            </Link>
-            <Link to="/browse-rooms" className="hover:text-[#098b6c]">
-              Tìm phòng
-=======
             <Link to={user ? accountPath : "/login"} className="hover:text-[#098b6c]">
               {user ? accountLabel : 'Đăng nhập'}
             </Link>
             <Link to={user ? accountPath : "/register"} className="hover:text-[#098b6c]">
               {user ? 'Tìm phòng' : 'Đăng ký'}
->>>>>>> origin/Hien-account-profile
             </Link>
           </div>
 
