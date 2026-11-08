@@ -1,4 +1,5 @@
 export function validateCreateRentalRequest(body) {
+  // Người thuê lấy từ token (req.user) trong service, không cần gửi trong body
   if (!body?.room || String(body.room).trim().length === 0) {
     return 'Phòng không được để trống';
   }
