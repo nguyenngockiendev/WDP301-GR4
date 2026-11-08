@@ -2,7 +2,7 @@ import React from 'react';
 import { CalendarClock } from 'lucide-react';
 import RentalRequestItem from './RentalRequestItem';
 
-export default function RentalRequestList({ requests, onProcess, onCreateContract }) {
+export default function RentalRequestList({ requests, onProcess, onCreateContract, readOnly = false }) {
   if (requests.length === 0) {
     return (
       <div className="py-16 flex flex-col items-center text-center rounded-3xl bg-white/85 border border-white/90">
@@ -21,6 +21,7 @@ export default function RentalRequestList({ requests, onProcess, onCreateContrac
         <RentalRequestItem
           key={request._id}
           request={request}
+          readOnly={readOnly}
           onProcess={onProcess}
           onCreateContract={onCreateContract}
         />

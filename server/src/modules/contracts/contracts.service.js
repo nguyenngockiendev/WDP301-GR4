@@ -94,7 +94,7 @@ export const getContractFormOptions = async (propertyId, user) => {
   // Mẫu hợp đồng đang dùng của chủ nhà trọ (landlord tạo, manager chọn để điền)
   const property = await Properties.findById(propertyId).select('owner contractPolicy utilityRate');
   const templates = await ContractTemplates.find({ createdBy: property?.owner, property: propertyId, status: 'active' })
-    .select('title updatedAt')
+    .select('title content updatedAt')
     .sort({ updatedAt: -1 });
 
   return {
@@ -149,6 +149,7 @@ export const getContractDocument = async (contractId, user) => {
 };
 
 export const createContract = async (data, user) => {
+  if (data.rentalRequest && user.role !== 'manager') throw { status: 403, message: 'Chỉ quản lý được tạo hợp đồng từ yêu cầu thuê' };
   const room = await Rooms.findById(data.room);
   if (!room) {
     throw { status: 404, message: 'Phòng không tồn tại' };

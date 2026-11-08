@@ -13,7 +13,7 @@ const addYears = (date, years) => {
   return toInputDate(d);
 };
 
-export default function ContractForm({ contract, propertyId, onSubmit, onCancel }) {
+export default function ContractForm({ contract, propertyId, initialRequestId, onSubmit, onCancel }) {
   const isEdit = Boolean(contract);
   const today = toInputDate(new Date());
 
@@ -63,7 +63,20 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
       .then(res => {
         setOptions(res.data || { rooms: [], approvedRequests: [], tenants: [] });
         setOptionsLoaded(true);
-        if (!isEdit && res.data?.templates?.length === 1) setValue('template', res.data.templates[0]._id);
+        if (!isEdit && res.data?.templates?.length) setValue('template', res.data.templates[0]._id);
+        if (!isEdit && initialRequestId) {
+          const req = res.data?.approvedRequests?.find(r => r._id === initialRequestId);
+          if (req) {
+            setValue('rentalRequest', req._id);
+            setValue('room', req.room._id);
+            setValue('representative', req.tenant._id);
+            setValue('monthlyRent', req.room.price);
+            if (req.expectedDate) {
+              setValue('startDate', toInputDate(req.expectedDate));
+              setValue('endDate', addYears(req.expectedDate, 1));
+            }
+          } else toast.error('Yêu cầu không còn khả dụng để lập hợp đồng. Vui lòng kiểm tra lại.');
+        }
       })
       .catch(err => toast.error(err.response?.data?.message || 'Không tải được danh sách phòng / người thuê'))
       .finally(() => setLoadingOptions(false));
@@ -112,6 +125,7 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
     }
   }, [monthlyRent, optionsLoaded, options.contractPolicy?.depositMonths, isEdit, setValue]);
 
+  const selectedTemplate = (options.templates || []).find(t => t._id === watch('template'));
   const moneyLocked = isEdit && contract.status !== 'draft';
 
   // Mẫu hợp đồng: bắt buộc khi tạo; khi sửa chỉ đổi được nếu hợp đồng còn Nháp hoặc chưa có mẫu
@@ -191,6 +205,11 @@ export default function ContractForm({ contract, propertyId, onSubmit, onCancel 
           </p>
         )}
 
+        {selectedTemplate && <details open className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
+          <summary className="text-sm font-bold cursor-pointer">Mẫu của tòa nhà: {selectedTemplate.title}</summary>
+          <p className="mt-2 text-xs text-slate-500">Các biến trong mẫu sẽ được điền bằng thông tin phòng, người thuê và hợp đồng khi lưu.</p>
+          <pre className="mt-3 max-h-64 overflow-y-auto whitespace-pre-wrap text-xs font-sans">{selectedTemplate.content}</pre>
+        </details>}
         {!isEdit && (
           <>
             {options.approvedRequests.length > 0 && (
