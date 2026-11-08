@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   Building,
   Building2,
@@ -28,12 +29,109 @@ import {
   UserCheck,
 } from 'lucide-react';
 import './home.css';
+import propertiesAPI from '../properties/api/properties-api';
+import { getCurrentUser, clearAuth } from '../../shared/utils/auth';
+
+const STAFF_ROLES = ['landlord', 'manager'];
+const ROLE_LABELS = { tenant: 'Người thuê', landlord: 'Chủ trọ', manager: 'Quản lý' };
+const BUILDING_IMAGES = ['/images/haven-building-1.jpg', '/images/haven-building-2.jpg', '/images/haven-building-3.jpg'];
+const ROOM_IMAGES = ['/images/haven-room-1.jpg', '/images/haven-room-2.jpg', '/images/haven-room-3.jpg', '/images/haven-hero-apartment.jpg'];
+const EMPTY_BUILDING = {
+  id: '', name: 'Chưa có tòa nhà', code: '', address: '', district: '', totalFloors: 1, totalRooms: 0,
+  availableRooms: 0, occupiedRooms: 0, reservedRooms: 0, occupancyRate: 0, electricPrice: 0, waterPrice: 0,
+  manager: 'Đang cập nhật', image: BUILDING_IMAGES[0], description: '', rooms: [],
+};
+
+// Tầng suy ra từ số phòng: 101 -> tầng 1, A205 -> tầng 2, 1203 -> tầng 12; số phòng ngắn coi là tầng 1
+const floorFromRoomNumber = roomNumber => {
+  const digits = String(roomNumber || '').match(/\d+/)?.[0] || '';
+  return digits.length >= 3 ? Number(digits.slice(0, -2)) || 1 : 1;
+};
+
+const districtFromAddress = address => {
+  const parts = String(address || '').split(',').map(x => x.trim()).filter(Boolean);
+  return parts.find(x => /^(Quận|Huyện|Thị xã|TP\.?|Thành phố)/i.test(x)) || parts[parts.length - 1] || '';
+};
+
+/** Chuyển dữ liệu nhà trọ từ API sang dạng trang Home đang dùng để hiển thị. */
+const toBuilding = (p, index) => {
+  const rooms = (p.rooms || [])
+    .filter(r => r.status !== 'maintenance')
+    .map((r, j) => ({
+      id: r._id,
+      roomNumber: `Phòng ${r.roomNumber}`,
+      floor: floorFromRoomNumber(r.roomNumber),
+      name: r.description || `Phòng ${r.roomNumber}`,
+      tier: `Tối đa ${r.maxTenants || 1} người`,
+      area: `${r.area}m²`,
+      price: Number(r.price || 0),
+      status: r.status,
+      image: r.images?.[0] || ROOM_IMAGES[j % ROOM_IMAGES.length],
+      amenities: r.facilities || [],
+    }));
+  const count = status => rooms.filter(r => r.status === status).length;
+  const occupied = count('occupied');
+  return {
+    id: p._id,
+    name: p.name,
+    code: `TÒA ${String.fromCharCode(65 + (index % 26))}`,
+    address: p.address,
+    district: districtFromAddress(p.address),
+    totalFloors: Math.max(1, ...rooms.map(r => r.floor)),
+    totalRooms: rooms.length,
+    availableRooms: count('available'),
+    occupiedRooms: occupied,
+    reservedRooms: count('reserved'),
+    occupancyRate: rooms.length ? Math.round((occupied / rooms.length) * 100) : 0,
+    electricPrice: Number(p.utilityRate?.electricityPrice || 0),
+    waterPrice: Number(p.utilityRate?.waterPrice || 0),
+    manager: p.contact ? `${p.contact.fullName}${p.contact.phone ? ` (${p.contact.phone})` : ''}` : 'Đang cập nhật',
+    image: BUILDING_IMAGES[index % BUILDING_IMAGES.length],
+    description: p.description || '',
+    rooms,
+  };
+};
+
 
 export default function HomePage() {
+  const location = useLocation();
+  const user = getCurrentUser();
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+  return <HomeContent user={user} />;
+}
+
+function HomeContent({ user }) {
+  const navigate = useNavigate();
+  const isStaff = STAFF_ROLES.includes(user.role);
+  // Chủ trọ / quản lý: nút chính vào trang quản lý; người thuê: đi tìm phòng
+  const primaryPath = isStaff ? '/dashboard' : '/browse-rooms';
+  const primaryLabel = isStaff ? 'Vào Trang Quản Lý' : 'Tìm Phòng Trống';
+
+  const handleLogout = () => {
+    clearAuth();
+    navigate('/login', { replace: true, state: { from: { pathname: '/home' } } });
+  };
+
+  const [properties, setProperties] = useState([]);
+  const [loadingBuildings, setLoadingBuildings] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    propertiesAPI
+      .getBrowseProperties()
+      .then(res => !cancelled && setProperties(res.data || []))
+      .catch(err => !cancelled && toast.error(err.response?.data?.message || 'Không tải được danh sách tòa nhà'))
+      .finally(() => !cancelled && setLoadingBuildings(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Multi-building state: Active building
-  const [activeBuildingId, setActiveBuildingId] = useState('bld-1');
+  const [activeBuildingId, setActiveBuildingId] = useState('');
   // Floor filter within the active building
   const [activeFloor, setActiveFloor] = useState('all');
   // View mode: 'cards' or 'matrix'
@@ -47,232 +145,13 @@ export default function HomePage() {
   const waterRate = 20000;
   const totalCost = roomBasePrice + kwh * electricRate + waterM3 * waterRate;
 
-  // Dữ liệu Hệ thống: Nhiều Tòa nhà (Buildings / Properties)
-  const buildings = [
-    {
-      id: 'bld-1',
-      name: 'Haven Oasis Residence',
-      code: 'TÒA A',
-      address: 'Đường Nguyễn Thị Thập, Tân Phú, Quận 7, TP. HCM',
-      district: 'Quận 7',
-      totalFloors: 4,
-      totalRooms: 24,
-      availableRooms: 5,
-      occupiedRooms: 18,
-      reservedRooms: 1,
-      occupancyRate: 75,
-      electricPrice: 3500,
-      waterPrice: 20000,
-      manager: 'Nguyễn Văn Hùng (0903 123 456)',
-      image: '/images/haven-building-1.jpg',
-      description:
-        'Tòa nhà chung cư mini cao cấp 4 tầng với bảo vệ 24/7, thang máy tốc độ cao, hệ thống PCCC tự động và bãi xe tầng hầm rộng rãi.',
-      rooms: [
-        {
-          id: 'b1-101',
-          roomNumber: 'Phòng 101',
-          floor: 1,
-          name: 'Studio Ban Công Thoáng Mát',
-          tier: 'Studio cao cấp',
-          area: '28m²',
-          price: 4500000,
-          status: 'available', // available, occupied, reserved
-          image: '/images/haven-hero-apartment.jpg',
-          amenities: ['Ban công riêng', 'Máy giặt riêng', 'Khóa vân tay', 'Tủ lạnh Inverter'],
-        },
-        {
-          id: 'b1-102',
-          roomNumber: 'Phòng 102',
-          floor: 1,
-          name: 'Phòng Tiêu Chuẩn Hiện Đại',
-          tier: 'Phòng Deluxe',
-          area: '24m²',
-          price: 3800000,
-          status: 'occupied',
-          image: '/images/haven-room-1.jpg',
-          amenities: ['Máy lạnh Inverter', 'Giường nệm cao cấp', 'Wifi tốc độ cao'],
-        },
-        {
-          id: 'b1-201',
-          roomNumber: 'Phòng 201',
-          floor: 2,
-          name: 'Căn Hộ Mini Gác Lửng',
-          tier: 'Căn hộ Mini',
-          area: '32m²',
-          price: 5200000,
-          status: 'available',
-          image: '/images/haven-room-2.jpg',
-          amenities: ['Gác lửng đúc', 'Khu bếp riêng', 'Bàn làm việc', 'Cửa sổ lớn'],
-        },
-        {
-          id: 'b1-202',
-          roomNumber: 'Phòng 202',
-          floor: 2,
-          name: 'Studio View Thoáng Lầu 2',
-          tier: 'Studio cao cấp',
-          area: '26m²',
-          price: 4200000,
-          status: 'reserved',
-          image: '/images/haven-room-3.jpg',
-          amenities: ['Full nội thất gỗ', 'Bình nước nóng', 'Tủ quần áo âm tường'],
-        },
-        {
-          id: 'b1-301',
-          roomNumber: 'Phòng 301',
-          floor: 3,
-          name: 'Phòng Master Ban Công Lớn',
-          tier: 'Căn hộ Mini',
-          area: '35m²',
-          price: 5500000,
-          status: 'available',
-          image: '/images/haven-hero-apartment.jpg',
-          amenities: ['Ban công góc', 'Khu giặt phơi riêng', 'Smart TV', 'Máy hút mùi'],
-        },
-        {
-          id: 'b1-302',
-          roomNumber: 'Phòng 302',
-          floor: 3,
-          name: 'Phòng Deluxe Yên Tĩnh',
-          tier: 'Phòng Deluxe',
-          area: '25m²',
-          price: 4000000,
-          status: 'available',
-          image: '/images/haven-room-1.jpg',
-          amenities: ['Cửa kính cách âm', 'Bàn trà nhỏ', 'Khóa thẻ từ thông minh'],
-        },
-      ],
-    },
-    {
-      id: 'bld-2',
-      name: 'Haven Eco Tower',
-      code: 'TÒA B',
-      address: 'Đường Điện Biên Phủ, Phường 25, Quận Bình Thạnh, TP. HCM',
-      district: 'Bình Thạnh',
-      totalFloors: 5,
-      totalRooms: 20,
-      availableRooms: 3,
-      occupiedRooms: 16,
-      reservedRooms: 1,
-      occupancyRate: 80,
-      electricPrice: 3500,
-      waterPrice: 20000,
-      manager: 'Trần Thị Mai (0918 654 321)',
-      image: '/images/haven-building-2.jpg',
-      description:
-        'Tòa căn hộ dịch vụ vị trí trung tâm giáp Quận 1, khu dân trí cao, gần các trường đại học HUTECH, Ngoại Thương và ga Metro.',
-      rooms: [
-        {
-          id: 'b2-101',
-          roomNumber: 'Phòng 101',
-          floor: 1,
-          name: 'Studio Tầng Trệt Tiện Lợi',
-          tier: 'Studio cao cấp',
-          area: '26m²',
-          price: 4300000,
-          status: 'occupied',
-          image: '/images/haven-room-1.jpg',
-          amenities: ['Lối đi riêng', 'Bếp từ đôi', 'Máy lạnh Daikin', 'Máy giặt'],
-        },
-        {
-          id: 'b2-201',
-          roomNumber: 'Phòng 201',
-          floor: 2,
-          name: 'Căn Hộ Mini Ban Công Xanh',
-          tier: 'Căn hộ Mini',
-          area: '30m²',
-          price: 4800000,
-          status: 'available',
-          image: '/images/haven-room-2.jpg',
-          amenities: ['Cây xanh ban công', 'Sofa bed', 'Bàn ăn 2 ghế', 'Wifi 200Mbps'],
-        },
-        {
-          id: 'b2-301',
-          roomNumber: 'Phòng 301',
-          floor: 3,
-          name: 'Phòng Deluxe View Thành Phố',
-          tier: 'Phòng Deluxe',
-          area: '25m²',
-          price: 4100000,
-          status: 'available',
-          image: '/images/haven-hero-apartment.jpg',
-          amenities: ['Cửa sổ kính Low-E', 'Tủ lạnh 180L', 'Bàn làm việc lớn'],
-        },
-        {
-          id: 'b2-401',
-          roomNumber: 'Phòng 401',
-          floor: 4,
-          name: 'Studio Penthouse Haven',
-          tier: 'Studio cao cấp',
-          area: '34m²',
-          price: 5400000,
-          status: 'available',
-          image: '/images/haven-room-3.jpg',
-          amenities: ['Sân thượng riêng', 'Phòng tắm đứng kính', 'Khóa vân tay'],
-        },
-      ],
-    },
-    {
-      id: 'bld-3',
-      name: 'Haven Urban Living',
-      code: 'TÒA C',
-      address: 'Đường Song Hành Xa Lộ Hà Nội, TP. Thủ Đức, TP. HCM',
-      district: 'TP. Thủ Đức',
-      totalFloors: 6,
-      totalRooms: 32,
-      availableRooms: 6,
-      occupiedRooms: 24,
-      reservedRooms: 2,
-      occupancyRate: 75,
-      electricPrice: 3200,
-      waterPrice: 18000,
-      manager: 'Lê Hoàng Nam (0987 888 999)',
-      image: '/images/haven-building-3.jpg',
-      description:
-        'Tòa nhà thế hệ mới với phong cách thiết kế tối giản Nordic, tích hợp phòng gym mini miễn phí, sân phơi chung và trạm sạc xe điện.',
-      rooms: [
-        {
-          id: 'b3-101',
-          roomNumber: 'Phòng 101',
-          floor: 1,
-          name: 'Phòng Tiêu Chuẩn Năng Động',
-          tier: 'Phòng Deluxe',
-          area: '23m²',
-          price: 3600000,
-          status: 'available',
-          image: '/images/haven-room-1.jpg',
-          amenities: ['Máy lạnh', 'Tủ lạnh mini', 'Giường thông minh có hộc'],
-        },
-        {
-          id: 'b3-201',
-          roomNumber: 'Phòng 201',
-          floor: 2,
-          name: 'Studio Gác Cao Đón Nắng',
-          tier: 'Studio cao cấp',
-          area: '29m²',
-          price: 4400000,
-          status: 'available',
-          image: '/images/haven-room-2.jpg',
-          amenities: ['Gác cao đứng thẳng', 'Cửa sổ giếng trời', 'Bếp đá hoa cương'],
-        },
-        {
-          id: 'b3-301',
-          roomNumber: 'Phòng 301',
-          floor: 3,
-          name: 'Căn Hộ Mini 1 Phòng Ngủ',
-          tier: 'Căn hộ Mini',
-          area: '36m²',
-          price: 5300000,
-          status: 'available',
-          image: '/images/haven-hero-apartment.jpg',
-          amenities: ['Vách ngăn phòng ngủ', 'Khu giặt riêng', 'Máy hút mùi', 'Bàn ăn'],
-        },
-      ],
-    },
-  ];
+  // Dữ liệu tòa nhà & phòng thật từ API (/properties/browse)
+  const buildings = useMemo(() => properties.map(toBuilding), [properties]);
+  const totalRoomsAll = buildings.reduce((sum, b) => sum + b.totalRooms, 0);
 
   // Active Building Object
   const currentBuilding =
-    buildings.find(b => b.id === activeBuildingId) || buildings[0];
+    buildings.find(b => b.id === activeBuildingId) || buildings[0] || EMPTY_BUILDING;
 
   // Filtered rooms inside the active building
   const filteredRooms =
@@ -327,17 +206,21 @@ export default function HomePage() {
 
           {/* Action Buttons */}
           <div className="hidden sm:flex items-center gap-3.5">
-            <Link
-              to="/login"
-              className="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-[#098b6c] transition-colors"
+            <span className="text-xs sm:text-sm font-bold text-slate-700">
+              {ROLE_LABELS[user.role] || 'Tài khoản'}
+            </span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-[#098b6c] transition-colors cursor-pointer"
             >
-              Đăng Nhập
-            </Link>
+              Đăng Xuất
+            </button>
             <Link
-              to="/register"
+              to={primaryPath}
               className="px-5 py-2.5 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-900/15 hover:shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
             >
-              <span>Bắt Đầu Ngay</span>
+              <span>{primaryLabel}</span>
               <ArrowRight size={16} />
             </Link>
           </div>
@@ -391,17 +274,18 @@ export default function HomePage() {
               Tìm phòng ngay
             </Link>
             <div className="pt-2 flex flex-col gap-2">
-              <Link
-                to="/login"
-                className="w-full text-center py-2.5 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl"
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full text-center py-2.5 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl cursor-pointer"
               >
-                Đăng Nhập
-              </Link>
+                Đăng Xuất
+              </button>
               <Link
-                to="/register"
+                to={primaryPath}
                 className="w-full text-center py-2.5 text-sm font-bold bg-[#098b6c] text-white rounded-xl shadow-sm"
               >
-                Bắt Đầu Ngay
+                {primaryLabel}
               </Link>
             </div>
           </div>
@@ -452,11 +336,11 @@ export default function HomePage() {
                   />
                 </a>
                 <Link
-                  to="/login"
+                  to={primaryPath}
                   className="px-6 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-800 hover:border-[#098b6c] hover:text-[#098b6c] text-sm font-bold shadow-sm transition-all flex items-center gap-2"
                 >
                   <Home size={18} className="text-[#098b6c]" />
-                  <span>Vào Bảng Điều Khiển</span>
+                  <span>{primaryLabel}</span>
                 </Link>
               </div>
 
@@ -496,16 +380,16 @@ export default function HomePage() {
                         </span>
                       </div>
                       <span className="text-[10px] text-slate-400 block -mt-0.5">
-                        Tổng hợp: 3 Tòa nhà · 76 Phòng
+                        Tổng hợp: {buildings.length} Tòa nhà · {totalRoomsAll} Phòng
                       </span>
                     </div>
                   </div>
 
                   <Link
-                    to="/login"
+                    to={primaryPath}
                     className="px-3.5 py-1.5 rounded-xl bg-[#098b6c] text-white text-xs font-bold shadow-sm hover:bg-[#077a5e] transition-colors flex items-center gap-1.5"
                   >
-                    <span>+ Quản Lý Tòa Nhà</span>
+                    <span>{isStaff ? '+ Quản Lý Tòa Nhà' : 'Tìm phòng'}</span>
                   </Link>
                 </div>
 
@@ -1037,7 +921,7 @@ export default function HomePage() {
 
                     <div className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between">
                       <Link
-                        to="/browse-rooms"
+                        to={`/rooms/${room.id}`}
                         className="text-xs font-bold text-[#098b6c] hover:underline flex items-center gap-1"
                       >
                         <span>Chi tiết phòng</span>
@@ -1046,7 +930,7 @@ export default function HomePage() {
 
                       {room.status === 'available' ? (
                         <Link
-                          to="/login"
+                          to={`/rooms/${room.id}`}
                           className="px-4 py-2 rounded-xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs font-bold shadow-md shadow-emerald-900/15 transition-all"
                         >
                           Đăng ký thuê
@@ -1355,7 +1239,7 @@ export default function HomePage() {
                 </div>
 
                 <Link
-                  to="/register"
+                  to="/browse-rooms"
                   className="w-full py-3 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs font-bold text-center shadow-lg transition-colors"
                 >
                   Đăng Ký Thuê Ngay
@@ -1384,16 +1268,16 @@ export default function HomePage() {
               </p>
               <div className="flex flex-wrap items-center justify-center gap-4 pt-3">
                 <Link
-                  to="/register"
+                  to="/browse-rooms"
                   className="px-8 py-3.5 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-sm font-bold shadow-lg shadow-black/20 transition-all"
                 >
-                  Tạo Tài Khoản Ngay
+                  Tìm Phòng Ngay
                 </Link>
                 <Link
-                  to="/login"
+                  to={primaryPath}
                   className="px-8 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold border border-white/15 transition-all"
                 >
-                  Vào Bảng Điều Khiển
+                  {primaryLabel}
                 </Link>
               </div>
             </div>
@@ -1430,11 +1314,11 @@ export default function HomePage() {
             <a href="#tinh-nang" className="hover:text-[#098b6c]">
               Tính năng
             </a>
-            <Link to="/login" className="hover:text-[#098b6c]">
-              Bảng điều khiển
+            <Link to={primaryPath} className="hover:text-[#098b6c]">
+              {primaryLabel}
             </Link>
-            <Link to="/register" className="hover:text-[#098b6c]">
-              Đăng ký
+            <Link to="/browse-rooms" className="hover:text-[#098b6c]">
+              Tìm phòng
             </Link>
           </div>
 
