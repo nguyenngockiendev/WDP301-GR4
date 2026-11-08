@@ -4,6 +4,8 @@ import { authMiddleware, checkRole } from '../../shared/middlewares/middlewave.j
 
 const router = Router();
 
+router.get('/public', propertiesController.getPublicProperties);
+
 // Nhà trọ của user đang đăng nhập (landlord: sở hữu, manager: được giao)
 router.get(
   '/my',
