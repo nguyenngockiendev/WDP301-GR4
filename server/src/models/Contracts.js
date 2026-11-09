@@ -54,6 +54,21 @@ const contractSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    checkoutInspection: {
+      checkedAt: { type: Date, default: null },
+      checkedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      note: { type: String, trim: true, maxlength: 1000, default: '' },
+      assets: [
+        {
+          asset: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true },
+          assetCode: { type: String, trim: true, default: '' },
+          name: { type: String, trim: true, required: true },
+          damaged: { type: Boolean, default: false },
+          compensationAmount: { type: Number, min: 0, default: 0 },
+          note: { type: String, trim: true, maxlength: 500, default: '' },
+        },
+      ],
+    },
     paymentDueDay: {
       type: Number,
       min: 1,

@@ -4,6 +4,7 @@ import MaintenanceTickets from '../../models/MaintenanceTickets.js';
 import Properties from '../../models/Properties.js';
 import Rooms from '../../models/Rooms.js';
 import ManagerAssignments from '../../models/ManagerAssignments.js';
+import Contracts from '../../models/Contracts.js';
 
 const assetStatuses = ['in_stock', 'in_use', 'maintenance', 'retired'];
 const priorities = ['low', 'normal', 'high', 'urgent'];
@@ -56,6 +57,61 @@ export async function listRooms(user, propertyId) {
   return Rooms.find({ property: propertyId })
     .select('roomNumber area tier status')
     .sort({ roomNumber: 1 });
+}
+
+export async function listCheckoutInspections(user, propertyId) {
+  await getProperty(user, propertyId);
+  const roomIds = await Rooms.find({ property: propertyId }).distinct('_id');
+  return Contracts.find({ room: { $in: roomIds } })
+    .populate({ path: 'room', select: 'roomNumber' })
+    .populate({ path: 'representative', select: 'fullName' })
+    .populate({ path: 'checkoutInspection.checkedBy', select: 'fullName' })
+    .sort({ updatedAt: -1 });
+}
+
+export async function saveCheckoutInspection(user, propertyId, contractId, data) {
+  await getProperty(user, propertyId);
+  if (!isValidId(contractId)) fail(400, 'Mã hợp đồng không hợp lệ.');
+  const contract = await Contracts.findById(contractId);
+  if (!contract) fail(404, 'Không tìm thấy hợp đồng.');
+  await getRoom(propertyId, contract.room);
+  if (!Array.isArray(data.assets)) fail(400, 'Danh sách tài sản kiểm tra không hợp lệ.');
+
+  const roomAssets = await Assets.find({ property: propertyId, room: contract.room });
+  const byId = new Map(roomAssets.map(asset => [String(asset._id), asset]));
+  const unique = new Set();
+  const checkedAssets = data.assets.map(item => {
+    const asset = byId.get(String(item.asset));
+    if (!asset || unique.has(String(asset._id))) fail(400, 'Có thiết bị không thuộc phòng này.');
+    unique.add(String(asset._id));
+    const damaged = Boolean(item.damaged);
+    const compensationAmount = item.compensationAmount === '' || item.compensationAmount === undefined
+      ? 0
+      : Number(item.compensationAmount);
+    if (!Number.isFinite(compensationAmount) || compensationAmount < 0 || (!damaged && compensationAmount > 0)) {
+      fail(400, 'Tiền bồi thường phải hợp lệ và chỉ áp dụng cho thiết bị bị hỏng.');
+    }
+    return {
+      asset: asset._id,
+      assetCode: asset.assetCode,
+      name: asset.name,
+      damaged,
+      compensationAmount,
+      note: String(item.note || '').trim(),
+    };
+  });
+
+  contract.checkoutInspection = {
+    checkedAt: new Date(),
+    checkedBy: user.userId,
+    note: String(data.note || '').trim(),
+    assets: checkedAssets,
+  };
+  await contract.save();
+  return Contracts.findById(contract._id)
+    .populate({ path: 'room', select: 'roomNumber' })
+    .populate({ path: 'representative', select: 'fullName' })
+    .populate({ path: 'checkoutInspection.checkedBy', select: 'fullName' });
 }
 
 export async function createAsset(user, propertyId, data) {
