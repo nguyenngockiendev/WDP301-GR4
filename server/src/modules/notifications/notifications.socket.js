@@ -8,7 +8,8 @@ export function attachNotificationsSocket(server, { allowedOrigins }) {
   const upgrade = (req, socket, head) => {
     if (req.url?.split('?')[0] !== '/ws/notifications') return socket.destroy();
     if (req.headers.origin && !allowedOrigins.has(req.headers.origin)) {
-      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); return;
+      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+      return;
     }
     wss.handleUpgrade(req, socket, head, client => wss.emit('connection', client));
   };
@@ -27,7 +28,9 @@ export function attachNotificationsSocket(server, { allowedOrigins }) {
     socket.alive = true;
     let expiry;
     const timeout = setTimeout(() => socket.close(4001, 'Authentication required'), 5000);
-    socket.on('pong', () => { socket.alive = true; });
+    socket.on('pong', () => {
+      socket.alive = true;
+    });
     socket.on('error', () => socket.terminate());
     socket.on('message', raw => {
       if (socket.recipient) return socket.close(1008, 'Unexpected message');
@@ -35,18 +38,25 @@ export function attachNotificationsSocket(server, { allowedOrigins }) {
         const message = JSON.parse(raw.toString());
         if (message.type !== 'authenticate' || typeof message.token !== 'string') throw new Error();
         const user = jwt.verify(message.token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
-        if (!/^[a-f\d]{24}$/i.test(user.userId || '') || !Number.isFinite(user.exp)) throw new Error();
+        if (!/^[a-f\d]{24}$/i.test(user.userId || '') || !Number.isFinite(user.exp))
+          throw new Error();
         socket.recipient = user.userId;
         socket.expiresAt = user.exp * 1000;
         if (!rooms.has(user.userId)) rooms.set(user.userId, new Set());
         rooms.get(user.userId).add(socket);
         clearTimeout(timeout);
-        expiry = setTimeout(() => socket.close(4001, 'Token expired'), Math.min(socket.expiresAt - Date.now(), 2147483647));
+        expiry = setTimeout(
+          () => socket.close(4001, 'Token expired'),
+          Math.min(socket.expiresAt - Date.now(), 2147483647),
+        );
         send(socket, 'ready');
-      } catch { socket.close(4001, 'Invalid token'); }
+      } catch {
+        socket.close(4001, 'Invalid token');
+      }
     });
     socket.on('close', () => {
-      clearTimeout(timeout); clearTimeout(expiry);
+      clearTimeout(timeout);
+      clearTimeout(expiry);
       const room = rooms.get(socket.recipient);
       room?.delete(socket);
       if (room?.size === 0) rooms.delete(socket.recipient);
@@ -54,8 +64,12 @@ export function attachNotificationsSocket(server, { allowedOrigins }) {
   });
   const heartbeat = setInterval(() => {
     for (const socket of wss.clients) {
-      if (!socket.alive) { socket.terminate(); continue; }
-      socket.alive = false; socket.ping();
+      if (!socket.alive) {
+        socket.terminate();
+        continue;
+      }
+      socket.alive = false;
+      socket.ping();
     }
   }, 30000);
   wss.on('close', () => {
