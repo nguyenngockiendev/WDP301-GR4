@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { formatCurrency } from '../../../shared/utils/format';
 
 const formatNumber = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 6 });
@@ -120,6 +121,7 @@ function UtilityEstimate({ roomNumber, electricityUsed, waterUsed, rate }) {
 
 export default function UtilityReadingsTable({
   rooms,
+  propertyId,
   contracts,
   propertyRate,
   billingMonth,
@@ -189,6 +191,12 @@ export default function UtilityReadingsTable({
             const hasInput = [oldElectricity, newElectricity, oldWater, newWater].some(
               value => value !== '',
             );
+            const readingStatus = reading.isRecorded ? 'Đã ghi' : hasInput ? 'Chưa lưu' : 'Chưa ghi';
+            const statusColor = {
+              'Đã ghi': 'bg-emerald-100 text-emerald-800',
+              'Chưa lưu': 'bg-amber-100 text-amber-800',
+              'Chưa ghi': 'bg-slate-100 text-content-sub',
+            }[readingStatus];
             const previewOpen = previewRoomId === roomId;
             const electricityErrorId = electricity.error
               ? `electricity-error-${roomId}`
@@ -261,9 +269,9 @@ export default function UtilityReadingsTable({
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-block whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-bold ${hasInput ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-content-sub'}`}
+                      className={`inline-block whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-bold ${statusColor}`}
                     >
-                      {hasInput ? 'Chưa lưu' : 'Chưa ghi'}
+                      {readingStatus}
                     </span>
                     <button
                       type="button"
@@ -276,6 +284,18 @@ export default function UtilityReadingsTable({
                       {previewOpen ? 'Ẩn tạm tính' : 'Xem tạm tính'}
                       {previewOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </button>
+                    {reading.isRecorded && (
+                      <Link
+                        to={{
+                          pathname: '/invoices/new',
+                          search: new URLSearchParams({ propertyId, roomId, billingMonth }).toString(),
+                        }}
+                        aria-label={`Lập hóa đơn phòng ${room.roomNumber}`}
+                        className="mt-2 inline-block whitespace-nowrap text-xs font-bold text-primary-dark hover:underline"
+                      >
+                        Lập hóa đơn
+                      </Link>
+                    )}
                   </td>
                 </tr>
                 {previewOpen && (
