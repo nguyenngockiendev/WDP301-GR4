@@ -26,16 +26,16 @@ export const getMyProperties = async ({ userId, role }) => {
  * Kiểm tra user có quyền quản lý nhà trọ không (landlord sở hữu / manager được giao).
  * Ném lỗi 403/404 nếu không có quyền.
  */
-export const assertPropertyAccess = async ({ userId, role }, propertyId) => {
+export const assertPropertyAccess = async ({ userId, role }, propertyId, session = null) => {
   if (!mongoose.isValidObjectId(propertyId)) {
     throw { status: 404, message: 'Nhà trọ không tồn tại' };
   }
 
   if (role === 'landlord') {
-    const owned = await Properties.exists({ _id: propertyId, owner: userId });
+    const owned = await Properties.exists({ _id: propertyId, owner: userId }).session(session);
     if (owned) return;
   } else if (role === 'manager') {
-    const assigned = await ManagerAssignments.exists({ manager: userId, property: propertyId, status: 'active' });
+    const assigned = await ManagerAssignments.exists({ manager: userId, property: propertyId, status: 'active' }).session(session);
     if (assigned) return;
   }
 

@@ -11,6 +11,8 @@ const invoiceItemSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    quantity: Number,
+    unitPrice: Number,
     amount: {
       type: Number,
       required: true,
@@ -26,15 +28,24 @@ const invoiceSchema = new mongoose.Schema(
       ref: 'Contract',
       required: true,
     },
+    billedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     utilityReading: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'UtilityReading',
     },
     billingMonth: {
-      type: String, 
+      type: String,
       required: true,
     },
     items: [invoiceItemSchema],
+    images: {
+      type: [String],
+      default: [],
+    },
     totalAmount: {
       type: Number,
       required: true,
@@ -46,6 +57,10 @@ const invoiceSchema = new mongoose.Schema(
     dueDate: {
       type: Date,
       required: true,
+    },
+    sentAt: {
+      type: Date,
+      default: null,
     },
     status: {
       type: String,
@@ -67,6 +82,8 @@ const invoiceSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+invoiceSchema.index({ contract: 1, billingMonth: 1 }, { unique: true });
 
 const Invoices = mongoose.model('Invoice', invoiceSchema);
 

@@ -17,6 +17,10 @@ const paymentSchema = new mongoose.Schema(
       enum: ['cash', 'transfer', 'gateway'],
       default: 'transfer',
     },
+    provider: {
+      type: String,
+      enum: ['vnpay', 'sepay'],
+    },
     amount: {
       type: Number,
       required: true,
@@ -31,6 +35,8 @@ const paymentSchema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    expiresAt: Date,
+    returnOrigin: String,
     recordedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -44,6 +50,11 @@ const paymentSchema = new mongoose.Schema(
   {
     timestamps: true,
   },
+);
+
+paymentSchema.index(
+  { invoice: 1 },
+  { unique: true, partialFilterExpression: { method: 'gateway', status: 'pending', expiresAt: { $type: 'date' } } },
 );
 
 const Payments = mongoose.model('Payment', paymentSchema);

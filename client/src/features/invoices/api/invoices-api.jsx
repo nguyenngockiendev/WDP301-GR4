@@ -15,3 +15,20 @@ export const createInvoiceAPI = data => {
   const request = api.post('/invoices', data);
   return request;
 };
+
+export const getMyInvoicesAPI = signal => api.get('/invoices/my', { signal });
+
+export const getMyInvoiceAPI = (invoiceId, signal) =>
+  api.get(`/invoices/my/${encodeURIComponent(invoiceId)}`, { signal });
+
+export const getManagedInvoicesAPI = (params, signal) => api.get('/invoices', { params, signal });
+
+export const getManagedInvoiceAPI = (invoiceId, signal) =>
+  api.get(`/invoices/${encodeURIComponent(invoiceId)}`, { signal });
+
+export const sendInvoicesAPI = invoiceIds => api.post('/invoices/send', { invoiceIds });
+
+export const createInvoicePaymentAPI = data => api.post('/payments/vnpay/invoice', data);
+
+export const getInvoicePaymentStatusAPI = (paymentCode, signal) =>
+  api.get(`/payments/status/${encodeURIComponent(paymentCode)}`, { signal });

@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ReceiptText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ReceiptText } from 'lucide-react';
 import InvoiceSelectionForm from '../components/InvoiceSelectionForm';
 import InvoicePreview from '../components/InvoicePreview';
 import useCreateInvoice from '../hooks/useCreateInvoice';
@@ -17,6 +17,8 @@ export default function CreateInvoicePage() {
     preview, createdInvoice, previewing, creating, createInvoice, invoiceError, busy,
   } = invoiceForm;
   const invoice = createdInvoice || preview;
+  const managementFilters = new URLSearchParams({ propertyId: invoiceForm.propertyId, billingMonth });
+  const managementUrl = createdInvoice?._id ? `/invoices/${createdInvoice._id}` : '/invoices';
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 pt-4">
@@ -26,9 +28,14 @@ export default function CreateInvoicePage() {
           <h1 className="mt-2 text-2xl font-black tracking-tight text-content-main sm:text-3xl">Lập hóa đơn</h1>
           <p className="mt-1 text-sm text-content-sub">Chọn hợp đồng và kỳ, kiểm tra từng khoản trước khi tạo hóa đơn.</p>
         </div>
-        <Link to="/utility-readings" className="inline-flex items-center gap-2 rounded-xl border border-surface-border bg-white px-3 py-2 text-sm font-bold text-content-sub hover:text-primary-dark">
-          <ArrowLeft size={16} /> Ghi chỉ số điện nước
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/utility-readings" className="inline-flex items-center gap-2 rounded-xl border border-surface-border bg-white px-3 py-2 text-sm font-bold text-content-sub hover:text-primary-dark">
+            <ArrowLeft size={16} /> Ghi chỉ số điện nước
+          </Link>
+          <Link to={`${managementUrl}?${managementFilters}`} className="inline-flex items-center gap-2 rounded-xl border border-surface-border bg-white px-3 py-2 text-sm font-bold text-primary-dark hover:underline">
+            {createdInvoice?._id ? 'Mở hóa đơn đã lập' : 'Quản lý hóa đơn'} <ArrowRight size={16} />
+          </Link>
+        </div>
       </div>
 
       <InvoiceSelectionForm {...invoiceForm} />

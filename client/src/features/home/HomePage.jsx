@@ -154,7 +154,11 @@ export default function HomePage() {
           <div className="hidden sm:flex items-center gap-3.5">
             {user ? <>
               <Link to="/profile" className="px-5 py-2.5 rounded-2xl bg-[#098b6c] text-white text-sm font-bold">Tài khoản của tôi</Link>
-              {user.role !== 'tenant' && <Link to="/dashboard" className="text-sm font-bold text-slate-700">Bảng điều khiển</Link>}
+              {user.role === 'tenant' ? (
+                <Link to="/invoices/my" className="text-sm font-bold text-slate-700">Hóa đơn của tôi</Link>
+              ) : (
+                <Link to="/dashboard" className="text-sm font-bold text-slate-700">Bảng điều khiển</Link>
+              )}
               <button type="button" onClick={logout} className="px-4 py-2 text-sm font-bold text-slate-700 hover:text-rose-600">Đăng xuất</button>
             </> : <>
               <Link to={user ? accountPath : "/login"} className="px-4 py-2 text-sm font-bold text-slate-700">Đăng nhập</Link>
@@ -213,7 +217,11 @@ export default function HomePage() {
             <div className="pt-2 flex flex-col gap-2">
               {user ? <>
                 <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-2.5 font-bold bg-[#098b6c] text-white rounded-xl">Tài khoản của tôi</Link>
-                {user.role !== 'tenant' && <Link to="/dashboard" className="text-center font-bold">Bảng điều khiển</Link>}
+                {user.role === 'tenant' ? (
+                  <Link to="/invoices/my" className="text-center font-bold">Hóa đơn của tôi</Link>
+                ) : (
+                  <Link to="/dashboard" className="text-center font-bold">Bảng điều khiển</Link>
+                )}
                 <button type="button" onClick={logout} className="w-full py-2.5 font-bold border rounded-xl">Đăng xuất</button>
               </> : <>
                 <Link to={user ? accountPath : "/login"} className="w-full text-center py-2.5 font-bold border rounded-xl">Đăng nhập</Link>

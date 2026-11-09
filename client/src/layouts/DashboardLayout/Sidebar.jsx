@@ -64,7 +64,9 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       title: 'DỊCH VỤ & TÀI CHÍNH',
       items: [
         { to: '/utility-readings', label: 'Số điện & nước', icon: Zap, roles: STAFF },
-        { to: '/invoices/new', label: 'Lập hóa đơn', icon: ReceiptText, roles: STAFF },
+        { to: '/invoices', label: 'Quản lý hóa đơn', icon: ReceiptText, roles: STAFF },
+        { to: '/invoices/new', label: 'Lập hóa đơn', icon: FileText, roles: STAFF },
+        { to: '/invoices/my', label: 'Hóa đơn của tôi', icon: ReceiptText, roles: ['tenant'] },
       ],
     },
   ];

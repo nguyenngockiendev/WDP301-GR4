@@ -1,13 +1,6 @@
 import { CheckCircle2, ReceiptText, Save } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../../shared/utils/format';
-
-const itemLabels = {
-  rent: 'Tiền phòng',
-  electricity: 'Tiền điện',
-  water: 'Tiền nước',
-  service: 'Phí dịch vụ',
-  other: 'Khoản phát sinh',
-};
+import InvoiceItemsTable from './InvoiceItemsTable';
 
 export default function InvoicePreview({ invoice, contract, property, billingMonth, created, busy, creating, createInvoice }) {
   const period = invoice.billingMonth || billingMonth;
@@ -43,31 +36,7 @@ export default function InvoicePreview({ invoice, contract, property, billingMon
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-surface-border">
-        <table className="w-full min-w-[480px] text-left text-sm">
-          <thead className="bg-slate-50 text-content-sub">
-            <tr>
-              <th scope="col" className="px-4 py-3">Khoản thu</th>
-              <th scope="col" className="px-4 py-3">Diễn giải</th>
-              <th scope="col" className="px-4 py-3 text-right">Thành tiền</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoice.items.map((item, index) => (
-              <tr key={index} className="border-t border-surface-border">
-                <th scope="row" className="px-4 py-3 font-bold text-content-main">{itemLabels[item.type] || 'Khoản khác'}</th>
-                <td className="px-4 py-3 text-content-sub">
-                  {item.description || '—'}
-                  {Number.isFinite(item.quantity) && Number.isFinite(item.unitPrice) && (
-                    <span className="block text-xs">{item.quantity} × {formatCurrency(item.unitPrice)}</span>
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-right font-extrabold tabular-nums">{formatCurrency(item.amount)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <InvoiceItemsTable items={invoice.items} />
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-primary-50 p-4">
         <div>
