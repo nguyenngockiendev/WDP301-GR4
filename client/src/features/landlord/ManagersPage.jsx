@@ -12,7 +12,7 @@ function getError(error, fallback) {
   return error.response?.data?.message || fallback;
 }
 
-export default function ManagersPage() {
+export default function ManagersPage({ accountsOnly = false }) {
   const [users, setUsers] = useState([]);
   const [managers, setManagers] = useState([]);
   const [properties, setProperties] = useState([]);
@@ -230,7 +230,7 @@ export default function ManagersPage() {
         </div>
       </section>
 
-      <form onSubmit={assignManager} className={`${cardClass} space-y-4 p-5`}>
+      {!accountsOnly && <form onSubmit={assignManager} className={`${cardClass} space-y-4 p-5`}>
         <div>
           <h2 className="font-extrabold text-slate-800">Phân công nhà trọ</h2>
           <p className="mt-1 text-xs text-slate-500">Chọn quản lý viên đang hoạt động và nhà trọ thuộc quyền sở hữu.</p>
@@ -251,9 +251,9 @@ export default function ManagersPage() {
         <button disabled={busy || !managerId || selectedProperties.length === 0} className={btnPrimary}>
           {busy ? 'Đang lưu…' : 'Lưu phân công'}
         </button>
-      </form>
+      </form>}
 
-      <section className={`${cardClass} p-5`}>
+      {!accountsOnly && <section className={`${cardClass} p-5`}>
         <h2 className="font-extrabold text-slate-800">Phân công đang hoạt động</h2>
         <div className="mt-3 divide-y divide-slate-100">
           {assignments.map(assignment => (
@@ -264,7 +264,7 @@ export default function ManagersPage() {
           ))}
           {!assignments.length && <p className="py-5 text-sm text-slate-400">Chưa có phân công.</p>}
         </div>
-      </section>
+      </section>}
 
       {detailUser && (
         <Modal title="Chi tiết tài khoản" subtitle="Chủ trọ không thể sửa hồ sơ của người dùng khác."

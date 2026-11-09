@@ -5,6 +5,7 @@ import managersAPI from '../api/managers-api';
 import propertiesAPI from '../../properties/api/properties-api';
 import Modal, { btnPrimary, btnGhost, inputCls, labelCls } from '../../../shared/components/Modal';
 import { formatDate } from '../../../shared/utils/format';
+import ManagersPage from '../../landlord/ManagersPage';
 
 const card = 'rounded-3xl bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_8px_30px_rgb(0,0,0,0.03)]';
 
@@ -15,6 +16,7 @@ export default function ManageManagers() {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAssign, setShowAssign] = useState(false);
+  const [activeView, setActiveView] = useState('assignments');
 
   useEffect(() => {
     propertiesAPI
@@ -61,6 +63,15 @@ export default function ManageManagers() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pt-2">
+      <div className="flex gap-2 border-b border-slate-200">
+        <button type="button" onClick={() => setActiveView('assignments')} className={`border-b-2 px-4 py-3 text-sm font-bold ${activeView === 'assignments' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500'}`}>
+          Phân công theo tòa
+        </button>
+        <button type="button" onClick={() => setActiveView('accounts')} className={`border-b-2 px-4 py-3 text-sm font-bold ${activeView === 'accounts' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500'}`}>
+          Tài khoản quản lý
+        </button>
+      </div>
+      {activeView === 'accounts' ? <ManagersPage accountsOnly /> : <>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight">Quản lý viên</h2>
@@ -142,6 +153,7 @@ export default function ManageManagers() {
           }}
         />
       )}
+      </>}
     </div>
   );
 }
