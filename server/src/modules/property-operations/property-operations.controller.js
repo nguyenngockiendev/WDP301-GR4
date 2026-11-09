@@ -19,6 +19,29 @@ export const listRooms = async (req, res) => {
   }
 };
 
+export const listCheckoutInspections = async (req, res) => {
+  try {
+    const inspections = await service.listCheckoutInspections(req.user, req.params.propertyId);
+    return sendSuccess(res, 200, 'Lấy danh sách kiểm kê checkout thành công.', inspections);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
+
+export const saveCheckoutInspection = async (req, res) => {
+  try {
+    const inspection = await service.saveCheckoutInspection(
+      req.user,
+      req.params.propertyId,
+      req.params.contractId,
+      req.body
+    );
+    return sendSuccess(res, 200, 'Đã lưu kiểm kê thiết bị checkout.', inspection);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
+
 export const createAsset = async (req, res) => {
   try {
     const asset = await service.createAsset(req.user, req.params.propertyId, req.body);

@@ -7,6 +7,8 @@ const router = Router();
 router.use(requireAuth, requireRole('landlord', 'manager'));
 router.get('/properties/:propertyId/assets', requirePropertyManager, controller.listAssets);
 router.get('/properties/:propertyId/rooms', requirePropertyManager, controller.listRooms);
+router.get('/properties/:propertyId/checkout-inspections', requirePropertyManager, controller.listCheckoutInspections);
+router.put('/properties/:propertyId/checkout-inspections/:contractId', requirePropertyManager, controller.saveCheckoutInspection);
 router.post('/properties/:propertyId/assets', requirePropertyManager, controller.createAsset);
 router.put(
   '/properties/:propertyId/assets/:assetId',
