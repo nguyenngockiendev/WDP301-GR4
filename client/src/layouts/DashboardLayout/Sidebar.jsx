@@ -55,6 +55,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       title: 'CHỦ TRỌ',
       items: [
+        { to: '/properties', label: 'Quản lý nhà trọ', icon: Building2, roles: ['landlord'] },
         { to: '/contract-templates', label: 'Mẫu hợp đồng', icon: FileText, roles: ['landlord'] },
         { to: '/managers', label: 'Quản lý viên', icon: UserCog, roles: ['landlord'] },
         { to: '/settings', label: 'Giá và chính sách', icon: Settings, roles: ['landlord'] },
