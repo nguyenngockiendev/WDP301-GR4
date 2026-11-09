@@ -63,8 +63,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       title: 'DỊCH VỤ & TÀI CHÍNH',
       items: [
-        // Chưa có trang -> tạm vô hiệu hóa để không bị đá về /login
-        { to: null, label: 'Số điện & nước', icon: Zap, roles: STAFF },
+        { to: '/utility-readings', label: 'Số điện & nước', icon: Zap, roles: STAFF },
         { to: null, label: 'Hóa đơn tiền phòng', icon: ReceiptText, roles: STAFF },
       ],
     },

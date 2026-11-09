@@ -16,6 +16,7 @@ import managerTerminationRequestsRoutes from '../../features/terminationrequests
 import templatesRoutes from '../../features/templates/routes/TemplatesRoutes';
 import managersRoutes from '../../features/managers/routes/ManagersRoutes';
 import SettingsPage from '../../features/landlord/SettingsPage';
+import utilityReadingsRoutes from '../../features/utility-readings/routes/UtilityReadingsRoutes';
 // Người thuê không dùng trang quản lý: /dashboard chuyển về trang Home
 function DashboardEntry() {
   return getCurrentUser()?.role === 'tenant' ? <Navigate to="/home" replace /> : <DashboardPage />;
@@ -33,6 +34,7 @@ export default function AppRoutes() {
     ...managerTerminationRequestsRoutes,
     ...templatesRoutes,
     ...managersRoutes,
+    ...utilityReadingsRoutes,
   ];
   return (
     <Routes>
