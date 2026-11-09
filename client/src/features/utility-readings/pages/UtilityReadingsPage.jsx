@@ -136,6 +136,7 @@ export default function UtilityReadingsPage() {
               </p>
               <UtilityReadingsTable
                 rooms={visibleRooms}
+                propertyId={propertyId}
                 contracts={contracts}
                 propertyRate={property.utilityRate}
                 billingMonth={billingMonth}
