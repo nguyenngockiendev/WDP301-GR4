@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import useRegister from '../hooks/useRegister';
 import useOtp from '../hooks/useSendOtp';
@@ -15,6 +15,7 @@ const Register = () => {
   } = useForm();
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { register: registerAccount, loading } = useRegister();
   const { sendOtp, loading: otpLoading } = useOtp();
 
@@ -66,7 +67,7 @@ const Register = () => {
 
     if (result?.success) {
       toast.success(result.message);
-      navigate('/login');
+      navigate('/login', { state: { from: location.state?.from } });
     }
   };
 

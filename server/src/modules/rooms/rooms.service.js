@@ -19,7 +19,7 @@ export const getRoomsByProperty = async (propertyId, user) => {
 };
 
 export const getRoomById = async roomId => {
-  const room = await Rooms.findById(roomId).populate('property');
+  const room = await Rooms.findById(roomId).populate('property', 'name address image utilityRate');
   if (!room) {
     throw { status: 404, message: 'Phòng không tồn tại' };
   }
@@ -123,6 +123,6 @@ export const searchAvailableRooms = async filters => {
     query.tier = filters.tier;
   }
 
-  const rooms = await Rooms.find(query).populate('property');
+  const rooms = await Rooms.find(query).populate('property', 'name address image utilityRate');
   return rooms;
 };
