@@ -1,6 +1,7 @@
 import React from 'react';
 import ProcessRentalRequests from '../pages/ProcessRentalRequests';
 import SubmitRentalRequest from '../pages/SubmitRentalRequest';
+import ProtectedRoute from '../../../app/routes/ProtectedRoute';
 
 const rentalsRoutes = [
   {
@@ -9,7 +10,7 @@ const rentalsRoutes = [
   },
   {
     path: '/rooms/:roomId/rental-request',
-    element: <SubmitRentalRequest />,
+    element: <ProtectedRoute roles={['tenant']}><SubmitRentalRequest /></ProtectedRoute>,
   },
 ];
 

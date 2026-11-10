@@ -74,7 +74,7 @@ export const getContractFormOptions = async (propertyId, user) => {
   await assertPropertyAccess(user, propertyId);
 
   const rooms = await Rooms.find({ property: propertyId })
-    .select('roomNumber price status')
+    .select('roomNumber price status maxTenants')
     .sort({ roomNumber: 1 });
   const roomIds = rooms.map(r => r._id);
   const busyRoomIds = await Contracts.find({ room: { $in: roomIds }, status: 'active' }).distinct(
@@ -84,7 +84,7 @@ export const getContractFormOptions = async (propertyId, user) => {
 
   const approvedRequests = await RentalRequests.find({ room: { $in: roomIds }, status: 'approved' })
     .populate('tenant', 'fullName email phone')
-    .populate('room', 'roomNumber price');
+    .populate('room', 'roomNumber price maxTenants');
 
   const tenants = await Users.find({ role: 'tenant', status: 'active' })
     .select('fullName email phone')
@@ -184,6 +184,10 @@ export const createContract = async (data, user) => {
   const otherMembers = [...new Set((data.otherMembers || []).map(String))].filter(
     id => id !== String(data.representative),
   );
+  const roomCapacity = Math.min(4, Number(room.maxTenants) || 1);
+  if (otherMembers.length + 1 > roomCapacity) {
+    throw { status: 400, message: `Phòng này chỉ nhận tối đa ${roomCapacity} người.` };
+  }
   if (otherMembers.length > 0) {
     const validCount = await Users.countDocuments({ _id: { $in: otherMembers }, role: 'tenant' });
     if (validCount !== otherMembers.length) {
@@ -264,6 +268,15 @@ export const updateContract = async (contractId, data, user) => {
     // Bỏ trùng và bỏ người đại diện khỏi danh sách người ở cùng
     const repId = String(contract.representative);
     data.otherMembers = [...new Set(data.otherMembers.map(String))].filter(id => id !== repId);
+    const previousMembers = new Set((contract.otherMembers || []).map(String));
+    const membershipChanged = data.otherMembers.length !== previousMembers.size || data.otherMembers.some(id => !previousMembers.has(id));
+    if (membershipChanged) {
+      const room = await Rooms.findById(contract.room).select('maxTenants');
+      const roomCapacity = Math.min(4, Number(room?.maxTenants) || 1);
+      if (data.otherMembers.length + 1 > roomCapacity) {
+        throw { status: 400, message: `Phòng này chỉ nhận tối đa ${roomCapacity} người.` };
+      }
+    }
     const validCount = await Users.countDocuments({ _id: { $in: data.otherMembers }, role: 'tenant' });
     if (validCount !== data.otherMembers.length) {
       throw { status: 400, message: 'Có người ở cùng không tồn tại hoặc không phải người thuê' };

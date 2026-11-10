@@ -83,6 +83,14 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
   }, [propertyId]);
 
   const representativeId = isEdit ? String(contract.representative?._id || contract.representative || '') : watch('representative');
+  const selectedRoomId = watch('room');
+  const selectedRequestId = watch('rentalRequest');
+  const selectedRoom = options.rooms.find(room => String(room._id) === String(selectedRoomId))
+    || options.approvedRequests.find(request => String(request._id) === String(selectedRequestId))?.room
+    || (isEdit ? contract.room : null);
+  const roomCapacity = selectedRoom ? Math.min(4, Math.max(1, Number(selectedRoom.maxTenants) || 1)) : 4;
+  const selectedOtherMembers = members.filter(id => id !== String(representativeId));
+  const exceedsRoomCapacity = selectedOtherMembers.length + 1 > roomCapacity;
 
   // Danh sách để chọn người ở cùng: người thuê đang hoạt động + người ở cùng hiện tại (nếu có người không còn trong list)
   const memberChoices = (() => {
@@ -166,7 +174,7 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
       footer={
         <>
           <button type="button" className={btnGhost} onClick={onCancel}>Hủy</button>
-          <button type="submit" form="contract-form" className={btnPrimary} disabled={isSubmitting || (!isEdit && (loadingOptions || !optionsLoaded || noTemplates))}>
+          <button type="submit" form="contract-form" className={btnPrimary} disabled={isSubmitting || (!isEdit && (loadingOptions || !optionsLoaded || noTemplates || exceedsRoomCapacity))}>
             {isEdit ? 'Cập nhật' : 'Tạo hợp đồng'}
           </button>
         </>
@@ -242,7 +250,7 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
                   <option value="">{loadingOptions ? 'Đang tải...' : '— Chọn phòng —'}</option>
                   {options.rooms.map(r => (
                     <option key={r._id} value={r._id}>
-                      Phòng {r.roomNumber} · {Number(r.price || 0).toLocaleString('vi-VN')} đ
+                      Phòng {r.roomNumber} · {Number(r.price || 0).toLocaleString('vi-VN')} đ · tối đa {r.maxTenants || 1} người
                     </option>
                   ))}
                 </select>
@@ -274,8 +282,10 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
 
         <div>
           <label className={labelCls}>
-            Người ở cùng {members.filter(id => id !== String(representativeId)).length > 0 && `(${members.filter(id => id !== String(representativeId)).length})`}
+            Người ở cùng {selectedOtherMembers.length > 0 && `(${selectedOtherMembers.length})`}
           </label>
+          {selectedRoom && <p className="mb-2 text-[11px] font-semibold text-slate-500">Sức chứa phòng: tối đa {roomCapacity} người, gồm người đại diện.</p>}
+          {exceedsRoomCapacity && <p className="mb-2 text-[11px] font-semibold text-rose-600">Số người vượt sức chứa phòng. Hãy bỏ bớt người ở cùng.</p>}
           <input
             className={`${inputCls} mb-2`}
             placeholder="Tìm theo tên, email, SĐT..."
@@ -291,12 +301,14 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
             ) : (
               memberChoices.map(t => {
                 const id = String(t._id);
+                const full = selectedOtherMembers.length >= roomCapacity - 1 && !members.includes(id);
                 return (
                   <label key={id} className="flex items-center gap-2.5 px-3 py-2 text-xs cursor-pointer hover:bg-emerald-50/50">
                     <input
                       type="checkbox"
                       className="accent-emerald-600"
                       checked={members.includes(id)}
+                      disabled={full}
                       onChange={() => toggleMember(id)}
                     />
                     <span className="font-bold text-slate-700">{t.fullName}</span>

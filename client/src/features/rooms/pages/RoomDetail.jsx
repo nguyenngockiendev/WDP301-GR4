@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { ArrowLeft, Building2, MapPin, Ruler, Users, Wallet, Sparkles, Send, ImageOff } from 'lucide-react';
 import roomsAPI from '../api/rooms-api';
 import RoomStatusBadge from '../components/RoomStatusBadge';
+import RoomStatusModal from '../components/RoomStatusModal';
 import Modal from '../../../shared/components/Modal';
 import SubmitRentalRequest from '../../rentals/pages/SubmitRentalRequest';
 import { getCurrentUser } from '../../../shared/utils/auth';
@@ -21,6 +22,7 @@ export default function RoomDetail() {
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [showRequest, setShowRequest] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,7 +89,10 @@ export default function RoomDetail() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-black text-slate-900 tracking-tight">Phòng {room.roomNumber}</h2>
-              <RoomStatusBadge status={room.status} />
+              <RoomStatusBadge
+                status={room.status}
+                onClick={isManager ? () => setShowStatusModal(true) : undefined}
+              />
             </div>
             <p className="text-xs font-semibold text-slate-400 mt-0.5 flex items-center gap-1">
               <Building2 size={12} /> {room.property?.name || 'Nhà trọ'}
@@ -115,6 +120,14 @@ export default function RoomDetail() {
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 active:scale-95 text-white font-extrabold text-xs shadow-md shadow-emerald-600/25 transition cursor-pointer self-start"
           >
             <Send size={14} /> Gửi yêu cầu thuê
+          </button>
+        )}
+        {!user && room.status === 'available' && (
+          <button
+            onClick={() => navigate('/register', { state: { from: { pathname: `/rooms/${room._id}/rental-request` } } })}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 active:scale-95 text-white font-extrabold text-xs shadow-md shadow-emerald-600/25 transition cursor-pointer self-start"
+          >
+            <Send size={14} /> Đăng ký để đặt phòng
           </button>
         )}
       </div>
@@ -204,6 +217,21 @@ export default function RoomDetail() {
             onSuccess={() => setShowRequest(false)}
           />
         </Modal>
+      )}
+      {showStatusModal && (
+        <RoomStatusModal
+          room={room}
+          onClose={() => setShowStatusModal(false)}
+          onStatusChanged={async () => {
+            setShowStatusModal(false);
+            try {
+              const response = await roomsAPI.getRoomById(roomId);
+              setRoom(response.data || null);
+            } catch (error) {
+              toast.error(error.response?.data?.message || 'Không tải lại được trạng thái phòng.');
+            }
+          }}
+        />
       )}
     </div>
   );

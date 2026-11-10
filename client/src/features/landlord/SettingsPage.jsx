@@ -9,6 +9,9 @@ const cardClass =
   'rounded-3xl border border-white/90 bg-white/85 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.03)] backdrop-blur-md';
 const getError = (error, fallback) => error.response?.data?.message || fallback;
 const money = value => `${Number(value || 0).toLocaleString('vi-VN')} đ`;
+const vietnamToday = () => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(new Date());
 
 function SettingsCard({ title, description, children }) {
   return (
@@ -174,6 +177,7 @@ export default function SettingsPage() {
   }
 
   const formKey = `${property?._id || propertyId}-${property?.updatedAt || ''}`;
+  const minRateDate = vietnamToday();
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 pt-2">
@@ -200,7 +204,7 @@ export default function SettingsPage() {
                 <form key={room._id} onSubmit={event => saveRoomPrice(room._id, event)} className="grid items-center gap-3 py-3 sm:grid-cols-[1fr_1.3fr_1fr_auto]">
                   <span className="font-bold text-slate-700">Phòng {room.roomNumber}</span>
                   <span className="text-xs text-slate-500">{room.area ? `${room.area} m² · ` : ''}{room.status}</span>
-                  <label><span className="sr-only">Giá thuê phòng {room.roomNumber}</span><input name="price" type="number" min="1" required defaultValue={room.price} className={inputCls} /></label>
+                  <label><span className="sr-only">Giá thuê phòng {room.roomNumber}</span><input name="price" type="number" min="1" max="10000000" step="1" required defaultValue={room.price} className={inputCls} /></label>
                   <button disabled={busyRoomId === room._id} className={btnPrimary}>{busyRoomId === room._id ? 'Đang lưu…' : 'Lưu giá'}</button>
                 </form>
               ))}
@@ -210,9 +214,9 @@ export default function SettingsPage() {
 
           <SettingsCard title="Giá điện và nước" description="Đơn giá và ngày bắt đầu áp dụng tại nhà trọ này.">
             <form key={`rates-${formKey}`} onSubmit={event => savePropertySetting('rates', event)} className="grid gap-4 md:grid-cols-3">
-              <label><span className={labelCls}>Điện (đ/kWh)</span><input name="electricityPrice" type="number" min="0" required defaultValue={property.utilityRate?.electricityPrice ?? 0} className={inputCls} /></label>
-              <label><span className={labelCls}>Nước (đ/m³)</span><input name="waterPrice" type="number" min="0" required defaultValue={property.utilityRate?.waterPrice ?? 0} className={inputCls} /></label>
-              <label><span className={labelCls}>Ngày áp dụng</span><input name="effectiveFrom" type="date" defaultValue={property.utilityRate?.effectiveFrom?.slice(0, 10) || new Date().toISOString().slice(0, 10)} className={inputCls} /></label>
+              <label><span className={labelCls}>Điện (đ/kWh)</span><input name="electricityPrice" type="number" min="1" max="4000" step="1" required defaultValue={property.utilityRate?.electricityPrice ?? 1} className={inputCls} /></label>
+              <label><span className={labelCls}>Nước (đ/m³)</span><input name="waterPrice" type="number" min="1" step="1" required defaultValue={property.utilityRate?.waterPrice ?? 1} className={inputCls} /></label>
+              <label><span className={labelCls}>Ngày áp dụng</span><input name="effectiveFrom" type="date" min={minRateDate} required defaultValue={property.utilityRate?.effectiveFrom?.slice(0, 10) || minRateDate} className={inputCls} /></label>
               <button disabled={saving} className={`${btnPrimary} md:col-span-3`}>{saving ? 'Đang lưu…' : 'Lưu đơn giá'}</button>
             </form>
           </SettingsCard>

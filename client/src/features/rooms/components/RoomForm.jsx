@@ -5,10 +5,10 @@ import Modal, { btnPrimary, btnGhost, inputCls, labelCls } from './Modal';
 
 const formValues = room => ({
   roomNumber: room?.roomNumber || '', area: room?.area ?? '', price: room?.price ?? '',
-  maxTenants: room?.maxTenants ?? 1, description: room?.description || '',
+  maxTenants: room?.maxTenants ?? 1, floor: room?.floor ?? 1, description: room?.description || '',
 });
 
-export default function RoomForm({ room, propertyId, onSubmit, onCancel }) {
+export default function RoomForm({ room, propertyId, totalFloors = 1, onSubmit, onCancel }) {
   const {
     register,
     handleSubmit,
@@ -58,7 +58,7 @@ export default function RoomForm({ room, propertyId, onSubmit, onCancel }) {
 
   const onSubmitForm = data => onSubmit({
     ...formValues(data), roomNumber: data.roomNumber.trim(),
-    area: Number(data.area), price: Number(data.price), maxTenants: Number(data.maxTenants),
+    area: Number(data.area), price: Number(data.price), maxTenants: Number(data.maxTenants), floor: Number(data.floor),
     facilities: [...new Set([...facilities, ...assets.filter(asset => assetIds.includes(asset._id)).map(asset => asset.name)])],
     assetIds,
     images: [...new Set(imageUrls.split(/\r?\n/).map(url => url.trim()).filter(Boolean))],
@@ -91,6 +91,9 @@ export default function RoomForm({ room, propertyId, onSubmit, onCancel }) {
           <div>
             <label className={labelCls}>Số phòng *</label>
             <input
+              type="text"
+              autoComplete="off"
+              maxLength={30}
               className={inputCls}
               placeholder="VD: A101"
               {...register('roomNumber', { required: 'Số phòng là bắt buộc' })}
@@ -111,20 +114,37 @@ export default function RoomForm({ room, propertyId, onSubmit, onCancel }) {
             <label className={labelCls}>Giá thuê (VNĐ/tháng) *</label>
             <input
               type="number"
+              min="1"
+              max="10000000"
+              step="1"
               className={inputCls}
               placeholder="5000000"
-              {...register('price', { required: 'Giá thuê là bắt buộc', min: { value: 0, message: 'Giá không hợp lệ' } })}
+              {...register('price', { required: 'Giá thuê là bắt buộc', min: { value: 1, message: 'Giá thuê phải lớn hơn 0' }, max: { value: 10000000, message: 'Giá thuê tối đa 10.000.000 đồng/tháng' } })}
             />
             {err('price')}
           </div>
           <div>
-            <label className={labelCls}>Số người tối đa</label>
+            <label className={labelCls}>Số người tối đa (1–4)</label>
             <input
               type="number"
               className={inputCls}
-              {...register('maxTenants', { min: { value: 1, message: 'Tối thiểu 1 người' } })}
+              min="1"
+              max="4"
+              {...register('maxTenants', { required: 'Hãy nhập số người tối đa', min: { value: 1, message: 'Tối thiểu 1 người' }, max: { value: 4, message: 'Tối đa 4 người mỗi phòng' }, valueAsNumber: true })}
             />
             {err('maxTenants')}
+          </div>
+          <div>
+            <label className={labelCls}>Tầng (tòa có {totalFloors} tầng)</label>
+            <input
+              type="number"
+              min="1"
+              max={totalFloors}
+              step="1"
+              className={inputCls}
+              {...register('floor', { required: 'Hãy chọn tầng', valueAsNumber: true, min: { value: 1, message: 'Tầng phải từ 1 trở lên' }, max: { value: totalFloors, message: `Tòa này chỉ có ${totalFloors} tầng` } })}
+            />
+            {err('floor')}
           </div>
         </div>
 

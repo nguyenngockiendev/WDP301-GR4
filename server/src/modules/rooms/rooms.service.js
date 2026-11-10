@@ -1,6 +1,7 @@
 import Rooms from '../../models/Rooms.js';
 import Contracts from '../../models/Contracts.js';
 import Assets from '../../models/Assets.js';
+import Properties from '../../models/Properties.js';
 import mongoose from 'mongoose';
 import { assertPropertyAccess } from '../properties/properties.service.js';
 
@@ -70,7 +71,7 @@ export const getRoomsByProperty = async (propertyId, user) => {
 };
 
 export const getRoomById = async roomId => {
-  const room = await Rooms.findById(roomId).populate('property');
+  const room = await Rooms.findById(roomId).populate('property', 'name address image utilityRate');
   if (!room) {
     throw { status: 404, message: 'Phòng không tồn tại' };
   }
@@ -81,13 +82,22 @@ export const createRoom = async (data, user) => {
   const { property, roomNumber, assetIds, ...roomData } = data;
   await assertPropertyAccess(user, property);
 
+  const propertyData = await Properties.findById(property).select('totalFloors');
+  const floor = Number(roomData.floor ?? 1);
+  if (floor > Number(propertyData?.totalFloors || 1)) {
+    throw { status: 400, message: `Tòa nhà chỉ có ${Number(propertyData?.totalFloors || 1)} tầng.` };
+  }
+  if (await Rooms.countDocuments({ property }) >= 20) {
+    throw { status: 409, message: 'Mỗi tòa nhà chỉ được tạo tối đa 20 phòng.' };
+  }
+
   const existingRoom = await Rooms.findOne({ property, roomNumber });
   if (existingRoom) {
     throw { status: 400, message: 'Số phòng đã tồn tại trong tòa nhà này' };
   }
 
   if (assetIds !== undefined) await validateNewRoomAssets(property, assetIds);
-  const room = await Rooms.create(roomData);
+  const room = await Rooms.create({ ...roomData, property, roomNumber });
   if (assetIds !== undefined) await syncRoomAssets(property, room._id, assetIds);
   return room.populate('property');
 };
@@ -98,6 +108,11 @@ export const updateRoom = async (roomId, data, user) => {
   // Older clients may send a populated property; authorize its ID.
   const targetProperty = data.property?._id || data.property || room.property;
   if (String(targetProperty) !== String(room.property)) await assertPropertyAccess(user, targetProperty);
+  const propertyData = await Properties.findById(targetProperty).select('totalFloors');
+  const floor = Number(data.floor ?? room.floor ?? 1);
+  if (floor > Number(propertyData?.totalFloors || 1)) {
+    throw { status: 400, message: `Tòa nhà chỉ có ${Number(propertyData?.totalFloors || 1)} tầng.` };
+  }
   const roomNumber = data.roomNumber === undefined ? room.roomNumber : String(data.roomNumber).trim();
   if (!roomNumber) throw { status: 400, message: 'Số phòng không được để trống' };
   const duplicate = await Rooms.exists({ property: targetProperty, roomNumber, _id: { $ne: room._id } });
@@ -177,6 +192,6 @@ export const searchAvailableRooms = async filters => {
     query.tier = filters.tier;
   }
 
-  const rooms = await Rooms.find(query).populate('property');
+  const rooms = await Rooms.find(query).populate('property', 'name address image utilityRate');
   return rooms;
 };

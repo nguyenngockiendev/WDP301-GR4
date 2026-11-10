@@ -10,18 +10,21 @@ const cardClass =
 const getError = (error, fallback) => error.response?.data?.message || fallback;
 
 function PropertyFormFields({ defaults = {} }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <label><span className={labelCls}>Tên nhà trọ</span><input name="name" required minLength="2" defaultValue={defaults.name || ''} className={inputCls} /></label>
       <label><span className={labelCls}>Địa chỉ</span><input name="address" required minLength="5" defaultValue={defaults.address || ''} className={inputCls} /></label>
+      <label><span className={labelCls}>Số tầng (tối đa 5)</span><input name="totalFloors" type="number" min="1" max="5" step="1" required defaultValue={defaults.totalFloors || 1} className={inputCls} /></label>
       <label className="sm:col-span-2"><span className={labelCls}>Mô tả</span><textarea name="description" rows="2" defaultValue={defaults.description || ''} className={inputCls} /></label>
       {!defaults._id && (
         <>
           <div className="sm:col-span-2"><h3 className="font-extrabold text-slate-700">Đơn giá và chính sách ban đầu</h3><p className="mt-1 text-xs text-slate-500">Có thể thay đổi sau trong mục Giá và chính sách.</p></div>
-          <label><span className={labelCls}>Giá điện (đ/kWh)</span><input name="electricityPrice" type="number" min="0" defaultValue="0" className={inputCls} /></label>
-          <label><span className={labelCls}>Giá nước (đ/m³)</span><input name="waterPrice" type="number" min="0" defaultValue="0" className={inputCls} /></label>
-          <label><span className={labelCls}>Ngày áp dụng giá điện, nước</span><input name="effectiveFrom" type="date" defaultValue={today} className={inputCls} /></label>
+          <label><span className={labelCls}>Giá điện (đ/kWh)</span><input name="electricityPrice" type="number" min="1" max="4000" step="1" required defaultValue="3500" className={inputCls} /></label>
+          <label><span className={labelCls}>Giá nước (đ/m³)</span><input name="waterPrice" type="number" min="1" step="1" required defaultValue="20000" className={inputCls} /></label>
+          <label><span className={labelCls}>Ngày áp dụng giá điện, nước</span><input name="effectiveFrom" type="date" min={today} required defaultValue={today} className={inputCls} /></label>
           <label><span className={labelCls}>Ngày đến hạn thanh toán</span><input name="paymentDueDay" type="number" min="1" max="28" defaultValue="5" className={inputCls} /></label>
           <label><span className={labelCls}>Gia hạn thanh toán (ngày)</span><input name="paymentGraceDays" type="number" min="0" max="60" defaultValue="3" className={inputCls} /></label>
           <label><span className={labelCls}>Tiền cọc (số tháng)</span><input name="depositMonths" type="number" min="0" max="12" step="0.5" defaultValue="1" className={inputCls} /></label>

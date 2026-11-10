@@ -10,7 +10,7 @@ import { formatCurrency, formatDate } from '../../../shared/utils/format';
 
 const DAY = 24 * 60 * 60 * 1000;
 
-export default function ContractItem({ contract, onEdit, onRefresh }) {
+export default function ContractItem({ contract, onEdit, onRefresh, readOnly = false }) {
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showChangeRepModal, setShowChangeRepModal] = useState(false);
   const [showDocument, setShowDocument] = useState(false);
@@ -107,11 +107,11 @@ export default function ContractItem({ contract, onEdit, onRefresh }) {
             <FileText size={13} /> Xem hợp đồng
           </button>
         ) : (
-          <p className="mb-2 text-center text-[10px] font-semibold text-amber-600">Chưa gắn mẫu hợp đồng — bấm Sửa để chọn mẫu</p>
+          <p className="mb-2 text-center text-[10px] font-semibold text-amber-600">{readOnly ? 'Chưa gắn mẫu hợp đồng' : 'Chưa gắn mẫu hợp đồng — bấm Sửa để chọn mẫu'}</p>
         )}
 
         {/* Thao tác */}
-        <div className="mt-auto flex gap-2">
+        {!readOnly && <div className="mt-auto flex gap-2">
           <button
             className={`${actionBtn} bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700`}
             onClick={() => onEdit(contract)}
@@ -134,7 +134,7 @@ export default function ContractItem({ contract, onEdit, onRefresh }) {
               </button>
             </>
           )}
-        </div>
+        </div>}
       </div>
 
       {showDocument && <ContractDocumentModal contract={contract} onClose={() => setShowDocument(false)} />}

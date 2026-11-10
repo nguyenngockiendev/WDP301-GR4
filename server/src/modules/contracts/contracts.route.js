@@ -14,15 +14,16 @@ const router = Router();
 // Chỉ chủ trọ (landlord) và quản lý (manager) được quản lý hợp đồng.
 // Quyền với từng nhà trọ được kiểm tra trong service (assertPropertyAccess).
 router.use(authMiddleware, checkRole('landlord', 'manager'));
+const requireManager = checkRole('manager');
 
 router.get('/search', contractsController.searchContracts);
 router.get('/property/:propertyId', contractsController.getContractsByProperty);
 router.get('/property/:propertyId/form-options', contractsController.getContractFormOptions);
 router.get('/:contractId/document', contractsController.getContractDocument);
 router.get('/:contractId', contractsController.getContractById);
-router.post('/', validate(validateCreateContract), contractsController.createContract);
-router.put('/:contractId', validate(validateUpdateContract), contractsController.updateContract);
-router.patch('/:contractId/renew', validate(validateRenewContract), contractsController.renewContract);
-router.patch('/:contractId/change-representative', validate(validateChangeRepresentative), contractsController.changeRepresentative);
+router.post('/', requireManager, validate(validateCreateContract), contractsController.createContract);
+router.put('/:contractId', requireManager, validate(validateUpdateContract), contractsController.updateContract);
+router.patch('/:contractId/renew', requireManager, validate(validateRenewContract), contractsController.renewContract);
+router.patch('/:contractId/change-representative', requireManager, validate(validateChangeRepresentative), contractsController.changeRepresentative);
 
 export default router;

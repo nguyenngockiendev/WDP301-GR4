@@ -40,7 +40,8 @@ export const getAssignments = async (user, filters = {}) => {
 
 /** Tài khoản quản lý (role manager, đang hoạt động) để chọn khi giao, tìm theo tên / email / SĐT. */
 export const getAvailableManagers = async (filters = {}) => {
-  const query = { role: 'manager', status: 'active' };
+  const assignedManagerIds = await ManagerAssignments.distinct('manager', { status: 'active' });
+  const query = { role: 'manager', status: 'active', isVerified: true, _id: { $nin: assignedManagerIds } };
   const kw = String(filters.q || '').trim();
   if (kw) {
     const rx = { $regex: kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
@@ -62,10 +63,14 @@ export const assignManager = async (data, user) => {
   if (manager.status !== 'active') {
     throw { status: 400, message: 'Tài khoản quản lý đang bị khóa' };
   }
+  if (!manager.isVerified) {
+    throw { status: 400, message: 'Quản lý viên cần xác thực tài khoản trước khi được phân công' };
+  }
 
-  const existing = await ManagerAssignments.exists({ manager: data.manager, property: data.property, status: 'active' });
+  const existing = await ManagerAssignments.findOne({ manager: data.manager, status: 'active' });
   if (existing) {
-    throw { status: 400, message: 'Quản lý này đã được giao nhà trọ này' };
+    const sameProperty = String(existing.property) === String(data.property);
+    throw { status: 409, message: sameProperty ? 'Quản lý này đã được giao nhà trọ này' : 'Quản lý này đã được phân công một nhà trọ khác' };
   }
 
   const assignment = await ManagerAssignments.create({
