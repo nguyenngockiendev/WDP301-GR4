@@ -11,55 +11,70 @@ import Properties from '../../models/Properties.js';
 import ManagerAssignments from '../../models/ManagerAssignments.js';
 import { validateCreateTerminationRequest } from './terminationrequests.validation.js';
 
-// Kiểm tra người dùng có hợp đồng active và còn thời hạn hay không.
-export const canSubmitCheckoutRequest = async (userId) => {
+// Trả về TẤT CẢ hợp đồng active của Tenant để Tenant tự chọn phòng muốn checkout.
+export const getCheckoutEligibility = async (userId) => {
   const now = new Date();
-
-  const contract = await Contracts.findOne({
+  const contracts = await Contracts.find({
     status: 'active',
     startDate: { $lte: now },
     endDate: { $gte: now },
-    $or: [
-      { representative: userId },
-      { otherMembers: userId },
-    ],
+    $or: [{ representative: userId }, { otherMembers: userId }],
   })
-    .select('_id room startDate endDate status')
-    .populate('room', 'roomNumber');
+    .select('_id room startDate endDate status monthlyRent depositAmount')
+    .populate({
+      path: 'room',
+      select: 'roomNumber area price property',
+      populate: { path: 'property', select: 'name address' },
+    })
+    .sort({ startDate: -1 })
+    .lean();
 
-  return contract;
+  if (!contracts.length) return [];
+
+  const requests = await TerminationRequests.find({
+    contract: { $in: contracts.map((contract) => contract._id) },
+    status: { $in: ['pending', 'approved'] },
+  }).select('contract status').lean();
+  const pendingByContract = new Set(requests.map((item) => String(item.contract)));
+
+  return contracts.map((contract) => ({
+    ...contract,
+    hasPendingRequest: pendingByContract.has(String(contract._id)),
+    canSubmit: !pendingByContract.has(String(contract._id)),
+  }));
 };
 
 export const createTerminationRequest = async (data, userId) => {
   const validationError = validateCreateTerminationRequest(data);
+  if (validationError) throw { status: 400, message: validationError };
 
-  if (validationError) {
-    throw {
-      status: 400,
-      message: validationError,
-    };
+  if (!mongoose.isValidObjectId(data.contractId)) {
+    throw { status: 400, message: 'Vui lòng chọn hợp đồng/phòng muốn trả' };
   }
 
-  // Không nhận contractId từ frontend. Backend tự tìm hợp đồng theo JWT userId.
-  const contract = await canSubmitCheckoutRequest(userId);
+  // Không tin contractId từ client: luôn kiểm tra hợp đồng thuộc Tenant đăng nhập.
+  const now = new Date();
+  const contract = await Contracts.findOne({
+    _id: data.contractId,
+    status: 'active',
+    startDate: { $lte: now },
+    endDate: { $gte: now },
+    $or: [{ representative: userId }, { otherMembers: userId }],
+  }).populate({
+    path: 'room',
+    populate: { path: 'property', select: 'name address' },
+  });
 
   if (!contract) {
-    throw {
-      status: 400,
-      message: 'Bạn không có hợp đồng đang hoạt động và còn thời hạn để gửi yêu cầu trả phòng',
-    };
+    throw { status: 403, message: 'Hợp đồng được chọn không tồn tại, không còn hiệu lực hoặc không thuộc tài khoản của bạn' };
   }
 
   const existingRequest = await TerminationRequests.findOne({
     contract: contract._id,
     status: { $in: ['pending', 'approved'] },
   });
-
   if (existingRequest) {
-    throw {
-      status: 400,
-      message: 'Hợp đồng này đã có yêu cầu trả phòng đang được xử lý',
-    };
+    throw { status: 409, message: 'Hợp đồng/phòng này đã có yêu cầu trả phòng đang được xử lý' };
   }
 
   const terminationRequest = await TerminationRequests.create({
@@ -68,20 +83,17 @@ export const createTerminationRequest = async (data, userId) => {
     requestedDate: new Date(),
     moveOutDate: new Date(`${data.moveOutDate}T00:00:00.000Z`),
     reason: data.reason.trim(),
+    refundBankAccount: {
+      bankName: data.refundBankAccount.bankName.trim(),
+      accountNumber: data.refundBankAccount.accountNumber.trim(),
+      accountHolder: data.refundBankAccount.accountHolder.trim().toUpperCase(),
+    },
     status: 'pending',
   });
 
   return terminationRequest.populate([
-    {
-      path: 'contract',
-      populate: {
-        path: 'room',
-      },
-    },
-    {
-      path: 'requestedBy',
-      select: 'fullName email phone',
-    },
+    { path: 'contract', populate: { path: 'room', populate: { path: 'property', select: 'name address' } } },
+    { path: 'requestedBy', select: 'fullName email phone' },
   ]);
 };
 
@@ -307,9 +319,9 @@ const serializeAssetInspection = (assets, invoice) => {
                 model: asset.model,
                 assetCode: asset.assetCode,
                 purchasePrice: asset.purchasePrice || 0,
-                status: asset.status,
-                invoiceId: asset.invoiceId || null,
-                inspectionStatus: invoiceItem?.assetStatus || asset.status,
+                status: invoiceItem?.assetStatus || 'in_use',
+                invoiceId: invoice?._id || null,
+                inspectionStatus: invoiceItem?.assetStatus || 'in_use',
                 maintenanceCost: invoiceItem?.assetStatus === 'maintenance' ? invoiceItem.amount : 0,
                 images: invoiceItem?.images || [],
             };
@@ -338,7 +350,7 @@ export const getCheckoutAssetInspection = async (managerId, requestId) => {
     return serializeAssetInspection(assets, invoice);
 };
 
-// Tạo invoice một lần cho mỗi checkout request và gắn invoiceId vào Asset của phòng.
+// Tạo invoice riêng cho từng checkout request; không ghi trạng thái checkout vào Asset dùng chung.
 export const startCheckoutAssetInspection = async (managerId, requestId) => {
     const { request, room } = await getManagerCheckoutContext(managerId, requestId);
     if (['rejected', 'completed'].includes(request.status)) {
@@ -386,10 +398,6 @@ export const startCheckoutAssetInspection = async (managerId, requestId) => {
         }
     }
 
-    await Assets.updateMany(
-        { property: room.property, room: room._id },
-        { $set: { invoiceId: invoice._id } },
-    );
 
     const refreshedAssets = await Assets.find({ property: room.property, room: room._id }).sort({ name: 1 }).lean();
     return serializeAssetInspection(refreshedAssets, invoice.toObject());
@@ -421,7 +429,6 @@ export const saveCheckoutAssetInspection = async (managerId, requestId, data) =>
     const roomAssets = await Assets.find({
         property: room.property,
         room: room._id,
-        invoiceId: invoice._id,
     });
 
     if (data.assets.length !== roomAssets.length) {
@@ -440,7 +447,6 @@ export const saveCheckoutAssetInspection = async (managerId, requestId, data) =>
     const invoiceItems = [];
     const invoiceImages = [];
     let totalImageCharacters = 0;
-    const updates = [];
     let totalAmount = 0;
 
     for (const asset of roomAssets) {
@@ -501,15 +507,9 @@ export const saveCheckoutAssetInspection = async (managerId, requestId, data) =>
             assetStatus: status,
             images,
         });
-        updates.push({ asset, status });
     }
 
-    // Chỉ cập nhật DB sau khi toàn bộ dữ liệu đầu vào đã được kiểm tra.
-    for (const { asset, status } of updates) {
-        asset.status = status;
-        asset.invoiceId = invoice._id;
-        await asset.save();
-    }
+    // Kết quả được lưu riêng trong invoice gắn với terminationRequest, không sửa Asset master.
 
     const nonAssetItems = (invoice.items || []).filter(
         existingItem => ['electricity', 'water'].includes(existingItem.type)
@@ -524,7 +524,7 @@ export const saveCheckoutAssetInspection = async (managerId, requestId, data) =>
     invoice.adjustedBy = managerId;
     await invoice.save();
 
-    const savedAssets = await Assets.find({ property: room.property, room: room._id, invoiceId: invoice._id })
+    const savedAssets = await Assets.find({ property: room.property, room: room._id })
         .sort({ name: 1 })
         .lean();
 
@@ -579,7 +579,7 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
     const checkoutDate = request.moveOutDate || new Date();
     const billingMonth = getCheckoutMonth(checkoutDate);
 
-    const [property, currentMonthReading, previousReading, debts, assetInvoice] = await Promise.all([
+    const [property, currentMonthReading, previousReading, debts, assetInvoice, previousContracts] = await Promise.all([
         Properties.findById(room.property).select('utilityRate').lean(),
         UtilityReadings.findOne({ room: room._id, billingMonth }).lean(),
         UtilityReadings.findOne({ room: room._id, billingMonth: { $lt: billingMonth } })
@@ -594,12 +594,30 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
             terminationRequest: request._id,
             invoiceType: 'checkout_asset',
         }).select('_id items totalAmount status').lean(),
+        Contracts.find({
+            room: room._id,
+            _id: { $ne: contract._id },
+            status: 'terminated',
+        }).select('_id endDate').sort({ endDate: -1 }).lean(),
     ]);
 
-    // Nếu đã có chỉ số trong kỳ checkout, lấy chỉ số cũ của kỳ đó làm mốc.
-    const oldElectricity = currentMonthReading?.oldElectricity
+    // Nếu phòng đã có hợp đồng checkout trước đó, lấy chỉ số chốt cuối của lần checkout đó
+    // làm chỉ số đầu cho hợp đồng mới (kể cả hai hợp đồng kết thúc/bắt đầu cùng tháng).
+    let previousCheckout = null;
+    if (previousContracts.length) {
+        previousCheckout = await TerminationRequests.findOne({
+            contract: { $in: previousContracts.map((item) => item._id) },
+            status: 'completed',
+            moveOutDate: { $lte: contract.startDate },
+            'checkoutReconciliation.calculatedAt': { $ne: null },
+        }).select('checkoutReconciliation moveOutDate').sort({ moveOutDate: -1, updatedAt: -1 }).lean();
+    }
+
+    const oldElectricity = previousCheckout?.checkoutReconciliation?.electricity?.newIndex
+        ?? currentMonthReading?.oldElectricity
         ?? previousReading?.newElectricity ?? 0;
-    const oldWater = currentMonthReading?.oldWater
+    const oldWater = previousCheckout?.checkoutReconciliation?.water?.newIndex
+        ?? currentMonthReading?.oldWater
         ?? previousReading?.newWater ?? 0;
 
     const electricityPrice = Number(
@@ -631,8 +649,8 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
         checkoutDate,
         oldElectricity,
         oldWater,
-        newElectricity: saved.electricity?.newIndex ?? currentMonthReading?.newElectricity ?? '',
-        newWater: saved.water?.newIndex ?? currentMonthReading?.newWater ?? '',
+        newElectricity: saved.electricity?.newIndex ?? '',
+        newWater: saved.water?.newIndex ?? '',
         electricityPrice,
         waterPrice,
         debtInvoices,
@@ -932,8 +950,8 @@ export const requestCheckoutPayment = async (managerId, requestId) => {
 };
 
 // Manager xác nhận đã hoàn tiền thực tế cho Tenant (không tự động chuyển tiền).
-export const confirmCheckoutRefund = async (managerId, requestId) => {
-    const { request } = await getManagerCheckoutContext(managerId, requestId);
+export const confirmCheckoutRefund = async (managerId, requestId, data = {}) => {
+    const { request, room } = await getManagerCheckoutContext(managerId, requestId);
     const refundAmount = Number(request.checkoutReconciliation?.depositRefund || 0);
     if (!request.checkoutReconciliation?.calculatedAt) {
         throw { status: 400, message: 'Vui lòng lưu quyết toán tiền cọc trước' };
@@ -941,16 +959,40 @@ export const confirmCheckoutRefund = async (managerId, requestId) => {
     if (refundAmount < 10000) {
         throw { status: 400, message: 'Số tiền hoàn dưới 10.000đ hoặc không phát sinh hoàn cọc, không cần xác nhận hoàn tiền' };
     }
-    if (request.checkoutSettlement?.refundConfirmedAt) {
+    if (request.checkoutSettlement?.refundConfirmedAt && request.checkoutSettlement?.refundProofImage) {
         return request.checkoutSettlement;
     }
+    const proofImage = typeof data.proofImage === 'string' ? data.proofImage : '';
+    if (!/^data:image\/(jpeg|png|webp);base64,/.test(proofImage)) {
+        throw { status: 400, message: 'Vui lòng tải ảnh bill chuyển khoản (JPG, PNG hoặc WEBP)' };
+    }
+    if (proofImage.length > 5 * 1024 * 1024) {
+        throw { status: 400, message: 'Ảnh bill không được vượt quá 3 MB' };
+    }
+    const confirmedAt = new Date();
     request.checkoutSettlement = {
         ...(request.checkoutSettlement?.toObject?.() || request.checkoutSettlement || {}),
         refundAmount,
-        refundConfirmedAt: new Date(),
+        refundProofImage: proofImage,
+        refundConfirmedAt: confirmedAt,
         refundConfirmedBy: managerId,
     };
     await request.save();
+
+    // Thông báo dẫn Tenant về danh sách checkout; ảnh bill được hiển thị trong chi tiết request.
+    try {
+        await createNotification({
+            recipient: request.requestedBy,
+            sender: managerId,
+            property: room.property,
+            type: 'checkout_refund',
+            title: 'Manager đã xác nhận hoàn tiền cọc',
+            content: `Manager đã xác nhận chuyển khoản hoàn cọc ${refundAmount.toLocaleString('vi-VN')}đ. Ảnh bill được đính kèm trong chi tiết yêu cầu checkout của bạn. Checkout sẽ chỉ hoàn tất sau khi Manager xác nhận bước cuối cùng.`,
+            related: { entityType: 'termination_request', entityId: request._id },
+        });
+    } catch (notificationError) {
+        console.error('Không gửi được thông báo hoàn cọc:', notificationError.message);
+    }
     return request.checkoutSettlement;
 };
 
@@ -972,8 +1014,8 @@ export const finalizeCheckout = async (managerId, requestId) => {
 
     const refundAmount = Number(reconciliation.depositRefund || 0);
     const additionalPayment = Number(reconciliation.additionalPayment || 0);
-    if (refundAmount >= 10000 && !settlement.refundConfirmedAt) {
-        throw { status: 400, message: 'Manager cần xác nhận đã hoàn tiền cọc cho Tenant trước khi hoàn tất checkout' };
+    if (refundAmount >= 10000 && (!settlement.refundConfirmedAt || !settlement.refundProofImage)) {
+        throw { status: 400, message: 'Manager cần tải ảnh bill và xác nhận đã hoàn tiền cọc cho Tenant trước khi hoàn tất checkout' };
     }
     if (additionalPayment > 0) {
         if (!settlement.paymentRequestedAt || !settlement.paymentInvoiceIds?.length) {

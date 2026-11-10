@@ -4,18 +4,18 @@ import { sendSuccess, sendError } from '../../shared/utils/response.js';
 // Kiểm tra điều kiện gửi checkout request của Tenant
 export const checkCheckoutEligibility = async (req, res, next) => {
     try {
-        const contract = await terminationRequestsService.canSubmitCheckoutRequest(
+        const contracts = await terminationRequestsService.getCheckoutEligibility(
             req.user.userId
         );
 
         return res.status(200).json({
             success: true,
-            message: contract
-                ? 'Bạn đủ điều kiện gửi yêu cầu checkout'
+            message: contracts.length
+                ? 'Đã lấy danh sách hợp đồng đang hoạt động'
                 : 'Bạn không có hợp đồng đang hiệu lực',
             data: {
-                canSubmit: Boolean(contract),
-                contract: contract || null,
+                canSubmit: contracts.some((contract) => contract.canSubmit),
+                contracts,
             },
         });
     } catch (error) {
@@ -202,7 +202,7 @@ export const confirmCheckoutRefund = async (req, res) => {
     try {
         const managerId = getManagerId(req);
         if (!managerId) return res.status(401).json({ success: false, message: 'Không xác định được tài khoản Manager' });
-        const result = await terminationRequestsService.confirmCheckoutRefund(managerId, req.params.id);
+        const result = await terminationRequestsService.confirmCheckoutRefund(managerId, req.params.id, req.body);
         return sendSuccess(res, 200, 'Đã xác nhận hoàn tiền cọc', result);
     } catch (error) {
         return sendError(res, error);

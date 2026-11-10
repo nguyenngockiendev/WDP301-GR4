@@ -36,6 +36,12 @@ const terminationRequestSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Thông tin tài khoản Tenant nhận tiền hoàn cọc (chuyển khoản thủ công).
+    refundBankAccount: {
+      bankName: { type: String, trim: true, default: '' },
+      accountNumber: { type: String, trim: true, default: '' },
+      accountHolder: { type: String, trim: true, default: '' },
+    },
     outstandingBalance: {
       type: Number,
       default: 0,
@@ -70,6 +76,7 @@ const terminationRequestSchema = new mongoose.Schema(
       paymentRequestedAt: { type: Date, default: null },
       paymentRequestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
       refundAmount: { type: Number, default: 0 },
+      refundProofImage: { type: String, default: '' },
       refundConfirmedAt: { type: Date, default: null },
       refundConfirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
       finalizedAt: { type: Date, default: null },
