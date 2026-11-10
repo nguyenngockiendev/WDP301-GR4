@@ -21,7 +21,8 @@ import SettingsPage from '../../features/landlord/SettingsPage';
 import utilityReadingsRoutes from '../../features/utility-readings/routes/UtilityReadingsRoutes';
 import invoiceRoutes from '../../features/invoices/routes/InvoiceRoutes';
 import PropertiesHome from '../../features/landlord/PropertiesHome';
-// Dashboard hiển thị dữ liệu theo vai trò của tài khoản đang đăng nhập.
+import PropertyOperationsPage from '../../features/landlord/PropertyOperationsPage';
+// Người thuê không dùng trang quản lý: /dashboard chuyển về trang Home
 function DashboardEntry() {
   return <DashboardPage />;
 }
@@ -54,6 +55,7 @@ export default function AppRoutes() {
         <Route element={<DashboardLayout />}>
           <Route path="dashboard" element={<DashboardEntry />} />
           <Route path="properties" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertiesHome /></ProtectedRoute>} />
+          <Route path="properties/:propertyId/operations" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertyOperationsPage /></ProtectedRoute>} />
           <Route path="settings" element={<ProtectedRoute roles={['landlord']}><SettingsPage /></ProtectedRoute>} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="reconciliation" element={<ProtectedRoute roles={['manager']}><ReconciliationPage /></ProtectedRoute>} />

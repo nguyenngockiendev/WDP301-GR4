@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { getCurrentUser } from '../../shared/utils/auth';
 import {
   LayoutDashboard,
@@ -25,6 +25,9 @@ const STAFF = ['landlord', 'manager'];
 export default function Sidebar({ isCollapsed, setIsCollapsed }) {
   const currentUser = getCurrentUser();
   const role = currentUser?.role;
+  const location = useLocation();
+  const routePropertyId = location.pathname.match(/^\/properties\/([^/]+)/)?.[1];
+  const selectedPropertyId = routePropertyId || localStorage.getItem('currentPropertyId');
 
   // roles: vai trò được thấy mục menu (bỏ trống = mọi vai trò)
   const allSections = [
@@ -166,7 +169,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
                 return (
                   <NavLink
                     key={item.label}
-                    to={item.to}
+                    to={item.to === '/rooms' && selectedPropertyId
+                      ? `/properties/${selectedPropertyId}/rooms`
+                      : item.to}
+                    end={item.to === '/properties' || item.to === '/rooms'}
                     className={({ isActive }) =>
                       `flex items-center rounded-2xl text-xs font-bold transition-all duration-200 group relative ${
                         isCollapsed ? 'w-11 h-11 justify-center mx-auto' : 'gap-3 px-3.5 py-2.5'

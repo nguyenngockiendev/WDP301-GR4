@@ -176,7 +176,7 @@ export default function ManageRooms() {
         )}
       </div>
 
-      {showForm && <RoomForm room={selectedRoom} onSubmit={handleSaveRoom} onCancel={handleCloseForm} />}
+      {showForm && <RoomForm room={selectedRoom} propertyId={propertyId} onSubmit={handleSaveRoom} onCancel={handleCloseForm} />}
     </div>
   );
 }
