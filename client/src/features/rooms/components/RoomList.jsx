@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import RoomStatusBadge from './RoomStatusBadge';
 import RoomStatusModal from './RoomStatusModal';
 
-export default function RoomList({ rooms, onEdit, onDeactivate, onRefresh }) {
+export default function RoomList({ rooms, onEdit, onDeactivate, onRefresh, canEdit = true }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const navigate = useNavigate();
 
@@ -87,20 +87,20 @@ export default function RoomList({ rooms, onEdit, onDeactivate, onRefresh }) {
                     >
                       <Eye size={14} />
                     </button>
-                    <button
+                    {canEdit && <button
                       onClick={() => onEdit(room)}
                       title="Chỉnh sửa"
                       className="w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-center transition cursor-pointer"
                     >
                       <Pencil size={14} />
-                    </button>
-                    <button
+                    </button>}
+                    {canEdit && <button
                       onClick={() => onDeactivate(room._id)}
                       title="Vô hiệu hóa"
                       className="w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center transition cursor-pointer"
                     >
                       <Ban size={14} />
-                    </button>
+                    </button>}
                   </div>
                 </td>
               </tr>

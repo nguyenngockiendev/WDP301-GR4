@@ -239,15 +239,20 @@ export async function assignManager(userId, managerId, propertyIds) {
   if (!objectId(managerId) || !Array.isArray(propertyIds) || propertyIds.length === 0) {
     fail(400, 'Chọn một quản lý và ít nhất một nhà trọ.');
   }
+  const uniqueIds = [...new Set(propertyIds.map(String))];
+  if (uniqueIds.length !== 1) fail(400, 'Mỗi quản lý chỉ được phân công một nhà trọ.');
   const manager = await Users.findOne({ _id: managerId, role: 'manager', status: 'active' });
   if (!manager) fail(404, 'Không tìm thấy tài khoản Quản lý viên đang hoạt động.');
   if (!manager.isVerified)
     fail(409, 'Quản lý viên cần xác thực tài khoản trước khi được phân công.');
-  const uniqueIds = [...new Set(propertyIds.map(String))];
   if (uniqueIds.some(id => !objectId(id))) fail(400, 'Có mã nhà trọ không hợp lệ.');
   const owned = await Properties.find({ _id: { $in: uniqueIds }, owner: userId }).select('_id');
   if (owned.length !== uniqueIds.length)
     fail(403, 'Bạn chỉ có thể phân công nhà trọ thuộc sở hữu của mình.');
+  const currentAssignment = await ManagerAssignments.findOne({ manager: manager._id, status: 'active' });
+  if (currentAssignment && !uniqueIds.includes(String(currentAssignment.property))) {
+    fail(409, 'Quản lý này đã được phân công một nhà trọ khác.');
+  }
   for (const property of owned) {
     const existing = await ManagerAssignments.findOne({
       manager: manager._id,
