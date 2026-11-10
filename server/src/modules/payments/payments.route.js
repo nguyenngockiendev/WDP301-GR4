@@ -3,20 +3,15 @@ import { requireAuth, requireRole } from '../../shared/middlewares/auth.middlewa
 import { createLimiter } from '../../shared/middlewares/middlewave.js';
 import { validate } from '../../shared/middlewares/validate.middleware.js';
 import {
-  createInvoicePayment, createVnpayPayment, getPaymentStatus,
-  vnpayIpn, vnpayReturn,
+  createInvoicePayment,
+  getPaymentStatus,
+  vnpayIpn,
+  vnpayReturn,
 } from './payments.controller.js';
-import { validateCreateVnpayPayment, validateInvoicePayment } from './payments.validation.js';
+import { validateInvoicePayment } from './payments.validation.js';
 
 const router = Router();
 
-router.post(
-  '/vnpay',
-  requireAuth,
-  createLimiter(10, 5, true),
-  validate(validateCreateVnpayPayment),
-  createVnpayPayment,
-);
 router.post(
   '/vnpay/invoice',
   requireAuth,

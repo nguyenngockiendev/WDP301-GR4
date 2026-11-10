@@ -1,9 +1,7 @@
 import Profile from '../../features/profile/pages/Profile';
-import ReconciliationPage from '../../features/reconciliation/ReconciliationPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout/DashboardLayout';
 import ProtectedRoute from './ProtectedRoute';
-import { getCurrentUser } from '../../shared/utils/auth';
 import { authRoutes } from '../../features/auth/routes/AuthRoutes';
 import roomsRoutes from '../../features/rooms/routes/RoomsRoutes';
 import BrowseRooms from '../../features/rooms/pages/BrowseRooms';
@@ -24,7 +22,7 @@ import utilityReadingsRoutes from '../../features/utility-readings/routes/Utilit
 import invoiceRoutes from '../../features/invoices/routes/InvoiceRoutes';
 import PropertiesHome from '../../features/landlord/PropertiesHome';
 import PropertyOperationsPage from '../../features/landlord/PropertyOperationsPage';
-// Người thuê không dùng trang quản lý: /dashboard chuyển về trang Home
+// Dashboard hiển thị dữ liệu theo vai trò của tài khoản đang đăng nhập.
 function DashboardEntry() {
   return <DashboardPage />;
 }
@@ -58,9 +56,24 @@ export default function AppRoutes() {
         <Route path="/profile" element={<Profile />} />
         <Route element={<DashboardLayout />}>
           <Route path="dashboard" element={<DashboardEntry />} />
-          <Route path="properties" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertiesHome /></ProtectedRoute>} />
+          <Route
+            path="properties"
+            element={
+              <ProtectedRoute roles={['landlord', 'manager']}>
+                <PropertiesHome />
+              </ProtectedRoute>
+            }
+          />
           <Route path="properties/:propertyId/operations" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertyOperationsPage /></ProtectedRoute>} />
-          <Route path="settings" element={<ProtectedRoute roles={['landlord']}><SettingsPage /></ProtectedRoute>} />
+          <Route
+            path="settings"
+            element={
+              <ProtectedRoute roles={['landlord']}>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="reports" element={<ReportsPage />} />
           {routes.filter(route => !['/browse-rooms', '/rooms/:roomId'].includes(route.path)).map(route => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}

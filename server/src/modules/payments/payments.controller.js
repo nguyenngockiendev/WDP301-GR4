@@ -9,7 +9,6 @@ import {
 import { allowedOrigins } from '../../config/origins.config.js';
 import { sendError, sendSuccess } from '../../shared/utils/response.js';
 import * as paymentsService from './payments.service.js';
-import { createVnpayPaymentUrl } from './vnpay.service.js';
 import { processVnpayCallback } from './gateway-events.service.js';
 
 function getIpAddress(req) {
@@ -23,22 +22,6 @@ const ipnResponses = {
   '04': IpnInvalidAmount,
   97: IpnFailChecksum,
   99: IpnUnknownError,
-};
-
-export const createVnpayPayment = (req, res) => {
-  try {
-    const { paymentCode, amount } = req.body || {};
-    const ipAddress = getIpAddress(req);
-    const paymentUrl = createVnpayPaymentUrl({ paymentCode, amount, ipAddress });
-
-    return sendSuccess(res, 200, 'Tạo URL thanh toán VNPay Sandbox thành công!', {
-      paymentCode,
-      amount,
-      paymentUrl,
-    });
-  } catch (error) {
-    return sendError(res, error);
-  }
 };
 
 function getInvoicePaymentData(req) {
