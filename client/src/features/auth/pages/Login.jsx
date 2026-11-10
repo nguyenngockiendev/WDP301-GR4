@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import useLogin from '../hooks/uselogin';
 import LoginForm from '../components/LoginForm';
 import { saveToken, getCurrentUser } from '../../../shared/utils/auth';
@@ -22,11 +22,13 @@ const Login = () => {
   const { login, loginGoogle, loading } = useLogin();
 
   const navigate = useNavigate();
+  const location = useLocation();
   const finishLogin = token => {
     saveToken(token);
     const user = getCurrentUser();
     window.dispatchEvent(new Event('auth-changed'));
-    navigate(user?.role === 'tenant' ? '/browse-rooms' : '/dashboard', { replace: true });
+    const nextPath = location.state?.from?.pathname;
+    navigate(user?.role === 'tenant' && nextPath?.startsWith('/rooms/') ? nextPath : user?.role === 'tenant' ? '/browse-rooms' : '/dashboard', { replace: true });
   };
 
   const onSubmit = async data => {

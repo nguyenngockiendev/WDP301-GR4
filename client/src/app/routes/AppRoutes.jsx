@@ -5,6 +5,8 @@ import ProtectedRoute from './ProtectedRoute';
 import { getCurrentUser } from '../../shared/utils/auth';
 import { authRoutes } from '../../features/auth/routes/AuthRoutes';
 import roomsRoutes from '../../features/rooms/routes/RoomsRoutes';
+import BrowseRooms from '../../features/rooms/pages/BrowseRooms';
+import RoomDetail from '../../features/rooms/pages/RoomDetail';
 import contractsRoutes from '../../features/contracts/routes/ContractsRoutes';
 import rentalsRoutes from '../../features/rentals/routes/RentalsRoutes';
 import tenantsRoutes from '../../features/tenants/routes/TenantsRoutes';
@@ -43,6 +45,8 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/home" replace />} />
+      <Route path="/browse-rooms" element={<BrowseRooms />} />
+      <Route path="/rooms/:roomId" element={<RoomDetail />} />
 
       {authRoutes.map(route => (
         <Route key={route.path} path={route.path} element={route.element} />
@@ -55,7 +59,7 @@ export default function AppRoutes() {
           <Route path="properties" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertiesHome /></ProtectedRoute>} />
           <Route path="properties/:propertyId/operations" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertyOperationsPage /></ProtectedRoute>} />
           <Route path="settings" element={<ProtectedRoute roles={['landlord']}><SettingsPage /></ProtectedRoute>} />
-          {routes.map(route => (
+          {routes.filter(route => !['/browse-rooms', '/rooms/:roomId'].includes(route.path)).map(route => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}
         </Route>

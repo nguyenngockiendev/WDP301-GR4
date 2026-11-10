@@ -122,6 +122,14 @@ export default function RoomDetail() {
             <Send size={14} /> Gửi yêu cầu thuê
           </button>
         )}
+        {!user && room.status === 'available' && (
+          <button
+            onClick={() => navigate('/register', { state: { from: { pathname: `/rooms/${room._id}/rental-request` } } })}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 active:scale-95 text-white font-extrabold text-xs shadow-md shadow-emerald-600/25 transition cursor-pointer self-start"
+          >
+            <Send size={14} /> Đăng ký để đặt phòng
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
