@@ -8,19 +8,24 @@ import ManagerAssignments from '../../models/ManagerAssignments.js';
 import Users from '../../models/Users.js';
 import { notifyRecipient } from '../notifications/notifications.events.js';
 import { getInvoiceForPayment } from '../invoices/invoices.service.js';
+import { activateSignedContractIfDue } from '../contracts/contract-signing.service.js';
 import { isValidPaymentAmount } from './payments.validation.js';
 import { createVnpayPaymentUrl } from './vnpay.service.js';
-import { createSepayCheckout } from './sepay.service.js';
 
 const payableStatuses = ['unpaid', 'partially_paid', 'overdue'];
 
-async function getPendingPayment(invoice, userId, amount, returnOrigin, provider, session) {
+async function getPendingPayment(invoice, userId, amount, returnOrigin, session) {
   const now = new Date();
-  await Payments.updateMany(
-    { invoice: invoice._id, method: 'gateway', status: 'pending' },
-    { status: 'cancelled' },
-    { session },
-  );
+  const pending = { invoice: invoice._id, method: 'gateway', status: 'pending' };
+  if (invoice.invoiceType === 'deposit') {
+    const existing = await Payments.findOneAndUpdate(
+      { ...pending, provider: 'vnpay', payer: userId, amount, expiresAt: { $gt: now } },
+      { $set: { returnOrigin } },
+      { session, new: true },
+    );
+    if (existing) return existing;
+  }
+  await Payments.updateMany(pending, { status: 'cancelled' }, { session });
 
   const [payment] = await Payments.create(
     [
@@ -28,7 +33,7 @@ async function getPendingPayment(invoice, userId, amount, returnOrigin, provider
         invoice: invoice._id,
         method: 'gateway',
         status: 'pending',
-        provider,
+        provider: 'vnpay',
         payer: userId,
         amount,
         paidAt: null,
@@ -42,7 +47,7 @@ async function getPendingPayment(invoice, userId, amount, returnOrigin, provider
   return payment;
 }
 
-export const createInvoicePayment = async (data, userId, provider = 'vnpay') => {
+export const createInvoicePayment = async (data, userId) => {
   await Payments.init();
   return mongoose.connection.transaction(async session => {
     const invoice = await getInvoiceForPayment(data, userId, session);
@@ -61,19 +66,8 @@ export const createInvoicePayment = async (data, userId, provider = 'vnpay') => 
       { $inc: { __v: 1 } },
       { session, timestamps: false },
     );
-    const payment = await getPendingPayment(
-      invoice,
-      userId,
-      amount,
-      data.returnOrigin,
-      provider,
-      session,
-    );
+    const payment = await getPendingPayment(invoice, userId, amount, data.returnOrigin, session);
     const paymentCode = payment.id;
-    if (provider === 'sepay') {
-      const checkout = createSepayCheckout({ paymentCode, amount });
-      return { invoiceId: invoice._id, paymentCode, amount, ...checkout };
-    }
     const paymentUrl = createVnpayPaymentUrl({
       paymentCode,
       amount,
@@ -89,25 +83,26 @@ export const findGatewayPayment = (paymentCode, provider) => {
   if (!mongoose.isObjectIdOrHexString(paymentCode)) return null;
   const filter = { _id: paymentCode, method: 'gateway', expiresAt: { $type: 'date' } };
   if (provider === 'vnpay') filter.provider = { $in: ['vnpay', null] };
-  if (provider === 'sepay') filter.provider = 'sepay';
   return Payments.findOne(filter);
 };
 
 export const getPaymentStatus = async (paymentCode, userId) => {
   const query = findGatewayPayment(paymentCode);
   const payment =
-    query && (await query.where('payer').equals(userId).populate('invoice', 'status').lean());
+    query && (await query.where('payer').equals(userId).populate('invoice', 'status invoiceType contract').lean());
   if (!payment) throw { status: 404, message: 'Không tìm thấy giao dịch thanh toán của bạn!' };
   return {
     status: payment.status,
     provider: payment.provider || 'vnpay',
     invoiceId: payment.invoice?._id,
     invoiceStatus: payment.invoice?.status,
+    invoiceType: payment.invoice?.invoiceType,
+    contractId: payment.invoice?.contract,
     amount: payment.amount,
   };
 };
 
-export const confirmGatewayPayment = async (result, provider, recoveryUserId = null) => {
+export const confirmGatewayPayment = async (result, recoveryUserId = null) => {
   await Notifications.init();
   const session = await mongoose.startSession();
   let paidInvoiceId = null;
@@ -115,9 +110,11 @@ export const confirmGatewayPayment = async (result, provider, recoveryUserId = n
   let code = '99';
   try {
     let recipients = [];
+    let paidDepositContractId = null;
     const code = await session.withTransaction(async () => {
       recipients = [];
-      const query = findGatewayPayment(result.paymentCode, provider);
+      paidDepositContractId = null;
+      const query = findGatewayPayment(result.paymentCode, 'vnpay');
       const payment = query && (await query.session(session));
       if (!payment) return '01';
       if (payment.amount !== result.amount) return '04';
@@ -136,7 +133,7 @@ export const confirmGatewayPayment = async (result, provider, recoveryUserId = n
         if (user?.role !== 'manager' || user.status !== 'active' || !assignment) {
           throw { status: 403, message: 'Bạn không còn quyền cập nhật giao dịch này.' };
         }
-        if (!result.success || provider !== 'vnpay') return '99';
+        if (!result.success) return '99';
         if (payment.status !== 'success') {
           const paidPayments = await Payments.find({
             invoice: payment.invoice,
@@ -167,10 +164,7 @@ export const confirmGatewayPayment = async (result, provider, recoveryUserId = n
       if (!invoice) return '01';
       const paidAmount = invoice.paidAmount ?? 0;
       const balance = invoice.totalAmount - paidAmount;
-      const validTransactionId =
-        provider === 'vnpay'
-          ? /^[1-9]\d*$/.test(result.gatewayTransactionId || '')
-          : Boolean(result.gatewayTransactionId);
+      const validTransactionId = /^[1-9]\d*$/.test(result.gatewayTransactionId || '');
       if (
         !validTransactionId ||
         !payableStatuses.includes(invoice.status) ||
@@ -188,13 +182,17 @@ export const confirmGatewayPayment = async (result, provider, recoveryUserId = n
       if (recoveryUserId) payment.recordedBy = recoveryUserId;
       await invoice.save({ session });
       await payment.save({ session });
+      if (invoice.invoiceType === 'deposit' && invoice.status === 'paid') {
+        paidDepositContractId = invoice.contract;
+      }
+      const invoiceLabel = invoice.invoiceType === 'deposit' ? 'tiền đặt cọc' : `hóa đơn kỳ ${invoice.billingMonth}`;
       await Notifications.updateOne(
         { eventKey: `payment-success:${payment.id}`, recipient: payment.payer },
         {
           $setOnInsert: {
             type: 'system',
             title: 'Thanh toán thành công',
-            content: `Đã ghi nhận ${payment.amount.toLocaleString('vi-VN')} ₫ cho hóa đơn kỳ ${invoice.billingMonth}.`,
+            content: `Đã ghi nhận ${payment.amount.toLocaleString('vi-VN')} ₫ cho ${invoiceLabel}.`,
             related: { entityType: 'invoice', entityId: invoice._id },
             isRead: false,
           },
@@ -230,7 +228,7 @@ export const confirmGatewayPayment = async (result, provider, recoveryUserId = n
                 type: 'system',
                 property: room.property,
                 title: 'Đã nhận thanh toán hóa đơn',
-                content: `Phòng ${room.roomNumber} đã thanh toán ${payment.amount.toLocaleString('vi-VN')} ₫ cho hóa đơn kỳ ${invoice.billingMonth}.`,
+                content: `Phòng ${room.roomNumber} đã thanh toán ${payment.amount.toLocaleString('vi-VN')} ₫ cho ${invoiceLabel}.`,
                 related: { entityType: 'invoice', entityId: invoice._id },
                 isRead: false,
               },
@@ -243,6 +241,7 @@ export const confirmGatewayPayment = async (result, provider, recoveryUserId = n
       return '00';
     });
     if (code === '00') for (const recipient of recipients) notifyRecipient(recipient);
+    if (paidDepositContractId) await activateSignedContractIfDue(paidDepositContractId);
     return code;
   } finally {
     await session.endSession();
@@ -260,7 +259,8 @@ export const confirmGatewayPayment = async (result, provider, recoveryUserId = n
           recipient: checkoutRequest.checkoutSettlement.paymentRequestedBy,
           type: 'checkout_payment_received',
           title: 'Tenant vừa thanh toán công nợ checkout',
-          content: 'Một hóa đơn thuộc yêu cầu trả phòng đã được thanh toán. Vui lòng kiểm tra trạng thái checkout; chỉ hoàn tất sau khi tất cả hóa đơn đã Paid.',
+          content:
+            'Một hóa đơn thuộc yêu cầu trả phòng đã được thanh toán. Vui lòng kiểm tra trạng thái checkout; chỉ hoàn tất sau khi tất cả hóa đơn đã Paid.',
           related: { entityType: 'TerminationRequest', entityId: checkoutRequest._id },
         });
       }

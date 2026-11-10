@@ -77,6 +77,7 @@ export const getDashboard = async (user, { propertyId, days = 30 } = {}) => {
           .map(invoice => ({
             _id: invoice._id,
             billingMonth: invoice.billingMonth,
+            invoiceType: invoice.invoiceType,
             dueDate: invoice.dueDate,
             balance: invoice.totalAmount - invoice.paidAmount,
           })),
@@ -122,7 +123,9 @@ export const getDashboard = async (user, { propertyId, days = 30 } = {}) => {
     .lean();
   const roomIds = rooms.map(room => room._id);
   const contractIds = await Contracts.distinct('_id', { room: { $in: roomIds } });
-  const invoiceIds = await Invoices.distinct('_id', { contract: { $in: contractIds } });
+  const invoiceIds = await Invoices.distinct('_id', {
+    contract: { $in: contractIds }, invoiceType: { $ne: 'deposit' },
+  });
   const vietnamNow = new Date(now.getTime() + 7 * 3600000);
   const year = vietnamNow.getUTCFullYear();
   const month = vietnamNow.getUTCMonth();

@@ -5,7 +5,8 @@ import { sendSuccess, sendError } from '../../shared/utils/response.js';
 export const checkCheckoutEligibility = async (req, res, next) => {
     try {
         const contract = await terminationRequestsService.canSubmitCheckoutRequest(
-            req.user.userId
+            req.user.userId,
+            req.query.contractId
         );
 
         return res.status(200).json({

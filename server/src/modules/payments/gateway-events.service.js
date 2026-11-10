@@ -76,7 +76,7 @@ export const processVnpayCallback = async (query, source) => {
     }
     event.processResult = 'PROCESSING';
     await event.save();
-    const code = await confirmGatewayPayment(result, 'vnpay');
+    const code = await confirmGatewayPayment(result);
     event.processResult = processResults[code] || 'ERROR';
     event.resultCode = code;
     event.processedAt = new Date();

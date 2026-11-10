@@ -50,8 +50,8 @@ const EDITABLE_FIELDS = [
 ];
 
 /** Lấy hợp đồng và kiểm tra user có quyền với nhà trọ chứa phòng của hợp đồng. */
-const findContractWithAccess = async (contractId, user) => {
-  const contract = await Contracts.findById(contractId);
+const findContractWithAccess = async (contractId, user, selection) => {
+  const contract = await Contracts.findById(contractId).select(selection);
   if (!contract) {
     throw { status: 404, message: 'Hợp đồng không tồn tại' };
   }
@@ -116,7 +116,14 @@ export const getContractById = async (contractId, user) => {
 
 /** Văn bản hợp đồng: nội dung mẫu (bản lưu lúc lập hợp đồng) đã điền dữ liệu thật. */
 export const getContractDocument = async (contractId, user) => {
-  const contract = await findContractWithAccess(contractId, user);
+  const contract = await findContractWithAccess(contractId, user, '+signing.document');
+  if (contract.signing?.document && contract.signing.status !== 'withdrawn' && contract.signing.status !== 'rejected') {
+    return { contractId, status: contract.status, title: contract.signing.title, content: contract.signing.document };
+  }
+  return renderContractDocument(contract);
+};
+
+export const renderContractDocument = async contract => {
   await contract.populate([
     {
       path: 'room',
@@ -155,6 +162,8 @@ export const createContract = async (data, user) => {
     throw { status: 404, message: 'Phòng không tồn tại' };
   }
   await assertPropertyAccess(user, room.property);
+
+  if (!data.rentalRequest && data.status !== 'draft') await assertNoApprovedReservation(room);
 
   const template = await resolveTemplateForProperty(data.template, room.property);
 
@@ -210,7 +219,7 @@ export const createContract = async (data, user) => {
     endDate: data.endDate,
     monthlyRent: data.monthlyRent,
     depositAmount: data.depositAmount || 0,
-    status: data.status || 'active',
+    status: data.rentalRequest ? 'draft' : data.status || 'active',
     createdBy: user.userId,
   });
 
@@ -224,6 +233,10 @@ export const createContract = async (data, user) => {
 
 export const updateContract = async (contractId, data, user) => {
   const contract = await findContractWithAccess(contractId, user);
+  assertContractEditable(contract);
+  if (contract.rentalRequest && contract.status === 'draft' && data.status && data.status !== 'draft') {
+    throw { status: 409, message: 'Hợp đồng từ yêu cầu thuê cần hoàn tất ký để có hiệu lực.' };
+  }
 
   const lockedFields = ['monthlyRent', 'depositAmount'];
   for (const field of lockedFields) {
@@ -271,6 +284,8 @@ export const updateContract = async (contractId, data, user) => {
   }
 
   if (data.status === 'active' && previousStatus !== 'active') {
+    const room = await Rooms.findById(contract.room).select('status');
+    await assertNoApprovedReservation(room);
     const otherActive = await Contracts.exists({ room: contract.room, status: 'active', _id: { $ne: contract._id } });
     if (otherActive) {
       throw { status: 400, message: 'Phòng này đã có hợp đồng hoạt động khác' };
@@ -347,6 +362,7 @@ export const renewContract = async (contractId, newEndDate, user) => {
 
 export const changeRepresentative = async (contractId, newRepresentativeId, user) => {
   const contract = await findContractWithAccess(contractId, user);
+  assertContractEditable(contract);
 
   const allMembers = [contract.representative, ...contract.otherMembers];
   const isMember = allMembers.some(member => member.toString() === newRepresentativeId);
@@ -368,6 +384,26 @@ export const changeRepresentative = async (contractId, newRepresentativeId, user
 
   return contract.populate(populateFields);
 };
+
+function assertContractEditable(contract) {
+  if (contract.status === 'draft' && ['awaiting_tenant', 'awaiting_manager', 'signed'].includes(contract.signing?.status)) {
+    throw { status: 409, message: 'Hãy thu hồi bản đang chờ ký trước khi sửa hợp đồng.' };
+  }
+  // Chặn thao tác sửa đã bắt đầu trước khi một bản mới được gửi ký.
+  if (contract.status === 'draft') {
+    contract.$where = {
+      status: 'draft',
+      'signing.status': contract.signing?.status ?? null,
+      'signing.revision': contract.signing?.revision ?? null,
+    };
+  }
+}
+
+async function assertNoApprovedReservation(room) {
+  if (room?.status === 'reserved' && await RentalRequests.exists({ room: room._id, status: 'approved' })) {
+    throw { status: 409, message: 'Phòng đang giữ cho yêu cầu thuê đã duyệt. Hãy lập hợp đồng từ yêu cầu đó.' };
+  }
+}
 
 export const searchContracts = async (filters, user) => {
   if (!filters.property) {

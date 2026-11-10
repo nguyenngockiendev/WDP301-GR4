@@ -41,7 +41,9 @@ export const getReports = async (userId, { propertyId, month }) => {
       .lean();
     const roomIds = rooms.map(room => room._id);
     const contractIds = await Contracts.distinct('_id', { room: { $in: roomIds } });
-    const invoiceIds = await Invoices.distinct('_id', { contract: { $in: contractIds } });
+    const invoiceIds = await Invoices.distinct('_id', {
+      contract: { $in: contractIds }, invoiceType: { $ne: 'deposit' },
+    });
     const [activeContracts, newContracts, rentalRequests, checkoutRequests, invoices, payments] =
       await Promise.all([
         Contracts.countDocuments({

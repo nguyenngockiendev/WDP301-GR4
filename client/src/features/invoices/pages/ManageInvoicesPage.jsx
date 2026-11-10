@@ -3,6 +3,7 @@ import { ArrowLeft, Plus, Send } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import Modal, { btnGhost, btnPrimary, inputCls } from '../../../shared/components/Modal';
 import { formatCurrency } from '../../../shared/utils/format';
+import { getCurrentUser } from '../../../shared/utils/auth';
 import { sendInvoicesAPI } from '../api/invoices-api';
 import InvoiceDetail from '../components/InvoiceDetail';
 import ManagedInvoiceList, { canSendInvoice, InvoiceSendBadge } from '../components/ManagedInvoiceList';
@@ -14,6 +15,7 @@ function currentMonth() {
 }
 
 function ManageInvoiceScreen({ invoiceId }) {
+  const canSend = getCurrentUser()?.role === 'manager';
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedIds, setSelectedIds] = useState([]);
   const [confirmation, setConfirmation] = useState([]);
@@ -31,7 +33,8 @@ function ManageInvoiceScreen({ invoiceId }) {
 
   const filters = new URLSearchParams({
     propertyId: propertyId || searchParams.get('propertyId') || data?.contract?.room?.property?._id || '',
-    billingMonth: invoiceId && !searchParams.has('billingMonth') ? data?.billingMonth || billingMonth : billingMonth,
+    billingMonth: invoiceId && !searchParams.has('billingMonth') && data?.invoiceType !== 'deposit'
+      ? data?.billingMonth || billingMonth : billingMonth,
     sendStatus,
   });
   const invoices = !invoiceId && data ? data : [];
@@ -88,7 +91,7 @@ function ManageInvoiceScreen({ invoiceId }) {
           <h1 className="mt-2 text-2xl font-black tracking-tight text-content-main sm:text-3xl">
             {invoiceId ? 'Chi tiết hóa đơn' : 'Quản lý hóa đơn'}
           </h1>
-          <p className="mt-1 text-sm text-content-sub">Xem hóa đơn đã lập và gửi cho người thuê đứng tên.</p>
+          <p className="mt-1 text-sm text-content-sub">{canSend ? 'Xem hóa đơn đã lập và gửi cho người thuê đứng tên.' : 'Xem hóa đơn đã lập và trạng thái gửi.'}</p>
         </div>
         {invoiceId ? (
           <Link to={`/invoices?${filters}`} className={btnGhost}><ArrowLeft size={15} className="mr-1 inline" /> Danh sách hóa đơn</Link>
@@ -120,12 +123,14 @@ function ManageInvoiceScreen({ invoiceId }) {
               </select>
             </label>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-content-sub" aria-live="polite">Đã chọn {selectedInvoices.length} hóa đơn</p>
-            <button type="button" className={btnPrimary} disabled={!selectedInvoices.length} onClick={() => askToSend(selectedInvoices)}>
-              <Send size={15} className="mr-1 inline" /> Gửi {selectedInvoices.length || ''} hóa đơn đã chọn
-            </button>
-          </div>
+          {canSend && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-content-sub" aria-live="polite">Đã chọn {selectedInvoices.length} hóa đơn</p>
+              <button type="button" className={btnPrimary} disabled={!selectedInvoices.length} onClick={() => askToSend(selectedInvoices)}>
+                <Send size={15} className="mr-1 inline" /> Gửi {selectedInvoices.length || ''} hóa đơn đã chọn
+              </button>
+            </div>
+          )}
         </section>
       )}
 
@@ -134,13 +139,13 @@ function ManageInvoiceScreen({ invoiceId }) {
       {sendMessage && <p role="status" className="rounded-xl bg-primary-50 p-4 text-sm font-bold text-primary-dark">{sendMessage}</p>}
 
       {!invoiceId && data && (
-        <ManagedInvoiceList invoices={invoices} selectedIds={selectedInvoices.map(invoice => invoice._id)} toggleInvoice={toggleInvoice} toggleAll={toggleAll} filters={filters} />
+        <ManagedInvoiceList invoices={invoices} canSend={canSend} selectedIds={selectedInvoices.map(invoice => invoice._id)} toggleInvoice={toggleInvoice} toggleAll={toggleAll} filters={filters} />
       )}
       {invoiceId && data && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white bg-white/90 p-4 shadow-card">
             <InvoiceSendBadge invoice={data} />
-            {canSendInvoice(data) && <button type="button" className={btnPrimary} onClick={() => askToSend([data])}><Send size={15} className="mr-1 inline" /> Gửi cho người thuê</button>}
+            {canSend && canSendInvoice(data) && <button type="button" className={btnPrimary} onClick={() => askToSend([data])}><Send size={15} className="mr-1 inline" /> Gửi cho người thuê</button>}
           </div>
           <InvoiceDetail invoice={data} />
         </>

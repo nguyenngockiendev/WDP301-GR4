@@ -20,7 +20,11 @@ const syncRoomAssets = async (propertyId, roomId, assetIds) => {
   if (requestedAssets.length !== uniqueIds.length) {
     throw { status: 400, message: 'Có thiết bị không thuộc tòa nhà này.' };
   }
-  if (requestedAssets.some(asset => asset.status === 'retired' || (asset.room && String(asset.room) !== String(roomId)))) {
+  if (
+    requestedAssets.some(
+      asset => asset.status === 'retired' || (asset.room && String(asset.room) !== String(roomId)),
+    )
+  ) {
     throw { status: 409, message: 'Thiết bị đã ngừng sử dụng hoặc đang được gán cho phòng khác.' };
   }
 
@@ -48,8 +52,15 @@ const validateNewRoomAssets = async (propertyId, assetIds) => {
   }
   if (!uniqueIds.length) return;
   const assets = await Assets.find({ _id: { $in: uniqueIds }, property: propertyId });
-  if (assets.length !== uniqueIds.length || assets.some(asset => asset.room || asset.status === 'retired')) {
-    throw { status: 409, message: 'Có thiết bị không thuộc tòa nhà này, đã ngừng sử dụng hoặc đang được gán cho phòng khác.' };
+  if (
+    assets.length !== uniqueIds.length ||
+    assets.some(asset => asset.room || asset.status === 'retired')
+  ) {
+    throw {
+      status: 409,
+      message:
+        'Có thiết bị không thuộc tòa nhà này, đã ngừng sử dụng hoặc đang được gán cho phòng khác.',
+    };
   }
 };
 
@@ -87,7 +98,7 @@ export const createRoom = async (data, user) => {
   }
 
   if (assetIds !== undefined) await validateNewRoomAssets(property, assetIds);
-  const room = await Rooms.create(roomData);
+  const room = await Rooms.create({ ...roomData, property, roomNumber });
   if (assetIds !== undefined) await syncRoomAssets(property, room._id, assetIds);
   return room.populate('property');
 };
@@ -97,12 +108,29 @@ export const updateRoom = async (roomId, data, user) => {
 
   // Older clients may send a populated property; authorize its ID.
   const targetProperty = data.property?._id || data.property || room.property;
-  if (String(targetProperty) !== String(room.property)) await assertPropertyAccess(user, targetProperty);
-  const roomNumber = data.roomNumber === undefined ? room.roomNumber : String(data.roomNumber).trim();
+  if (String(targetProperty) !== String(room.property))
+    await assertPropertyAccess(user, targetProperty);
+  const roomNumber =
+    data.roomNumber === undefined ? room.roomNumber : String(data.roomNumber).trim();
   if (!roomNumber) throw { status: 400, message: 'Số phòng không được để trống' };
-  const duplicate = await Rooms.exists({ property: targetProperty, roomNumber, _id: { $ne: room._id } });
+  const duplicate = await Rooms.exists({
+    property: targetProperty,
+    roomNumber,
+    _id: { $ne: room._id },
+  });
   if (duplicate) throw { status: 400, message: 'Số phòng đã tồn tại trong tòa nhà này' };
-  const editable = ['roomNumber', 'area', 'price', 'maxTenants', 'description', 'facilities', 'images', 'tier', 'name', 'floor'];
+  const editable = [
+    'roomNumber',
+    'area',
+    'price',
+    'maxTenants',
+    'description',
+    'facilities',
+    'images',
+    'tier',
+    'name',
+    'floor',
+  ];
   for (const field of editable) {
     if (data[field] !== undefined) room[field] = field === 'roomNumber' ? roomNumber : data[field];
   }

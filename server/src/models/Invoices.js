@@ -53,7 +53,7 @@ const invoiceSchema = new mongoose.Schema(
     // Phân biệt hóa đơn tháng và hóa đơn checkout tài sản
     invoiceType: {
       type: String,
-      enum: ['monthly', 'checkout_asset'],
+      enum: ['monthly', 'checkout_asset', 'deposit'],
       default: 'monthly',
       index: true,
     },

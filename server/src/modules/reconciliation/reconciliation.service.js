@@ -47,11 +47,17 @@ export const getReconciliation = async (userId, query) => {
   const contracts = await Contracts.find({ room: { $in: rooms.map(item => item._id) } })
     .select('room')
     .lean();
+  const [year, monthNumber] = month.split('-').map(Number);
+  const start = new Date(Date.UTC(year, monthNumber - 1, 1) - 7 * 3600000);
+  const end = new Date(Date.UTC(year, monthNumber, 1) - 7 * 3600000);
   const invoices = await Invoices.find({
     contract: { $in: contracts.map(item => item._id) },
-    billingMonth: month,
+    $or: [
+      { billingMonth: month },
+      { invoiceType: 'deposit', sentAt: { $gte: start, $lt: end } },
+    ],
   })
-    .select('contract billingMonth totalAmount paidAmount status dueDate')
+    .select('contract billingMonth invoiceType totalAmount paidAmount status dueDate')
     .sort({ createdAt: -1, _id: -1 })
     .lean();
   // Lấy mọi giao dịch của hóa đơn trong kỳ, kể cả tiền được trả ở tháng khác.
@@ -166,6 +172,7 @@ export const getReconciliation = async (userId, query) => {
     const rowStatus = issues.length ? 'review' : 'matched';
     return {
       invoiceId: invoice._id,
+      invoiceType: invoice.invoiceType,
       roomNumber: room.roomNumber,
       propertyName: property.name,
       invoiceStatus: invoice.status,
@@ -258,7 +265,7 @@ export const syncPayment = async (paymentId, userId) => {
       status: 409,
       message: 'Chưa có xác nhận hợp lệ để cập nhật. Vui lòng liên hệ người hỗ trợ.',
     };
-  const code = await confirmGatewayPayment(result, 'vnpay', userId);
+  const code = await confirmGatewayPayment(result, userId);
   if (!['00', '02'].includes(code))
     throw {
       status: 409,

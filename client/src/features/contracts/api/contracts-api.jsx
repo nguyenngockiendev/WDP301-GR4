@@ -19,6 +19,10 @@ const contractsAPI = {
     return api.get(`/contracts/${contractId}/document`);
   },
 
+  getMySigningContracts: () => api.get('/contracts/my/signing'),
+  getSigningDocument: contractId => api.get(`/contracts/${contractId}/signing`),
+  changeSigning: (contractId, action, data) => api.post(`/contracts/${contractId}/signing/${action}`, data),
+
   createContract: async (contractData) => {
     return api.post('/contracts', contractData);
   },

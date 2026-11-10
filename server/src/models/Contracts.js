@@ -1,5 +1,23 @@
 import mongoose from 'mongoose';
 
+const signatureSchema = new mongoose.Schema({
+  image: String,
+  signedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  signedAt: Date,
+}, { _id: false });
+
+const signingSchema = new mongoose.Schema({
+  revision: mongoose.Schema.Types.ObjectId,
+  status: { type: String, enum: ['awaiting_tenant', 'awaiting_manager', 'signed', 'rejected', 'withdrawn'] },
+  title: String,
+  document: { type: String, select: false },
+  requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  depositInvoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
+  tenantSignature: { type: signatureSchema, select: false },
+  managerSignature: { type: signatureSchema, select: false },
+  rejectionReason: String,
+}, { _id: false });
+
 const contractSchema = new mongoose.Schema(
   {
     room: {
@@ -27,6 +45,7 @@ const contractSchema = new mongoose.Schema(
     templateContent: {
       type: String,
     },
+    signing: signingSchema,
     representative: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

@@ -192,7 +192,7 @@ export default function ReconciliationPage() {
                       className="break-all text-sm text-primary hover:underline"
                       to={`/invoices/${row.invoiceId}`}
                     >
-                      Hóa đơn {row.invoiceId}
+                      {row.invoiceType === 'deposit' ? 'Hóa đơn tiền đặt cọc' : `Hóa đơn ${row.invoiceId}`}
                     </Link>
                     <p className="text-sm text-content-sub">
                       {invoiceLabels[row.invoiceStatus] || row.invoiceStatus}

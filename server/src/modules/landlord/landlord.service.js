@@ -113,7 +113,7 @@ export async function setPropertyStatus(userId, propertyId, status) {
     if (occupiedRoom || activeContract)
       fail(
         409,
-        'Không thể ngừng hoạt động khi nhà trọ còn hợp đồng hoặc phòng đang có người thuê.'
+        'Không thể ngừng hoạt động khi nhà trọ còn hợp đồng hoặc phòng đang có người thuê.',
       );
   }
   property.status = status;
@@ -355,7 +355,7 @@ export async function setServiceStatus(userId, propertyId, serviceId, status) {
   const service = await Services.findOneAndUpdate(
     { _id: serviceId, property: property._id },
     { $set: { status } },
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   );
   if (!service) fail(404, 'Không tìm thấy dịch vụ.');
   return service;
@@ -375,7 +375,7 @@ export async function setRoomPrice(userId, propertyId, roomId, price) {
   const room = await Rooms.findOneAndUpdate(
     { _id: roomId, property: property._id },
     { $set: { price: amount } },
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   );
   if (!room) fail(404, 'Không tìm thấy phòng thuộc nhà trọ.');
   return room;

@@ -12,10 +12,14 @@ import ManagerAssignments from '../../models/ManagerAssignments.js';
 import { validateCreateTerminationRequest } from './terminationrequests.validation.js';
 
 // Kiểm tra người dùng có hợp đồng active và còn thời hạn hay không.
-export const canSubmitCheckoutRequest = async (userId) => {
+export const canSubmitCheckoutRequest = async (userId, contractId) => {
+  if (contractId !== undefined && (typeof contractId !== 'string' || !mongoose.isObjectIdOrHexString(contractId))) {
+    throw { status: 400, message: 'Mã hợp đồng không hợp lệ' };
+  }
   const now = new Date();
 
   const contract = await Contracts.findOne({
+    ...(contractId ? { _id: contractId } : {}),
     status: 'active',
     startDate: { $lte: now },
     endDate: { $gte: now },
@@ -40,8 +44,7 @@ export const createTerminationRequest = async (data, userId) => {
     };
   }
 
-  // Không nhận contractId từ frontend. Backend tự tìm hợp đồng theo JWT userId.
-  const contract = await canSubmitCheckoutRequest(userId);
+  const contract = await canSubmitCheckoutRequest(userId, data.contractId);
 
   if (!contract) {
     throw {
@@ -267,7 +270,7 @@ const getManagerCheckoutContext = async (managerId, requestId) => {
     const request = await TerminationRequests.findOne({
         _id: requestId,
         contract: { $in: contractIds },
-    }).populate({ path: 'contract', select: 'room representative monthlyRent depositAmount startDate endDate utilityRateSnapshot' });
+    }).populate({ path: 'contract', select: 'room representative monthlyRent depositAmount startDate endDate utilityRateSnapshot signing.depositInvoice' });
 
     if (!request || !request.contract) {
         throw {
@@ -579,7 +582,7 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
     const checkoutDate = request.moveOutDate || new Date();
     const billingMonth = getCheckoutMonth(checkoutDate);
 
-    const [property, currentMonthReading, previousReading, debts, assetInvoice] = await Promise.all([
+    const [property, currentMonthReading, previousReading, debts, assetInvoice, depositInvoice] = await Promise.all([
         Properties.findById(room.property).select('utilityRate').lean(),
         UtilityReadings.findOne({ room: room._id, billingMonth }).lean(),
         UtilityReadings.findOne({ room: room._id, billingMonth: { $lt: billingMonth } })
@@ -594,6 +597,10 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
             terminationRequest: request._id,
             invoiceType: 'checkout_asset',
         }).select('_id items totalAmount status').lean(),
+        contract.signing?.depositInvoice
+            ? Invoices.findOne({ _id: contract.signing.depositInvoice, contract: contract._id, invoiceType: 'deposit' })
+                .select('paidAmount').lean()
+            : null,
     ]);
 
     // Nếu đã có chỉ số trong kỳ checkout, lấy chỉ số cũ của kỳ đó làm mốc.
@@ -639,7 +646,9 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
         previousDebtAmount,
         assetAmount,
         penalty,
-        depositAmount: Number(contract.depositAmount || 0),
+        depositAmount: contract.signing?.depositInvoice
+            ? Number(depositInvoice?.paidAmount || 0)
+            : Number(contract.depositAmount || 0),
         savedReconciliation: saved.calculatedAt ? saved : null,
         utilityInvoice: assetInvoice ? {
             _id: assetInvoice._id,
@@ -690,7 +699,7 @@ export const saveCheckoutReconciliation = async (managerId, requestId, data) => 
     const previousDebtAmount = dataBeforeSave.previousDebtAmount;
     const assetAmount = (invoice.items || []).filter(item => item.asset).reduce((sum, item) => sum + Number(item.amount || 0), 0);
     const totalDeductions = previousDebtAmount + assetAmount + utilityAmount + penalty.amount;
-    const depositAmount = Number(request.contract.depositAmount || 0);
+    const depositAmount = dataBeforeSave.depositAmount;
     const depositRefund = Math.max(0, depositAmount - totalDeductions);
     const additionalPayment = Math.max(0, totalDeductions - depositAmount);
 

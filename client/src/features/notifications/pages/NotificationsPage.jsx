@@ -280,6 +280,11 @@ export default function NotificationsPage() {
             <p className="my-6 whitespace-pre-wrap break-words text-sm leading-7">
               {selectedNotification.content}
             </p>
+            {selectedNotification.related?.entityType === 'contract_signing' && selectedNotification.related.entityId && (
+              <Link className={`${buttonClass} mb-4 text-primary`} to={`/contracts/${selectedNotification.related.entityId}/signing`}>
+                Mở hợp đồng
+              </Link>
+            )}
             {error && (
               <p role="alert" className="mb-4 text-sm text-status-danger">
                 {error}

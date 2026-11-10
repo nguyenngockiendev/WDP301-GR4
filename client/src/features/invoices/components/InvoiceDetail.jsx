@@ -8,7 +8,7 @@ export default function InvoiceDetail({ invoice, paymentAction }) {
   const [year, month] = invoice.billingMonth.split('-');
   const title = invoice.invoiceType === 'checkout_asset'
     ? 'Hóa đơn quyết toán trả phòng'
-    : `Hóa đơn tháng ${month}/${year}`;
+    : invoice.invoiceType === 'deposit' ? 'Hóa đơn tiền đặt cọc' : `Hóa đơn tháng ${month}/${year}`;
   const paidAmount = invoice.paidAmount ?? 0;
   const balance = invoice.status === 'cancelled' ? 0 : Math.max(0, invoice.totalAmount - paidAmount);
   const images = (invoice.images || []).filter(image => typeof image === 'string' && image.trim());

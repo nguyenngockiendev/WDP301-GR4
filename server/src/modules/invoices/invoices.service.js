@@ -26,6 +26,10 @@ const invoiceContract = {
   },
 };
 const invoiceContractWithRecipient = { ...invoiceContract, select: 'room representative' };
+const tenantInvoiceContract = {
+  ...invoiceContractWithRecipient,
+  select: 'room representative status endDate signing.depositInvoice',
+};
 
 function getInvoiceRecipientId(invoice) {
   return invoice.billedTo || invoice.contract?.representative;
@@ -167,11 +171,11 @@ export const getMyInvoices = async userId => {
   const invoices = await Invoices.find(filter)
     .select(invoiceSummaryFields)
     .sort({ billingMonth: -1, sentAt: -1, _id: -1 })
-    .populate(invoiceContractWithRecipient)
+    .populate(tenantInvoiceContract)
     .lean();
 
   return invoices.map(invoice => {
-    const canPay = isInvoiceRecipient(invoice, userId);
+    const canPay = isInvoiceRecipient(invoice, userId) && isDepositPayable(invoice);
     if (invoice.contract) delete invoice.contract.representative;
     return { ...invoice, canPay };
   });
@@ -179,6 +183,14 @@ export const getMyInvoices = async userId => {
 
 function isInvoiceRecipient(invoice, userId) {
   return String(getInvoiceRecipientId(invoice)) === userId.toLowerCase();
+}
+
+function isDepositPayable(invoice) {
+  return invoice.invoiceType !== 'deposit' || (
+    invoice.contract?.status === 'draft' &&
+    invoice.contract.endDate >= new Date() &&
+    String(invoice.contract.signing?.depositInvoice) === String(invoice._id)
+  );
 }
 
 export const getMyInvoice = async (invoiceId, userId) => {
@@ -189,12 +201,12 @@ export const getMyInvoice = async (invoiceId, userId) => {
   const filter = await getTenantInvoiceFilter(userId);
   const invoice = await Invoices.findOne({ ...filter, _id: invoiceId })
     .select(invoiceSummaryFields + ' items images')
-    .populate(invoiceContractWithRecipient)
+    .populate(tenantInvoiceContract)
     .lean();
   if (!invoice) throw { status: 404, message: 'Không tìm thấy hóa đơn!' };
 
   const recipientId = getInvoiceRecipientId(invoice);
-  const canPay = isInvoiceRecipient(invoice, userId);
+  const canPay = isInvoiceRecipient(invoice, userId) && isDepositPayable(invoice);
   const recipient = recipientId ? await Users.findById(recipientId).select('fullName').lean() : null;
   if (invoice.contract) {
     if (invoice.billedTo) delete invoice.contract.representative;
@@ -206,12 +218,15 @@ export const getMyInvoice = async (invoiceId, userId) => {
 
 export const getInvoiceForPayment = async ({ invoiceId, roomId }, userId, session) => {
   const invoice = await Invoices.findOne({ _id: invoiceId, sentAt: { $ne: null } })
-    .select('contract billedTo status totalAmount paidAmount')
-    .populate('contract', 'room representative')
+    .select('contract billedTo status totalAmount paidAmount invoiceType')
+    .populate('contract', 'room representative status endDate signing.depositInvoice')
     .session(session)
     .lean();
   if (!invoice || String(invoice.contract?.room) !== roomId.toLowerCase() || !isInvoiceRecipient(invoice, userId)) {
     throw { status: 404, message: 'Không tìm thấy hóa đơn cần thanh toán của bạn!' };
+  }
+  if (!isDepositPayable(invoice)) {
+    throw { status: 409, message: 'Hợp đồng không còn chờ đóng cọc.' };
   }
   return invoice;
 };
