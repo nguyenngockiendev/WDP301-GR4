@@ -21,7 +21,7 @@ export default function TenantInvoiceList({ invoices, payingInvoiceId, onPay }) 
         const [year, month] = invoice.billingMonth.split('-');
         const title = invoice.invoiceType === 'checkout_asset'
           ? 'Hóa đơn quyết toán trả phòng'
-          : `Hóa đơn tháng ${month}/${year}`;
+          : invoice.invoiceType === 'deposit' ? 'Hóa đơn tiền đặt cọc' : `Hóa đơn tháng ${month}/${year}`;
         const balance = invoice.status === 'cancelled' ? 0 : Math.max(0, invoice.totalAmount - (invoice.paidAmount ?? 0));
 
         return (

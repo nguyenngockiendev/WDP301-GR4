@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bell, X } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { notificationsAPI } from '../api/notifications-api';
 import { useNotifications } from '../hooks/useNotifications';
 
@@ -229,6 +229,18 @@ export default function NotificationBell() {
                       </time>
                     </span>
                   </button>
+                  {item.related?.entityType === 'contract_signing' && item.related.entityId && (
+                    <Link
+                      to={`/contracts/${item.related.entityId}/signing`}
+                      onClick={() => {
+                        void readNotification(item);
+                        setOpen(false);
+                      }}
+                      className="mb-3 ml-9 inline-flex rounded-lg px-2 py-1 text-sm font-semibold text-primary hover:bg-primary-50"
+                    >
+                      Mở hợp đồng
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

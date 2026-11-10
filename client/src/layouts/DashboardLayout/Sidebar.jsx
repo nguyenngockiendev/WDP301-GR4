@@ -11,6 +11,7 @@ import {
   ReceiptText,
   ChevronLeft,
   Building2,
+  ClipboardList,
   Sparkles,
   Settings,
   Search,
@@ -18,7 +19,9 @@ import {
   UserCog,
 } from 'lucide-react';
 
-const STAFF = ['landlord', 'manager'];
+const STAFF = ['landlord'];
+const MANAGER = ['manager'];
+const TENANT = ['tenant'];
 
 export default function Sidebar({ isCollapsed, setIsCollapsed }) {
   const currentUser = getCurrentUser();
@@ -32,21 +35,43 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       title: 'TỔNG QUAN',
       items: [
-        { to: '/home', label: 'Trang chủ', icon: Building2, roles: ['tenant'] },
-        { to: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-        { to: '/reports', label: 'Báo cáo tháng', icon: FileText, roles: STAFF },
+        { to: '/dashboard', label: role === 'tenant' ? 'Trang chủ' : 'Tổng quan', icon: LayoutDashboard },
+        {
+          to: '/reports',
+          label: 'Báo cáo tháng',
+          icon: FileText,
+          roles: [...STAFF, ...MANAGER],
+        },
       ],
     },
     {
       title: 'QUẢN LÝ CHO THUÊ',
       items: [
         { to: '/rooms', label: 'Danh sách phòng', icon: DoorOpen, roles: STAFF },
-        { to: '/contracts', label: 'Hợp đồng thuê', icon: FileSignature, roles: STAFF },
+        {
+          to: '/contracts',
+          label: 'Hợp đồng thuê',
+          icon: FileSignature,
+          roles: [...STAFF, ...MANAGER],
+        },
+        { to: '/contracts/my', label: 'Hợp đồng của tôi', icon: FileSignature, roles: ['tenant'] },
         {
           to: '/rental-requests',
           label: 'Yêu cầu đặt phòng',
           icon: CalendarClock,
-          roles: STAFF,
+          roles: [...STAFF, ...MANAGER],
+        },
+        {
+          to: '/manager/checkout-requests',
+          label: 'Quản lý trả phòng',
+          icon: ClipboardList,
+          roles: MANAGER,
+        },
+        {
+          to: '/checkout-requests',
+          label: 'Lịch sử',
+          icon: ClipboardList,
+          roles: TENANT,
         },
         { to: '/tenants', label: 'Khách thuê', icon: Users, roles: STAFF },
         { to: '/browse-rooms', label: 'Tìm phòng trống', icon: Search, roles: ['tenant'] },
@@ -64,9 +89,19 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       title: 'DỊCH VỤ & TÀI CHÍNH',
       items: [
-        { to: '/utility-readings', label: 'Số điện & nước', icon: Zap, roles: STAFF },
-        { to: '/invoices', label: 'Quản lý hóa đơn', icon: ReceiptText, roles: STAFF },
-        { to: '/invoices/new', label: 'Lập hóa đơn', icon: FileText, roles: STAFF },
+        { to: '/utility-readings', label: 'Số điện & nước', icon: Zap, roles: MANAGER },
+        {
+          to: '/invoices',
+          label: 'Quản lý hóa đơn',
+          icon: ReceiptText,
+          roles: [...STAFF, ...MANAGER],
+        },
+        {
+          to: '/invoices/new',
+          label: 'Lập hóa đơn',
+          icon: FileText,
+          roles: [...STAFF, ...MANAGER],
+        },
         { to: '/invoices/my', label: 'Hóa đơn của tôi', icon: ReceiptText, roles: ['tenant'] },
       ],
     },
@@ -168,9 +203,11 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
                 return (
                   <NavLink
                     key={item.label}
-                    to={item.to === '/rooms' && selectedPropertyId
-                      ? `/properties/${selectedPropertyId}/rooms`
-                      : item.to}
+                    to={
+                      item.to === '/rooms' && selectedPropertyId
+                        ? `/properties/${selectedPropertyId}/rooms`
+                        : item.to
+                    }
                     end={item.to === '/properties' || item.to === '/rooms'}
                     className={({ isActive }) =>
                       `flex items-center rounded-2xl text-xs font-bold transition-all duration-200 group relative ${

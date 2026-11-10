@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, ReceiptText } from 'lucide-react';
+import { getCurrentUser } from '../../../shared/utils/auth';
 import InvoiceSelectionForm from '../components/InvoiceSelectionForm';
 import InvoicePreview from '../components/InvoicePreview';
 import useCreateInvoice from '../hooks/useCreateInvoice';
@@ -29,9 +30,11 @@ export default function CreateInvoicePage() {
           <p className="mt-1 text-sm text-content-sub">Chọn hợp đồng và kỳ, kiểm tra từng khoản trước khi tạo hóa đơn.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/utility-readings" className="inline-flex items-center gap-2 rounded-xl border border-surface-border bg-white px-3 py-2 text-sm font-bold text-content-sub hover:text-primary-dark">
-            <ArrowLeft size={16} /> Ghi chỉ số điện nước
-          </Link>
+          {getCurrentUser()?.role === 'manager' && (
+            <Link to="/utility-readings" className="inline-flex items-center gap-2 rounded-xl border border-surface-border bg-white px-3 py-2 text-sm font-bold text-content-sub hover:text-primary-dark">
+              <ArrowLeft size={16} /> Ghi chỉ số điện nước
+            </Link>
+          )}
           <Link to={`${managementUrl}?${managementFilters}`} className="inline-flex items-center gap-2 rounded-xl border border-surface-border bg-white px-3 py-2 text-sm font-bold text-primary-dark hover:underline">
             {createdInvoice?._id ? 'Mở hóa đơn đã lập' : 'Quản lý hóa đơn'} <ArrowRight size={16} />
           </Link>

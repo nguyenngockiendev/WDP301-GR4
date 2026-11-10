@@ -21,7 +21,11 @@ const syncRoomAssets = async (propertyId, roomId, assetIds) => {
   if (requestedAssets.length !== uniqueIds.length) {
     throw { status: 400, message: 'Có thiết bị không thuộc tòa nhà này.' };
   }
-  if (requestedAssets.some(asset => asset.status === 'retired' || (asset.room && String(asset.room) !== String(roomId)))) {
+  if (
+    requestedAssets.some(
+      asset => asset.status === 'retired' || (asset.room && String(asset.room) !== String(roomId)),
+    )
+  ) {
     throw { status: 409, message: 'Thiết bị đã ngừng sử dụng hoặc đang được gán cho phòng khác.' };
   }
 
@@ -49,8 +53,15 @@ const validateNewRoomAssets = async (propertyId, assetIds) => {
   }
   if (!uniqueIds.length) return;
   const assets = await Assets.find({ _id: { $in: uniqueIds }, property: propertyId });
-  if (assets.length !== uniqueIds.length || assets.some(asset => asset.room || asset.status === 'retired')) {
-    throw { status: 409, message: 'Có thiết bị không thuộc tòa nhà này, đã ngừng sử dụng hoặc đang được gán cho phòng khác.' };
+  if (
+    assets.length !== uniqueIds.length ||
+    assets.some(asset => asset.room || asset.status === 'retired')
+  ) {
+    throw {
+      status: 409,
+      message:
+        'Có thiết bị không thuộc tòa nhà này, đã ngừng sử dụng hoặc đang được gán cho phòng khác.',
+    };
   }
 };
 
@@ -115,9 +126,24 @@ export const updateRoom = async (roomId, data, user) => {
   }
   const roomNumber = data.roomNumber === undefined ? room.roomNumber : String(data.roomNumber).trim();
   if (!roomNumber) throw { status: 400, message: 'Số phòng không được để trống' };
-  const duplicate = await Rooms.exists({ property: targetProperty, roomNumber, _id: { $ne: room._id } });
+  const duplicate = await Rooms.exists({
+    property: targetProperty,
+    roomNumber,
+    _id: { $ne: room._id },
+  });
   if (duplicate) throw { status: 400, message: 'Số phòng đã tồn tại trong tòa nhà này' };
-  const editable = ['roomNumber', 'area', 'price', 'maxTenants', 'description', 'facilities', 'images', 'tier', 'name', 'floor'];
+  const editable = [
+    'roomNumber',
+    'area',
+    'price',
+    'maxTenants',
+    'description',
+    'facilities',
+    'images',
+    'tier',
+    'name',
+    'floor',
+  ];
   for (const field of editable) {
     if (data[field] !== undefined) room[field] = field === 'roomNumber' ? roomNumber : data[field];
   }

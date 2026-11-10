@@ -140,9 +140,13 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
   const originalTemplateId = isEdit ? String(contract.template?._id || contract.template || '') : '';
   const canChooseTemplate = !isEdit || !originalTemplateId || contract.status === 'draft';
   const noTemplates = !loadingOptions && optionsLoaded && options.templates?.length === 0;
+  const signingDraft = isEdit
+    ? Boolean(contract.rentalRequest) && contract.status === 'draft'
+    : Boolean(watch('rentalRequest'));
 
   const submit = data => {
     const payload = { ...data };
+    if (signingDraft) payload.status = 'draft';
     if (!payload.rentalRequest) delete payload.rentalRequest;
     if (isEdit && (!canChooseTemplate || !payload.template || payload.template === originalTemplateId)) {
       delete payload.template;
@@ -375,6 +379,9 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
 
         <div>
           <label className={labelCls}>Trạng thái</label>
+          {signingDraft ? (
+            <p className="text-sm text-slate-600">Lưu nháp để gửi cho khách thuê ký.</p>
+          ) : (
           <div className="flex flex-wrap gap-2">
             {Object.entries(CONTRACT_STATUS)
               .filter(([value]) => isEdit || value === 'active' || value === 'draft')
@@ -396,6 +403,7 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
                 );
               })}
           </div>
+          )}
         </div>
       </form>
     </Modal>

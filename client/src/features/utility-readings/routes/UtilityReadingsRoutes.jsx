@@ -5,7 +5,7 @@ const utilityReadingsRoutes = [
   {
     path: '/utility-readings',
     element: (
-      <ProtectedRoute roles={['landlord', 'manager']}>
+      <ProtectedRoute roles={['manager']}>
         <UtilityReadingsPage />
       </ProtectedRoute>
     ),

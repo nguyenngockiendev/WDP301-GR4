@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, ClipboardCheck, Info, LoaderCircle } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import CheckoutRequestForm from '../components/CheckoutRequestForm';
 import terminationRequestsAPI from '../api/terminationrequests-api';
@@ -10,6 +10,8 @@ export default function SubmitCheckoutRequest() {
   const [checkingEligibility, setCheckingEligibility] = useState(true);
   const [eligibleContract, setEligibleContract] = useState(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedContractId = searchParams.get('contractId') ?? undefined;
 
   useEffect(() => {
     let isMounted = true;
@@ -18,21 +20,23 @@ export default function SubmitCheckoutRequest() {
       try {
         setCheckingEligibility(true);
 
-        const response = await terminationRequestsAPI.checkEligibility();
+        const response = await terminationRequestsAPI.checkEligibility(requestedContractId);
+        if (!isMounted) return;
         const result = response?.data ?? response;
 
         if (!result?.canSubmit) {
           toast.warning(
-            'Bạn chưa có hợp đồng đang hoạt động hoặc yêu cầu trả phòng chưa phê duyệt dong nên chưa thể tạo yêu cầu trả phòng khác.',
+            requestedContractId
+              ? 'Hợp đồng này không đủ điều kiện gửi yêu cầu trả phòng.'
+              : 'Bạn chưa có hợp đồng đang hiệu lực để gửi yêu cầu trả phòng.',
           );
           navigate('/checkout-requests', { replace: true });
           return;
         }
 
-        if (isMounted) {
-          setEligibleContract(result.contract || null);
-        }
+        setEligibleContract(result.contract || null);
       } catch (error) {
+        if (!isMounted) return;
         const message =
           error.response?.data?.message ||
           error.message ||
@@ -52,12 +56,13 @@ export default function SubmitCheckoutRequest() {
     return () => {
       isMounted = false;
     };
-  }, [navigate]);
+  }, [navigate, requestedContractId]);
 
   const handleSubmit = async (payload) => {
     try {
       setLoading(true);
       await terminationRequestsAPI.create({
+        contractId: eligibleContract._id,
         moveOutDate: payload.moveOutDate,
         reason: payload.reason,
       });

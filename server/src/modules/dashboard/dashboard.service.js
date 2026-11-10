@@ -74,6 +74,7 @@ const getTenantDashboard = async (user, now) => {
         .map(invoice => ({
           _id: invoice._id,
           billingMonth: invoice.billingMonth,
+          invoiceType: invoice.invoiceType,
           dueDate: invoice.dueDate,
           balance: invoice.totalAmount - invoice.paidAmount,
         })),
@@ -185,7 +186,10 @@ const getDashboardProperties = async (user, propertyId) => {
 
 // Thu tiền thành công trong sáu tháng gần nhất, theo giờ Việt Nam.
 const getRevenue = async (contractIds, now) => {
-  const invoiceIds = await Invoices.distinct('_id', { contract: { $in: contractIds } });
+  const invoiceIds = await Invoices.distinct('_id', {
+    contract: { $in: contractIds },
+    invoiceType: { $ne: 'deposit' },
+  });
   const vietnamNow = new Date(now.getTime() + 7 * 3600000);
   const year = vietnamNow.getUTCFullYear();
   const month = vietnamNow.getUTCMonth();

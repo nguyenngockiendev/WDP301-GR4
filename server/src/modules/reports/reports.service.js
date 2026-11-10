@@ -66,10 +66,14 @@ const getReportProperties = async (userId, propertyId) => {
 // Thu tiền và công nợ theo kỳ đã chọn.
 const getFinanceReport = async (roomIds, month, start, cutoff) => {
   const contractIds = await Contracts.distinct('_id', { room: { $in: roomIds } });
-  const invoiceIds = await Invoices.distinct('_id', { contract: { $in: contractIds } });
+  const invoiceIds = await Invoices.distinct('_id', {
+    contract: { $in: contractIds },
+    invoiceType: { $ne: 'deposit' },
+  });
   const [invoices, payments] = await Promise.all([
     Invoices.find({
       contract: { $in: contractIds },
+      invoiceType: { $ne: 'deposit' },
       billingMonth: { $lte: month },
       createdAt: { $lte: cutoff },
       status: { $ne: 'cancelled' },

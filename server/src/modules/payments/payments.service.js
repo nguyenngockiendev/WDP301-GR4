@@ -8,6 +8,7 @@ import ManagerAssignments from '../../models/ManagerAssignments.js';
 import Users from '../../models/Users.js';
 import { notifyRecipient } from '../notifications/notifications.events.js';
 import { getInvoiceForPayment } from '../invoices/invoices.service.js';
+import { activateSignedContractIfDue } from '../contracts/contract-signing.service.js';
 import { isValidPaymentAmount } from './payments.validation.js';
 import { createVnpayPaymentUrl } from './vnpay.service.js';
 
@@ -15,11 +16,16 @@ const payableStatuses = ['unpaid', 'partially_paid', 'overdue'];
 
 async function getPendingPayment(invoice, userId, amount, returnOrigin, session) {
   const now = new Date();
-  await Payments.updateMany(
-    { invoice: invoice._id, method: 'gateway', status: 'pending' },
-    { status: 'cancelled' },
-    { session },
-  );
+  const pending = { invoice: invoice._id, method: 'gateway', status: 'pending' };
+  if (invoice.invoiceType === 'deposit') {
+    const existing = await Payments.findOneAndUpdate(
+      { ...pending, provider: 'vnpay', payer: userId, amount, expiresAt: { $gt: now } },
+      { $set: { returnOrigin } },
+      { session, new: true },
+    );
+    if (existing) return existing;
+  }
+  await Payments.updateMany(pending, { status: 'cancelled' }, { session });
 
   const [payment] = await Payments.create(
     [
@@ -83,13 +89,15 @@ export const findGatewayPayment = (paymentCode, provider) => {
 export const getPaymentStatus = async (paymentCode, userId) => {
   const query = findGatewayPayment(paymentCode);
   const payment =
-    query && (await query.where('payer').equals(userId).populate('invoice', 'status').lean());
+    query && (await query.where('payer').equals(userId).populate('invoice', 'status invoiceType contract').lean());
   if (!payment) throw { status: 404, message: 'Không tìm thấy giao dịch thanh toán của bạn!' };
   return {
     status: payment.status,
     provider: payment.provider || 'vnpay',
     invoiceId: payment.invoice?._id,
     invoiceStatus: payment.invoice?.status,
+    invoiceType: payment.invoice?.invoiceType,
+    contractId: payment.invoice?.contract,
     amount: payment.amount,
   };
 };
@@ -99,8 +107,10 @@ export const confirmGatewayPayment = async result => {
   const session = await mongoose.startSession();
   try {
     let recipients = [];
+    let paidDepositContractId = null;
     const code = await session.withTransaction(async () => {
       recipients = [];
+      paidDepositContractId = null;
       const query = findGatewayPayment(result.paymentCode, 'vnpay');
       const payment = query && (await query.session(session));
       if (!payment) return '01';
@@ -134,13 +144,17 @@ export const confirmGatewayPayment = async result => {
       payment.gatewayTransactionId = result.gatewayTransactionId;
       await invoice.save({ session });
       await payment.save({ session });
+      if (invoice.invoiceType === 'deposit' && invoice.status === 'paid') {
+        paidDepositContractId = invoice.contract;
+      }
+      const invoiceLabel = invoice.invoiceType === 'deposit' ? 'tiền đặt cọc' : `hóa đơn kỳ ${invoice.billingMonth}`;
       await Notifications.updateOne(
         { eventKey: `payment-success:${payment.id}`, recipient: payment.payer },
         {
           $setOnInsert: {
             type: 'system',
             title: 'Thanh toán thành công',
-            content: `Đã ghi nhận ${payment.amount.toLocaleString('vi-VN')} ₫ cho hóa đơn kỳ ${invoice.billingMonth}.`,
+            content: `Đã ghi nhận ${payment.amount.toLocaleString('vi-VN')} ₫ cho ${invoiceLabel}.`,
             related: { entityType: 'invoice', entityId: invoice._id },
             isRead: false,
           },
@@ -176,7 +190,7 @@ export const confirmGatewayPayment = async result => {
                 type: 'system',
                 property: room.property,
                 title: 'Đã nhận thanh toán hóa đơn',
-                content: `Phòng ${room.roomNumber} đã thanh toán ${payment.amount.toLocaleString('vi-VN')} ₫ cho hóa đơn kỳ ${invoice.billingMonth}.`,
+                content: `Phòng ${room.roomNumber} đã thanh toán ${payment.amount.toLocaleString('vi-VN')} ₫ cho ${invoiceLabel}.`,
                 related: { entityType: 'invoice', entityId: invoice._id },
                 isRead: false,
               },
@@ -189,6 +203,7 @@ export const confirmGatewayPayment = async result => {
       return '00';
     });
     if (code === '00') for (const recipient of recipients) notifyRecipient(recipient);
+    if (paidDepositContractId) await activateSignedContractIfDue(paidDepositContractId);
     return code;
   } finally {
     await session.endSession();

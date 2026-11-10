@@ -28,7 +28,7 @@ export default function TenantDashboard({ dashboard }) {
               to={`/invoices/my/${invoice._id}`}
               className="block rounded-xl border border-surface-border p-3 text-sm hover:border-primary"
             >
-              Kỳ {invoice.billingMonth} · Còn {invoice.balance.toLocaleString('vi-VN')} ₫{' · '}Hạn{' '}
+              {invoice.invoiceType === 'deposit' ? 'Tiền đặt cọc' : `Kỳ ${invoice.billingMonth}`} · Còn {invoice.balance.toLocaleString('vi-VN')} ₫{' · '}Hạn{' '}
               {new Date(invoice.dueDate).toLocaleDateString('vi-VN')}
             </Link>
           ))}

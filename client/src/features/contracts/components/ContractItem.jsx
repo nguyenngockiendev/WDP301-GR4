@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { CalendarDays, Pencil, RefreshCw, UserRoundCog, Users, Wallet, DoorOpen, FileText } from 'lucide-react';
 import ContractDocumentModal from './ContractDocumentModal';
@@ -7,6 +8,8 @@ import RenewContractModal from './RenewContractModal';
 import ChangeRepresentativeModal from './ChangeRepresentativeModal';
 import ContractStatusBadge from './ContractStatusBadge';
 import { formatCurrency, formatDate } from '../../../shared/utils/format';
+import { signingLabels } from '../signingLabels';
+import { getCurrentUser } from '../../../shared/utils/auth';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -14,6 +17,11 @@ export default function ContractItem({ contract, onEdit, onRefresh, readOnly = f
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showChangeRepModal, setShowChangeRepModal] = useState(false);
   const [showDocument, setShowDocument] = useState(false);
+  const [sending, setSending] = useState(false);
+  const signingStatus = contract.signing?.status;
+  const canSend = !readOnly && getCurrentUser()?.role === 'manager' && contract.status === 'draft' &&
+    contract.rentalRequest && (!signingStatus || ['rejected', 'withdrawn'].includes(signingStatus));
+  const editingLocked = contract.status === 'draft' && ['awaiting_tenant', 'awaiting_manager', 'signed'].includes(signingStatus);
 
   const daysLeft = Math.ceil((new Date(contract.endDate) - Date.now()) / DAY);
   const expiringSoon = contract.status === 'active' && daysLeft >= 0 && daysLeft <= 30;
@@ -43,6 +51,19 @@ export default function ContractItem({ contract, onEdit, onRefresh, readOnly = f
 
   const actionBtn =
     'flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition cursor-pointer';
+
+  async function sendForSigning() {
+    setSending(true);
+    try {
+      await contractsAPI.changeSigning(contract._id, 'send');
+      toast.success('Đã gửi hợp đồng cho khách thuê ký');
+      onRefresh();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Không gửi được hợp đồng');
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <>
@@ -111,13 +132,25 @@ export default function ContractItem({ contract, onEdit, onRefresh, readOnly = f
         )}
 
         {/* Thao tác */}
-        {!readOnly && <div className="mt-auto flex gap-2">
-          <button
-            className={`${actionBtn} bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700`}
-            onClick={() => onEdit(contract)}
-          >
-            <Pencil size={13} /> Sửa
+        {signingStatus && (
+          <Link className="mb-2 text-center text-sm font-semibold text-emerald-700" to={`/contracts/${contract._id}/signing`}>
+            {signingLabels[signingStatus]} · Xem bản ký
+          </Link>
+        )}
+        {canSend && (
+          <button type="button" disabled={sending} onClick={sendForSigning} className="mb-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+            {sending ? 'Đang gửi…' : 'Gửi khách thuê ký'}
           </button>
+        )}
+        {!readOnly && <div className="mt-auto flex gap-2">
+          {!editingLocked && (
+            <button
+              className={`${actionBtn} bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700`}
+              onClick={() => onEdit(contract)}
+            >
+              <Pencil size={13} /> Sửa
+            </button>
+          )}
           {contract.status === 'active' && (
             <>
               <button
