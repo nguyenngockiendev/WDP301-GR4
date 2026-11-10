@@ -258,7 +258,7 @@ export const syncPayment = async (paymentId, userId) => {
       status: 409,
       message: 'Chưa có xác nhận hợp lệ để cập nhật. Vui lòng liên hệ người hỗ trợ.',
     };
-  const code = await confirmGatewayPayment(result, 'vnpay', userId);
+  const code = await confirmGatewayPayment(result, userId);
   if (!['00', '02'].includes(code))
     throw {
       status: 409,

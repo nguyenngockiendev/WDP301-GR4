@@ -61,13 +61,7 @@ export default function AppRoutes() {
           <Route path="properties" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertiesHome /></ProtectedRoute>} />
           <Route path="properties/:propertyId/operations" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertyOperationsPage /></ProtectedRoute>} />
           <Route path="settings" element={<ProtectedRoute roles={['landlord']}><SettingsPage /></ProtectedRoute>} />
-<<<<<<< HEAD
-          <Route path="reports" element={<ReportsPage />} />
-          <Route path="reconciliation" element={<ProtectedRoute roles={['manager']}><ReconciliationPage /></ProtectedRoute>} />
-          {routes.map(route => (
-=======
           {routes.filter(route => !['/browse-rooms', '/rooms/:roomId'].includes(route.path)).map(route => (
->>>>>>> origin/HungTP-equipment
             <Route key={route.path} path={route.path} element={route.element} />
           ))}
         </Route>

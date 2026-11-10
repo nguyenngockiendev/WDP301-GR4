@@ -39,24 +39,3 @@ export function isValidVnpayResult(params) {
     /^\d{2}$/.test(params.vnp_TransactionStatus || '')
   );
 }
-
-export function readSepayPaidResult(body) {
-  const { order, transaction } = body || {};
-  if (body?.notification_type !== 'ORDER_PAID' ||
-    order?.order_status !== 'CAPTURED' || order?.order_currency !== 'VND' ||
-    transaction?.transaction_status !== 'APPROVED' || transaction?.transaction_type !== 'PAYMENT' ||
-    transaction?.transaction_currency !== 'VND') return null;
-
-  const paymentCode = order.order_invoice_number;
-  const gatewayTransactionId = transaction.transaction_id;
-  const orderAmount = String(order.order_amount);
-  const transactionAmount = String(transaction.transaction_amount);
-  const wholeVnd = /^\d+(?:\.0+)?$/;
-  const amount = Number(orderAmount);
-  if (typeof paymentCode !== 'string' || !mongoose.isObjectIdOrHexString(paymentCode) ||
-    typeof gatewayTransactionId !== 'string' || !/^[a-z0-9-]{1,128}$/i.test(gatewayTransactionId) ||
-    !wholeVnd.test(orderAmount) || !wholeVnd.test(transactionAmount) ||
-    !isValidPaymentAmount(amount) || Number(transactionAmount) !== amount) return null;
-
-  return { paymentCode, amount, gatewayTransactionId, success: true };
-}

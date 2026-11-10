@@ -10,11 +10,10 @@ import { notifyRecipient } from '../notifications/notifications.events.js';
 import { getInvoiceForPayment } from '../invoices/invoices.service.js';
 import { isValidPaymentAmount } from './payments.validation.js';
 import { createVnpayPaymentUrl } from './vnpay.service.js';
-import { createSepayCheckout } from './sepay.service.js';
 
 const payableStatuses = ['unpaid', 'partially_paid', 'overdue'];
 
-async function getPendingPayment(invoice, userId, amount, returnOrigin, provider, session) {
+async function getPendingPayment(invoice, userId, amount, returnOrigin, session) {
   const now = new Date();
   await Payments.updateMany(
     { invoice: invoice._id, method: 'gateway', status: 'pending' },
@@ -28,7 +27,7 @@ async function getPendingPayment(invoice, userId, amount, returnOrigin, provider
         invoice: invoice._id,
         method: 'gateway',
         status: 'pending',
-        provider,
+        provider: 'vnpay',
         payer: userId,
         amount,
         paidAt: null,
@@ -42,7 +41,7 @@ async function getPendingPayment(invoice, userId, amount, returnOrigin, provider
   return payment;
 }
 
-export const createInvoicePayment = async (data, userId, provider = 'vnpay') => {
+export const createInvoicePayment = async (data, userId) => {
   await Payments.init();
   return mongoose.connection.transaction(async session => {
     const invoice = await getInvoiceForPayment(data, userId, session);
@@ -61,19 +60,8 @@ export const createInvoicePayment = async (data, userId, provider = 'vnpay') => 
       { $inc: { __v: 1 } },
       { session, timestamps: false },
     );
-    const payment = await getPendingPayment(
-      invoice,
-      userId,
-      amount,
-      data.returnOrigin,
-      provider,
-      session,
-    );
+    const payment = await getPendingPayment(invoice, userId, amount, data.returnOrigin, session);
     const paymentCode = payment.id;
-    if (provider === 'sepay') {
-      const checkout = createSepayCheckout({ paymentCode, amount });
-      return { invoiceId: invoice._id, paymentCode, amount, ...checkout };
-    }
     const paymentUrl = createVnpayPaymentUrl({
       paymentCode,
       amount,
@@ -89,7 +77,6 @@ export const findGatewayPayment = (paymentCode, provider) => {
   if (!mongoose.isObjectIdOrHexString(paymentCode)) return null;
   const filter = { _id: paymentCode, method: 'gateway', expiresAt: { $type: 'date' } };
   if (provider === 'vnpay') filter.provider = { $in: ['vnpay', null] };
-  if (provider === 'sepay') filter.provider = 'sepay';
   return Payments.findOne(filter);
 };
 
@@ -107,7 +94,7 @@ export const getPaymentStatus = async (paymentCode, userId) => {
   };
 };
 
-export const confirmGatewayPayment = async (result, provider, recoveryUserId = null) => {
+export const confirmGatewayPayment = async (result, recoveryUserId = null) => {
   await Notifications.init();
   const session = await mongoose.startSession();
   let paidInvoiceId = null;
@@ -117,7 +104,7 @@ export const confirmGatewayPayment = async (result, provider, recoveryUserId = n
     let recipients = [];
     const code = await session.withTransaction(async () => {
       recipients = [];
-      const query = findGatewayPayment(result.paymentCode, provider);
+      const query = findGatewayPayment(result.paymentCode, 'vnpay');
       const payment = query && (await query.session(session));
       if (!payment) return '01';
       if (payment.amount !== result.amount) return '04';
@@ -136,7 +123,7 @@ export const confirmGatewayPayment = async (result, provider, recoveryUserId = n
         if (user?.role !== 'manager' || user.status !== 'active' || !assignment) {
           throw { status: 403, message: 'Bạn không còn quyền cập nhật giao dịch này.' };
         }
-        if (!result.success || provider !== 'vnpay') return '99';
+        if (!result.success) return '99';
         if (payment.status !== 'success') {
           const paidPayments = await Payments.find({
             invoice: payment.invoice,
@@ -167,10 +154,7 @@ export const confirmGatewayPayment = async (result, provider, recoveryUserId = n
       if (!invoice) return '01';
       const paidAmount = invoice.paidAmount ?? 0;
       const balance = invoice.totalAmount - paidAmount;
-      const validTransactionId =
-        provider === 'vnpay'
-          ? /^[1-9]\d*$/.test(result.gatewayTransactionId || '')
-          : Boolean(result.gatewayTransactionId);
+      const validTransactionId = /^[1-9]\d*$/.test(result.gatewayTransactionId || '');
       if (
         !validTransactionId ||
         !payableStatuses.includes(invoice.status) ||
