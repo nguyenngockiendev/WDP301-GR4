@@ -16,17 +16,6 @@ const invoiceLabels = {
   overdue: 'Quá hạn',
   cancelled: 'Đã hủy',
 };
-const eventLabels = {
-  RECEIVED: 'Đã nhận',
-  PROCESSING: 'Đang xử lý',
-  APPLIED: 'Đã áp dụng kết quả',
-  DUPLICATE: 'Giao dịch đã xử lý',
-  ORDER_NOT_FOUND: 'Không tìm thấy giao dịch/hóa đơn',
-  AMOUNT_MISMATCH: 'Sai số tiền',
-  INVALID_SIGNATURE: 'Xác minh không hợp lệ',
-  INVALID_PAYLOAD: 'Dữ liệu không hợp lệ',
-  ERROR: 'Lỗi xử lý',
-};
 const money = value => `${Number(value).toLocaleString('vi-VN')} ₫`;
 export default function ReconciliationPage() {
   const [month, setMonth] = useState(() =>
@@ -39,6 +28,26 @@ export default function ReconciliationPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [updating, setUpdating] = useState(null);
+  const [message, setMessage] = useState('');
+  const handleSyncPayment = async paymentId => {
+    if (updating) return;
+    setUpdating(paymentId);
+    setError('');
+    setMessage('');
+    try {
+      const response = await reconciliationAPI.syncPayment(paymentId);
+      setMessage(response.data.message);
+      setRevision(value => value + 1);
+    } catch (error) {
+      setError(
+        error.response?.data?.message ||
+          'Chưa cập nhật được. Vui lòng thử lại hoặc liên hệ người hỗ trợ.',
+      );
+    } finally {
+      setUpdating(null);
+    }
+  };
   useEffect(() => {
     const controller = new AbortController();
     const fetchReconciliation = async () => {
@@ -139,6 +148,11 @@ export default function ReconciliationPage() {
         là tháng hóa đơn; tổng thu gồm mọi giao dịch thành công của hóa đơn đó, kể cả thanh toán ở
         tháng khác. Màn này không tự sửa hóa đơn hoặc giao dịch.
       </p>
+      {message && (
+        <p role="status" className="text-primary">
+          {message}
+        </p>
+      )}
       {error && (
         <p role="alert" className="text-red-700">
           {error}
@@ -210,6 +224,18 @@ export default function ReconciliationPage() {
                     ))}
                   </ul>
                 )}
+                {row.guidance && <p className="text-sm text-content-sub">{row.guidance}</p>}
+                {row.recoveryActions.map(action => (
+                  <button
+                    key={action.paymentId}
+                    disabled={!!updating}
+                    onClick={() => handleSyncPayment(action.paymentId)}
+                    className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    {updating === action.paymentId ? 'Đang cập nhật…' : 'Cập nhật lại'} ·{' '}
+                    {money(action.amount)}
+                  </button>
+                ))}
                 <details>
                   <summary className="cursor-pointer text-sm font-semibold text-primary">
                     Giao dịch liên quan ({row.transactions.length})
@@ -235,50 +261,6 @@ export default function ReconciliationPage() {
                         {item.gatewayTransactionId && (
                           <p className="break-all text-content-sub">
                             Mã cổng: {item.gatewayTransactionId}
-                          </p>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-                <details>
-                  <summary className="cursor-pointer text-sm font-semibold text-primary">
-                    Nhật ký IPN/Return ({row.gatewayEventCount || 0})
-                  </summary>
-                  <p className="mt-2 text-xs text-content-sub">
-                    Tối đa 20 lần nhận gần nhất. Nhật ký chỉ có từ khi bật chức năng; không có nhật
-                    ký không có nghĩa giao dịch sai.
-                  </p>
-                  {!row.gatewayEvents?.length && (
-                    <p className="mt-2 text-sm text-content-sub">
-                      Chưa có nhật ký callback cho các giao dịch này.
-                    </p>
-                  )}
-                  <ul className="mt-2 divide-y divide-surface-border">
-                    {row.gatewayEvents?.map(event => (
-                      <li key={event._id} className="space-y-1 py-3 text-sm">
-                        <p className="font-semibold">
-                          {event.source} · {new Date(event.receivedAt).toLocaleString('vi-VN')} ·{' '}
-                          {eventLabels[event.processResult] || event.processResult}
-                        </p>
-                        <p className="break-all">Mã giao dịch: {event.txnRef}</p>
-                        <p>
-                          Xác minh:{' '}
-                          {event.signatureValid === true
-                            ? 'Hợp lệ'
-                            : event.signatureValid === false
-                              ? 'Không hợp lệ'
-                              : 'Chưa xác minh'}{' '}
-                          · Số tiền callback:{' '}
-                          {event.amount == null ? 'Không hợp lệ' : money(event.amount)}
-                        </p>
-                        <p>
-                          Mã phản hồi: {event.responseCode || '—'} · Trạng thái cổng gửi:{' '}
-                          {event.transactionStatus || '—'}
-                        </p>
-                        {event.gatewayTransactionNo && (
-                          <p className="break-all">
-                            Mã giao dịch cổng: {event.gatewayTransactionNo}
                           </p>
                         )}
                       </li>

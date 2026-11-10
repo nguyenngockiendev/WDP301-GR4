@@ -1,3 +1,6 @@
+import mongoose from 'mongoose';
+import { readVnpayResult } from '../payments/vnpay.service.js';
+import { confirmGatewayPayment } from '../payments/payments.service.js';
 import Users from '../../models/Users.js';
 import ManagerAssignments from '../../models/ManagerAssignments.js';
 import Properties from '../../models/Properties.js';
@@ -57,12 +60,12 @@ export const getReconciliation = async (userId, query) => {
     .sort({ createdAt: -1, _id: -1 })
     .lean();
   const now = new Date();
-  // Chỉ trả nhật ký có mã Payment thuộc hóa đơn trong phạm vi quản lý.
+  // Dùng nhật ký để kiểm tra; không trả dữ liệu kỹ thuật về giao diện quản lý.
   const events = await GatewayEvents.find({
     txnRef: { $in: payments.map(item => String(item._id)) },
   })
     .select(
-      'source txnRef gatewayTransactionNo amount responseCode transactionStatus signatureValid processResult resultCode receivedAt processedAt',
+      'provider source txnRef gatewayTransactionNo amount responseCode transactionStatus signatureValid processResult resultCode receivedAt processedAt raw rawTruncated',
     )
     .sort({ receivedAt: -1, _id: -1 })
     .lean();
@@ -77,42 +80,50 @@ export const getReconciliation = async (userId, query) => {
     const issues = [];
     const paymentIds = new Set(transactions.map(item => String(item._id)));
     const gatewayEvents = events.filter(event => paymentIds.has(event.txnRef));
-    if (
-      gatewayEvents.some(event =>
-        ['INVALID_SIGNATURE', 'INVALID_PAYLOAD'].includes(event.processResult),
-      )
-    ) {
-      issues.push('Có callback không hợp lệ; chưa thể coi là xác nhận từ VNPay');
+    const recoveryActions = [];
+    for (const payment of transactions) {
+      if (payment.method !== 'gateway' || (payment.provider && payment.provider !== 'vnpay'))
+        continue;
+      const paymentEvents = gatewayEvents.filter(event => event.txnRef === String(payment._id));
+      const confirmation = paymentEvents.find(event => getVerifiedResult(event, payment));
+      if (payment.status !== 'success' && confirmation) {
+        issues.push(
+          'Có xác nhận thanh toán thành công nhưng hệ thống chưa cập nhật. Không yêu cầu khách thanh toán lại.',
+        );
+        if (
+          received === recorded &&
+          ['unpaid', 'partially_paid', 'overdue'].includes(invoice.status) &&
+          Number.isSafeInteger(recorded) &&
+          recorded >= 0 &&
+          invoice.totalAmount - recorded >= payment.amount
+        ) {
+          recoveryActions.push({ paymentId: payment._id, amount: payment.amount });
+        }
+      }
+      if (
+        paymentEvents.some(
+          event => event.signatureValid === true && event.amount !== payment.amount,
+        )
+      ) {
+        issues.push(
+          'Số tiền trong xác nhận thanh toán khác số tiền giao dịch. Liên hệ người hỗ trợ kiểm tra trước khi ghi nhận.',
+        );
+      }
+      if (
+        payment.status !== 'success' &&
+        !confirmation &&
+        paymentEvents.some(
+          event =>
+            ['ERROR', 'INVALID_SIGNATURE', 'INVALID_PAYLOAD'].includes(event.processResult) ||
+            (['RECEIVED', 'PROCESSING'].includes(event.processResult) &&
+              now - event.receivedAt > 5 * 60 * 1000),
+        )
+      ) {
+        issues.push(
+          'Chưa xác nhận được kết quả thanh toán. Liên hệ người hỗ trợ và cung cấp mã giao dịch; không tự ghi nhận đã trả.',
+        );
+      }
     }
-    if (gatewayEvents.some(event => event.processResult === 'AMOUNT_MISMATCH'))
-      issues.push('Có callback báo số tiền khác giao dịch');
-    if (
-      gatewayEvents.some(
-        event =>
-          event.signatureValid === true &&
-          event.responseCode === '00' &&
-          event.transactionStatus === '00' &&
-          transactions.find(item => String(item._id) === event.txnRef)?.status !== 'success',
-      )
-    ) {
-      issues.push('Callback hợp lệ báo thành công nhưng giao dịch chưa ghi nhận thành công');
-    }
-    if (
-      gatewayEvents.some(
-        event =>
-          ['RECEIVED', 'PROCESSING'].includes(event.processResult) &&
-          now - event.receivedAt > 5 * 60 * 1000,
-      )
-    )
-      issues.push('Có callback chưa xử lý xong quá 5 phút');
-    if (
-      gatewayEvents.some(
-        event =>
-          event.processResult === 'ERROR' &&
-          transactions.find(item => String(item._id) === event.txnRef)?.status !== 'success',
-      )
-    )
-      issues.push('Có callback gặp lỗi xử lý');
     if (
       ![invoice.totalAmount, recorded, ...transactions.map(item => item.amount)].every(
         value => Number.isSafeInteger(value) && value >= 0,
@@ -163,10 +174,12 @@ export const getReconciliation = async (userId, query) => {
       received,
       difference: recorded - received,
       status: rowStatus,
-      issues,
+      issues: [...new Set(issues)],
+      recoveryActions,
+      guidance: issues.length
+        ? 'Nếu cập nhật không thành công hoặc số tiền vẫn không khớp, cung cấp mã hóa đơn và mã giao dịch cho người hỗ trợ kiểm tra.'
+        : null,
       transactions,
-      gatewayEventCount: gatewayEvents.length,
-      gatewayEvents: gatewayEvents.slice(0, 20),
     };
   });
   const summary = { total: rows.length, matched: 0, review: 0 };
@@ -182,4 +195,75 @@ export const getReconciliation = async (userId, query) => {
     total: filtered.length,
     totalPages: Math.ceil(filtered.length / 10),
   };
+};
+
+// Kiểm tra lại chữ ký từ dữ liệu gốc, không chỉ tin cờ đã lưu trong nhật ký.
+const getVerifiedResult = (event, payment) => {
+  if (!(payment.expiresAt instanceof Date)) return null;
+  if (event.provider && event.provider !== 'vnpay') return null;
+  if (!event.signatureValid || event.rawTruncated || !['IPN', 'RETURN'].includes(event.source))
+    return null;
+  try {
+    const result = readVnpayResult(event.raw, event.source === 'IPN');
+    if (
+      !result?.success ||
+      result.paymentCode !== String(payment._id) ||
+      result.amount !== payment.amount ||
+      !Number.isSafeInteger(result.amount) ||
+      result.amount <= 0 ||
+      !/^[1-9]\d*$/.test(result.gatewayTransactionId || '') ||
+      !result.paidAt
+    )
+      return null;
+    return result;
+  } catch {
+    return null;
+  }
+};
+
+export const syncPayment = async (paymentId, userId) => {
+  if (!mongoose.isObjectIdOrHexString(paymentId))
+    throw { status: 400, message: 'Mã giao dịch không hợp lệ.' };
+  const user = await Users.findById(userId).select('role status');
+  if (user?.role !== 'manager' || user.status !== 'active')
+    throw { status: 403, message: 'Chỉ quản lý đang hoạt động được cập nhật.' };
+  const payment = await Payments.findById(paymentId);
+  const invoice = payment && (await Invoices.findById(payment.invoice));
+  const contract = invoice && (await Contracts.findById(invoice.contract));
+  const room = contract && (await Rooms.findById(contract.room));
+  if (
+    !room ||
+    !(await ManagerAssignments.exists({
+      manager: userId,
+      property: room.property,
+      status: 'active',
+    }))
+  ) {
+    throw { status: 403, message: 'Bạn không được cập nhật giao dịch của dãy trọ này.' };
+  }
+  if (payment.method !== 'gateway' || (payment.provider && payment.provider !== 'vnpay')) {
+    throw { status: 400, message: 'Chức năng này chỉ cập nhật giao dịch VNPay.' };
+  }
+  if (payment.status === 'success') return { message: 'Giao dịch đã được ghi nhận trước đó.' };
+  const events = await GatewayEvents.find({ txnRef: payment.id, signatureValid: true }).sort({
+    receivedAt: -1,
+  });
+  let result;
+  for (const event of events) {
+    result = getVerifiedResult(event, payment);
+    if (result) break;
+  }
+  if (!result)
+    throw {
+      status: 409,
+      message: 'Chưa có xác nhận hợp lệ để cập nhật. Vui lòng liên hệ người hỗ trợ.',
+    };
+  const code = await confirmGatewayPayment(result, 'vnpay', userId);
+  if (!['00', '02'].includes(code))
+    throw {
+      status: 409,
+      message:
+        'Chưa thể cập nhật vì dữ liệu hóa đơn hoặc giao dịch không khớp. Vui lòng liên hệ người hỗ trợ.',
+    };
+  return { message: 'Đã ghi nhận thanh toán vào hóa đơn.' };
 };
