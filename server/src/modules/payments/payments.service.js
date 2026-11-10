@@ -1,6 +1,12 @@
 import mongoose from 'mongoose';
 import Invoices from '../../models/Invoices.js';
 import Payments from '../../models/Payments.js';
+import Notifications from '../../models/Notifications.js';
+import Contracts from '../../models/Contracts.js';
+import Rooms from '../../models/Rooms.js';
+import ManagerAssignments from '../../models/ManagerAssignments.js';
+import Users from '../../models/Users.js';
+import { notifyRecipient } from '../notifications/notifications.events.js';
 import { getInvoiceForPayment } from '../invoices/invoices.service.js';
 import { isValidPaymentAmount } from './payments.validation.js';
 import { createVnpayPaymentUrl } from './vnpay.service.js';
@@ -79,6 +85,7 @@ export const getPaymentStatus = async (paymentCode, userId) => {
   if (!payment) throw { status: 404, message: 'Không tìm thấy giao dịch thanh toán của bạn!' };
   return {
     status: payment.status,
+    provider: payment.provider || 'vnpay',
     invoiceId: payment.invoice?._id,
     invoiceStatus: payment.invoice?.status,
     amount: payment.amount,
@@ -86,9 +93,12 @@ export const getPaymentStatus = async (paymentCode, userId) => {
 };
 
 export const confirmGatewayPayment = async (result, provider) => {
+  await Notifications.init();
   const session = await mongoose.startSession();
   try {
-    return await session.withTransaction(async () => {
+    let recipients = [];
+    const code = await session.withTransaction(async () => {
+      recipients = [];
       const query = findGatewayPayment(result.paymentCode, provider);
       const payment = query && await query.session(session);
       if (!payment) return '01';
@@ -116,12 +126,45 @@ export const confirmGatewayPayment = async (result, provider) => {
       invoice.paidAmount = paidAmount + payment.amount;
       invoice.status = invoice.paidAmount === invoice.totalAmount ? 'paid' : 'partially_paid';
       payment.status = 'success';
-      payment.paidAt = new Date();
+      payment.paidAt = result.paidAt || new Date();
       payment.gatewayTransactionId = result.gatewayTransactionId;
       await invoice.save({ session });
       await payment.save({ session });
+      await Notifications.updateOne(
+        { eventKey: `payment-success:${payment.id}`, recipient: payment.payer },
+        { $setOnInsert: {
+          type: 'system', title: 'Thanh toán thành công',
+          content: `Đã ghi nhận ${payment.amount.toLocaleString('vi-VN')} ₫ cho hóa đơn kỳ ${invoice.billingMonth}.`,
+          related: { entityType: 'invoice', entityId: invoice._id }, isRead: false,
+        } },
+        { upsert: true, session },
+      );
+      recipients.push(payment.payer);
+      const contract = await Contracts.findById(invoice.contract).select('room').session(session).lean();
+      const room = contract && await Rooms.findById(contract.room).select('property roomNumber').session(session).lean();
+      if (room) {
+        const managerIds = await ManagerAssignments.distinct('manager', {
+          property: room.property, status: 'active',
+        }).session(session);
+        const managers = await Users.find({ _id: { $in: managerIds }, role: 'manager', status: 'active' })
+          .select('_id').session(session).lean();
+        for (const manager of managers) {
+          await Notifications.updateOne(
+            { eventKey: `payment-success:${payment.id}`, recipient: manager._id },
+            { $setOnInsert: {
+              type: 'system', property: room.property, title: 'Đã nhận thanh toán hóa đơn',
+              content: `Phòng ${room.roomNumber} đã thanh toán ${payment.amount.toLocaleString('vi-VN')} ₫ cho hóa đơn kỳ ${invoice.billingMonth}.`,
+              related: { entityType: 'invoice', entityId: invoice._id }, isRead: false,
+            } },
+            { upsert: true, session },
+          );
+          recipients.push(manager._id);
+        }
+      }
       return '00';
     });
+    if (code === '00') for (const recipient of recipients) notifyRecipient(recipient);
+    return code;
   } finally {
     await session.endSession();
   }

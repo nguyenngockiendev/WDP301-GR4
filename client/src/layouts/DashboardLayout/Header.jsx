@@ -42,6 +42,7 @@ export default function Header() {
     if (chosenId) {
       setSelectedId(chosenId);
       localStorage.setItem('currentPropertyId', chosenId);
+      window.dispatchEvent(new Event('property-changed'));
     } else localStorage.removeItem('currentPropertyId');
   }, [routePropertyId, selectedId, properties, loadingProperties, propertyError, canManage]);
 
@@ -50,6 +51,8 @@ export default function Header() {
     if (!properties.some(p => p._id === id)) return;
     setSelectedId(id);
     localStorage.setItem('currentPropertyId', id);
+    window.dispatchEvent(new Event('property-changed'));
+    if (location.pathname === '/dashboard') return;
     const section = location.pathname.match(/^\/properties\/[^/]+\/(rooms|contracts|rental-requests|tenants|operations)$/)?.[1] || 'rooms';
     navigate('/properties/' + id + '/' + section);
   };

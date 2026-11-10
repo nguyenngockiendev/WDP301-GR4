@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema(
   {
+    eventKey: { type: String },
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     property: { type: mongoose.Schema.Types.ObjectId, ref: 'Property' },
     recipient: {
@@ -41,6 +42,10 @@ const notificationSchema = new mongoose.Schema(
   },
 );
 
+notificationSchema.index(
+  { eventKey: 1, recipient: 1 },
+  { unique: true, partialFilterExpression: { eventKey: { $type: 'string' } } },
+);
 const Notifications = mongoose.model('Notification', notificationSchema);
 
 export default Notifications;

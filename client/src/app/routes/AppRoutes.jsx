@@ -1,4 +1,5 @@
 import Profile from '../../features/profile/pages/Profile';
+import ReconciliationPage from '../../features/reconciliation/ReconciliationPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout/DashboardLayout';
 import ProtectedRoute from './ProtectedRoute';
@@ -9,6 +10,7 @@ import contractsRoutes from '../../features/contracts/routes/ContractsRoutes';
 import rentalsRoutes from '../../features/rentals/routes/RentalsRoutes';
 import tenantsRoutes from '../../features/tenants/routes/TenantsRoutes';
 import DashboardPage from '../../features/dashboard/pages/DashboardPage';
+import ReportsPage from '../../features/reports/ReportsPage';
 import notificationsRoutes from '../../features/notifications/routes/NotificationsRoutes';
 import shortcuts from '../../features/properties/routes/RentalsRoutes';
 import terminationRequestsRoutes from '../../features/terminationrequests/routes/TerminationRequestsRoutes';
@@ -19,9 +21,9 @@ import SettingsPage from '../../features/landlord/SettingsPage';
 import utilityReadingsRoutes from '../../features/utility-readings/routes/UtilityReadingsRoutes';
 import invoiceRoutes from '../../features/invoices/routes/InvoiceRoutes';
 import PropertiesHome from '../../features/landlord/PropertiesHome';
-// Người thuê không dùng trang quản lý: /dashboard chuyển về trang Home
+// Dashboard hiển thị dữ liệu theo vai trò của tài khoản đang đăng nhập.
 function DashboardEntry() {
-  return getCurrentUser()?.role === 'tenant' ? <Navigate to="/home" replace /> : <DashboardPage />;
+  return <DashboardPage />;
 }
 
 export default function AppRoutes() {
@@ -53,6 +55,8 @@ export default function AppRoutes() {
           <Route path="dashboard" element={<DashboardEntry />} />
           <Route path="properties" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertiesHome /></ProtectedRoute>} />
           <Route path="settings" element={<ProtectedRoute roles={['landlord']}><SettingsPage /></ProtectedRoute>} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="reconciliation" element={<ProtectedRoute roles={['manager']}><ReconciliationPage /></ProtectedRoute>} />
           {routes.map(route => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}

@@ -35,7 +35,8 @@ export const createRoom = async (data, user) => {
     throw { status: 400, message: 'Số phòng đã tồn tại trong tòa nhà này' };
   }
 
-  const room = await Rooms.create(data);
+  const { statusHistory, createdAt, updatedAt, ...roomData } = data;
+  const room = await Rooms.create(roomData);
   return room.populate('property');
 };
 

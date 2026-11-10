@@ -12,11 +12,18 @@ export function NotificationsProvider({ children }) {
     const sync = () => setToken(localStorage.getItem('token'));
     window.addEventListener('storage', sync);
     window.addEventListener('auth-changed', sync);
-    return () => { window.removeEventListener('storage', sync); window.removeEventListener('auth-changed', sync); };
+    return () => {
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('auth-changed', sync);
+    };
   }, []);
   const refreshUnread = useCallback(async () => {
     const currentToken = localStorage.getItem('token');
-    if (!currentToken) { setAuthenticated(false); setUnreadCount(null); return; }
+    if (!currentToken) {
+      setAuthenticated(false);
+      setUnreadCount(null);
+      return;
+    }
     try {
       const response = await notificationsAPI.unread();
       if (localStorage.getItem('token') !== currentToken) return;
@@ -30,9 +37,13 @@ export function NotificationsProvider({ children }) {
   }, []);
   useEffect(() => {
     let socket, retry;
-    let disposed = false, attempts = 0;
+    let disposed = false,
+      attempts = 0;
     setUnreadCount(null);
-    if (!token) { setAuthenticated(false); return; }
+    if (!token) {
+      setAuthenticated(false);
+      return;
+    }
     setAuthenticated(null);
     const refresh = () => {
       if (disposed) return;
@@ -55,9 +66,14 @@ export function NotificationsProvider({ children }) {
         if (disposed) return;
         try {
           const message = JSON.parse(event.data);
-          if (message.type === 'ready') { attempts = 0; setAuthenticated(true); }
+          if (message.type === 'ready') {
+            attempts = 0;
+            setAuthenticated(true);
+          }
           if (['ready', 'notifications.changed'].includes(message.type)) refresh();
-        } catch { /* Ignore malformed server messages. */ }
+        } catch {
+          /* Ignore malformed server messages. */
+        }
       };
       connection.onclose = event => {
         if (disposed) return;
@@ -66,15 +82,27 @@ export function NotificationsProvider({ children }) {
             localStorage.removeItem('token');
             window.dispatchEvent(new Event('auth-changed'));
           }
-          setAuthenticated(false); setUnreadCount(null); return;
+          setAuthenticated(false);
+          setUnreadCount(null);
+          return;
         }
         retry = setTimeout(connect, Math.min(1000 * 2 ** Math.min(attempts++, 5), 30000));
       };
     };
-    refresh(); connect();
-    window.addEventListener('focus', refresh);
-    return () => { disposed = true; clearTimeout(retry); socket?.close(); window.removeEventListener('focus', refresh); };
+    refresh();
+    connect();
+    return () => {
+      disposed = true;
+      clearTimeout(retry);
+      socket?.close();
+    };
   }, [token, refreshUnread]);
-  return <Context.Provider value={{ unreadCount, setUnreadCount, refreshUnread, realtimeRevision, authenticated }}>{children}</Context.Provider>;
+  return (
+    <Context.Provider
+      value={{ unreadCount, setUnreadCount, refreshUnread, realtimeRevision, authenticated }}
+    >
+      {children}
+    </Context.Provider>
+  );
 }
 export const useNotifications = () => useContext(Context);

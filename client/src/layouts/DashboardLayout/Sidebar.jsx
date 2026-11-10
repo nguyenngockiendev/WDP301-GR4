@@ -32,7 +32,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       title: 'TỔNG QUAN',
       items: [
         { to: '/home', label: 'Trang chủ', icon: Building2, roles: ['tenant'] },
-        { to: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard, roles: STAFF },
+        { to: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+        { to: '/reports', label: 'Báo cáo & doanh thu', icon: FileText, roles: STAFF },
         { to: '/notifications', label: 'Thông báo', icon: Bell },
       ],
     },
@@ -45,7 +46,6 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
           to: '/rental-requests',
           label: 'Yêu cầu đặt phòng',
           icon: CalendarClock,
-          badge: '2',
           roles: STAFF,
         },
         { to: '/tenants', label: 'Khách thuê', icon: Users, roles: STAFF },
@@ -66,6 +66,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       items: [
         { to: '/utility-readings', label: 'Số điện & nước', icon: Zap, roles: STAFF },
         { to: '/invoices', label: 'Quản lý hóa đơn', icon: ReceiptText, roles: STAFF },
+        { to: '/reconciliation', label: 'Đối soát nội bộ', icon: ClipboardList, roles: ['manager'] },
         { to: '/invoices/new', label: 'Lập hóa đơn', icon: FileText, roles: STAFF },
         { to: '/invoices/my', label: 'Hóa đơn của tôi', icon: ReceiptText, roles: ['tenant'] },
       ],
@@ -229,26 +230,6 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
 
       {/* PHẦN DƯỚI: WIDGET TỶ LỆ LẤP ĐẦY & PROFILE QUẢN LÝ */}
       <div className="pt-2 border-t border-emerald-50/80 space-y-2 shrink-0">
-        {/* Widget Lấp đầy phòng (Chỉ hiển thị khi mở rộng) */}
-        {!isCollapsed && (
-          <div className="p-2.5 rounded-2xl bg-gradient-to-b from-white/90 to-emerald-50/50 border border-emerald-100/70 shadow-2xs">
-            <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 mb-1.5">
-              <span className="flex items-center gap-1.5 text-slate-500">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Lấp đầy phòng
-              </span>
-              <span className="text-emerald-700 font-black">75%</span>
-            </div>
-            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full w-3/4" />
-            </div>
-            <div className="flex justify-between items-center mt-1.5 text-[10px] text-slate-400 font-semibold">
-              <span>18 đã thuê</span>
-              <span>24 tổng phòng</span>
-            </div>
-          </div>
-        )}
-
         {/* Thông tin Quản lý */}
         <div
           className={`flex items-center gap-2.5 p-1.5 rounded-2xl hover:bg-slate-50/80 transition cursor-pointer group ${

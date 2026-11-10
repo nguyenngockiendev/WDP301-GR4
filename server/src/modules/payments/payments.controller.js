@@ -11,7 +11,8 @@ import { sendError, sendSuccess } from '../../shared/utils/response.js';
 import * as paymentsService from './payments.service.js';
 import { readSepayPaidResult } from './payments.validation.js';
 import { verifySepayIpnKey } from './sepay.service.js';
-import { createVnpayPaymentUrl, readVnpayResult } from './vnpay.service.js';
+import { createVnpayPaymentUrl } from './vnpay.service.js';
+import { processVnpayCallback } from './gateway-events.service.js';
 
 function getIpAddress(req) {
   return req.ip === '::1' ? '127.0.0.1' : req.ip?.replace(/^::ffff:/, '');
@@ -83,12 +84,10 @@ export const createSepayInvoicePayment = async (req, res) => {
 export const vnpayReturn = async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try {
-    const result = readVnpayResult(req.query);
+    const { result } = await processVnpayCallback(req.query, 'RETURN');
     if (!result) {
       return sendError(res, { status: 400, message: 'Phản hồi từ VNPay không hợp lệ!' });
     }
-
-    await paymentsService.confirmGatewayPayment(result, 'vnpay');
 
     const query = paymentsService.findGatewayPayment(result.paymentCode, 'vnpay');
     const payment = query && (await query.select('amount returnOrigin').lean());
@@ -115,8 +114,7 @@ export const vnpayReturn = async (req, res) => {
 export const vnpayIpn = async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try {
-    const result = readVnpayResult(req.query, true);
-    const code = result ? await paymentsService.confirmGatewayPayment(result, 'vnpay') : '97';
+    const { code } = await processVnpayCallback(req.query, 'IPN');
     return res.json(ipnResponses[code]);
   } catch (error) {
     console.error('Lỗi xử lý IPN VNPay:', error.message);

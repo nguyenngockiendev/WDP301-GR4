@@ -9,7 +9,7 @@ export default function TenantInvoiceList({ invoices, payingInvoiceId, onPay }) 
     return (
       <section className="rounded-3xl border border-white bg-white/85 p-8 text-center shadow-card">
         <ReceiptText size={28} className="mx-auto mb-3 text-primary" />
-        <p className="font-bold text-content-main">Bạn không có khoản thanh toán nào</p>
+        <p className="font-bold text-content-main">Không có hóa đơn phù hợp</p>
       </section>
     );
   }
@@ -34,6 +34,14 @@ export default function TenantInvoiceList({ invoices, payingInvoiceId, onPay }) 
             </div>
 
             <dl className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-surface-bg p-3 text-sm">
+              <div>
+                <dt className="text-content-sub">Tổng hóa đơn</dt>
+                <dd className="mt-1 font-bold text-content-main">{formatCurrency(invoice.totalAmount)}</dd>
+              </div>
+              <div>
+                <dt className="text-content-sub">Đã thanh toán</dt>
+                <dd className="mt-1 font-bold text-content-main">{formatCurrency(invoice.paidAmount ?? 0)}</dd>
+              </div>
               <div>
                 <dt className="text-content-sub">Còn phải trả</dt>
                 <dd className="mt-1 font-extrabold text-primary-dark">{formatCurrency(balance)}</dd>

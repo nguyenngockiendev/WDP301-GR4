@@ -16,7 +16,7 @@ const buttonClass =
 export default function NotificationsPage() {
   let isManager = false;
   try {
-    isManager = jwtDecode(localStorage.getItem('token')).role === 'manager';
+    isManager = ['manager', 'landlord'].includes(jwtDecode(localStorage.getItem('token')).role);
   } catch {
     /* Quyền thực tế vẫn được kiểm tra ở backend. */
   }
