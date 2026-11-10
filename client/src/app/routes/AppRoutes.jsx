@@ -19,6 +19,7 @@ import SettingsPage from '../../features/landlord/SettingsPage';
 import utilityReadingsRoutes from '../../features/utility-readings/routes/UtilityReadingsRoutes';
 import invoiceRoutes from '../../features/invoices/routes/InvoiceRoutes';
 import PropertiesHome from '../../features/landlord/PropertiesHome';
+import PropertyOperationsPage from '../../features/landlord/PropertyOperationsPage';
 // Người thuê không dùng trang quản lý: /dashboard chuyển về trang Home
 function DashboardEntry() {
   return getCurrentUser()?.role === 'tenant' ? <Navigate to="/home" replace /> : <DashboardPage />;
@@ -52,6 +53,7 @@ export default function AppRoutes() {
         <Route element={<DashboardLayout />}>
           <Route path="dashboard" element={<DashboardEntry />} />
           <Route path="properties" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertiesHome /></ProtectedRoute>} />
+          <Route path="properties/:propertyId/operations" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertyOperationsPage /></ProtectedRoute>} />
           <Route path="settings" element={<ProtectedRoute roles={['landlord']}><SettingsPage /></ProtectedRoute>} />
           {routes.map(route => (
             <Route key={route.path} path={route.path} element={route.element} />

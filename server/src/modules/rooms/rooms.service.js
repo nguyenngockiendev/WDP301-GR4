@@ -1,6 +1,57 @@
 import Rooms from '../../models/Rooms.js';
 import Contracts from '../../models/Contracts.js';
+import Assets from '../../models/Assets.js';
+import mongoose from 'mongoose';
 import { assertPropertyAccess } from '../properties/properties.service.js';
+
+const syncRoomAssets = async (propertyId, roomId, assetIds) => {
+  if (!Array.isArray(assetIds)) {
+    throw { status: 400, message: 'Danh sách thiết bị của phòng không hợp lệ.' };
+  }
+  const uniqueIds = [...new Set(assetIds.map(String))];
+  if (uniqueIds.some(id => !mongoose.Types.ObjectId.isValid(id))) {
+    throw { status: 400, message: 'Mã thiết bị không hợp lệ.' };
+  }
+
+  const currentAssets = await Assets.find({ property: propertyId, room: roomId });
+  const requestedAssets = uniqueIds.length
+    ? await Assets.find({ _id: { $in: uniqueIds }, property: propertyId })
+    : [];
+  if (requestedAssets.length !== uniqueIds.length) {
+    throw { status: 400, message: 'Có thiết bị không thuộc tòa nhà này.' };
+  }
+  if (requestedAssets.some(asset => asset.status === 'retired' || (asset.room && String(asset.room) !== String(roomId)))) {
+    throw { status: 409, message: 'Thiết bị đã ngừng sử dụng hoặc đang được gán cho phòng khác.' };
+  }
+
+  const selected = new Set(uniqueIds);
+  const removed = currentAssets.filter(asset => !selected.has(String(asset._id)));
+  for (const asset of removed) {
+    asset.room = null;
+    if (asset.status === 'in_use') asset.status = 'in_stock';
+    await asset.save();
+  }
+  for (const asset of requestedAssets) {
+    asset.room = roomId;
+    if (asset.status === 'in_stock') asset.status = 'in_use';
+    await asset.save();
+  }
+};
+
+const validateNewRoomAssets = async (propertyId, assetIds) => {
+  if (!Array.isArray(assetIds)) {
+    throw { status: 400, message: 'Danh sách thiết bị của phòng không hợp lệ.' };
+  }
+  const uniqueIds = [...new Set(assetIds.map(String))];
+  if (uniqueIds.some(id => !mongoose.Types.ObjectId.isValid(id))) {
+    throw { status: 400, message: 'Mã thiết bị không hợp lệ.' };
+  }
+  if (!uniqueIds.length) return;
+  const assets = await Assets.find({ _id: { $in: uniqueIds }, property: propertyId });
+  if (assets.length !== uniqueIds.length || assets.some(asset => asset.room || asset.status === 'retired')) {
+    throw { status: 409, message: 'Có thiết bị không thuộc tòa nhà này, đã ngừng sử dụng hoặc đang được gán cho phòng khác.' };
+  }
+};
 
 /** Lấy phòng và kiểm tra user có quyền với nhà trọ chứa phòng. */
 const findRoomWithAccess = async (roomId, user) => {
@@ -27,7 +78,7 @@ export const getRoomById = async roomId => {
 };
 
 export const createRoom = async (data, user) => {
-  const { property, roomNumber } = data;
+  const { property, roomNumber, assetIds, ...roomData } = data;
   await assertPropertyAccess(user, property);
 
   const existingRoom = await Rooms.findOne({ property, roomNumber });
@@ -35,7 +86,9 @@ export const createRoom = async (data, user) => {
     throw { status: 400, message: 'Số phòng đã tồn tại trong tòa nhà này' };
   }
 
-  const room = await Rooms.create(data);
+  if (assetIds !== undefined) await validateNewRoomAssets(property, assetIds);
+  const room = await Rooms.create(roomData);
+  if (assetIds !== undefined) await syncRoomAssets(property, room._id, assetIds);
   return room.populate('property');
 };
 
@@ -55,6 +108,7 @@ export const updateRoom = async (roomId, data, user) => {
   }
   room.property = targetProperty;
   await room.save();
+  if (data.assetIds !== undefined) await syncRoomAssets(room.property, room._id, data.assetIds);
   return room.populate('property');
 };
 
