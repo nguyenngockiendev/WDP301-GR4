@@ -10,6 +10,23 @@ import ManagerAssignments from '../../models/ManagerAssignments.js';
 const fail = (status, message) => {
   throw { status, message };
 };
+const currentVietnamDate = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+};
+const parseEffectiveDate = value => {
+  const dateOnly = value ? String(value).slice(0, 10) : currentVietnamDate();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) fail(400, 'Ngày áp dụng không hợp lệ.');
+  const effectiveFrom = new Date(`${dateOnly}T00:00:00.000Z`);
+  if (Number.isNaN(effectiveFrom.getTime()) || effectiveFrom.toISOString().slice(0, 10) !== dateOnly) {
+    fail(400, 'Ngày áp dụng không hợp lệ.');
+  }
+  if (dateOnly < currentVietnamDate()) fail(400, 'Ngày áp dụng phải từ hôm nay trở đi.');
+  return effectiveFrom;
+};
 const objectId = id => mongoose.Types.ObjectId.isValid(id);
 const safeUser = user => ({
   id: user._id,
@@ -36,12 +53,15 @@ export async function createProperty(userId, data) {
   const name = String(data.name || '').trim();
   const address = String(data.address || '').trim();
   if (name.length < 2 || address.length < 5) fail(400, 'Tên nhà trọ hoặc địa chỉ chưa hợp lệ.');
-  const electricityPrice =
-    data.electricityPrice === undefined || data.electricityPrice === ''
-      ? 0
-      : Number(data.electricityPrice);
-  const waterPrice =
-    data.waterPrice === undefined || data.waterPrice === '' ? 0 : Number(data.waterPrice);
+  const totalFloors = data.totalFloors === undefined || data.totalFloors === '' ? 1 : Number(data.totalFloors);
+  if (!Number.isInteger(totalFloors) || totalFloors < 1 || totalFloors > 5) {
+    fail(400, 'Số tầng mỗi tòa phải từ 1 đến 5.');
+  }
+  if (data.electricityPrice === undefined || data.electricityPrice === '' || data.waterPrice === undefined || data.waterPrice === '') {
+    fail(400, 'Vui lòng nhập giá điện và giá nước lớn hơn 0.');
+  }
+  const electricityPrice = Number(data.electricityPrice);
+  const waterPrice = Number(data.waterPrice);
   const paymentDueDay =
     data.paymentDueDay === undefined || data.paymentDueDay === '' ? 5 : Number(data.paymentDueDay);
   const paymentGraceDays =
@@ -52,11 +72,12 @@ export async function createProperty(userId, data) {
     data.depositMonths === undefined || data.depositMonths === '' ? 1 : Number(data.depositMonths);
   if (
     !Number.isFinite(electricityPrice) ||
-    electricityPrice < 0 ||
+    electricityPrice <= 0 ||
+    electricityPrice > 4000 ||
     !Number.isFinite(waterPrice) ||
-    waterPrice < 0
+    waterPrice <= 0
   ) {
-    fail(400, 'Đơn giá điện và nước phải là số không âm.');
+    fail(400, 'Giá điện phải lớn hơn 0 và tối đa 4.000 đồng/kWh; giá nước phải lớn hơn 0.');
   }
   if (!Number.isInteger(paymentDueDay) || paymentDueDay < 1 || paymentDueDay > 28)
     fail(400, 'Ngày đến hạn phải từ ngày 1 đến ngày 28.');
@@ -65,12 +86,12 @@ export async function createProperty(userId, data) {
   }
   if (!Number.isFinite(depositMonths) || depositMonths < 0 || depositMonths > 12)
     fail(400, 'Số tháng tiền cọc phải từ 0 đến 12.');
-  const effectiveFrom = data.effectiveFrom ? new Date(data.effectiveFrom) : new Date();
-  if (Number.isNaN(effectiveFrom.getTime())) fail(400, 'Ngày bắt đầu áp dụng không hợp lệ.');
+  const effectiveFrom = parseEffectiveDate(data.effectiveFrom);
   return Properties.create({
     owner: userId,
     name,
     address,
+    totalFloors,
     description: String(data.description || '').trim(),
     utilityRate: { electricityPrice, waterPrice, effectiveFrom },
     contractPolicy: {
@@ -86,6 +107,15 @@ export async function createProperty(userId, data) {
 
 export async function updateProperty(userId, propertyId, data) {
   const property = await ownedProperty(userId, propertyId);
+  if (data.totalFloors !== undefined) {
+    const totalFloors = Number(data.totalFloors);
+    if (!Number.isInteger(totalFloors) || totalFloors < 1 || totalFloors > 5) {
+      fail(400, 'Số tầng mỗi tòa phải từ 1 đến 5.');
+    }
+    const roomAboveFloorCount = await Rooms.exists({ property: property._id, floor: { $gt: totalFloors } });
+    if (roomAboveFloorCount) fail(409, 'Không thể giảm số tầng vì vẫn còn phòng ở tầng cao hơn.');
+    property.totalFloors = totalFloors;
+  }
   if (data.name !== undefined) {
     const name = String(data.name).trim();
     if (name.length < 2) fail(400, 'Tên nhà trọ phải có ít nhất 2 ký tự.');
@@ -156,9 +186,11 @@ export async function createManager(userId, data) {
     .toLowerCase();
   const fullName = String(data.fullName || '').trim();
   const password = String(data.password || '');
+  const phone = String(data.phone || '').trim();
   if (username.length < 2 || fullName.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     fail(400, 'Hãy nhập họ tên, username và email hợp lệ.');
   }
+  if (phone && !/^[0-9+().\-\s]{8,20}$/.test(phone)) fail(400, 'Số điện thoại không hợp lệ.');
   if (password.length < 8) fail(400, 'Mật khẩu tạm thời phải có ít nhất 8 ký tự.');
   if (await Users.exists({ $or: [{ email }, { username }] }))
     fail(409, 'Email hoặc username đã được sử dụng.');
@@ -166,7 +198,7 @@ export async function createManager(userId, data) {
     username,
     email,
     fullName,
-    phone: String(data.phone || '').trim(),
+    phone,
     password: await bcrypt.hash(password, 12),
     role: 'manager',
     status: 'active',
@@ -260,14 +292,18 @@ export async function configureRates(userId, propertyId, data) {
   const waterPrice = Number(data.waterPrice);
   if (
     !Number.isFinite(electricityPrice) ||
-    electricityPrice < 0 ||
+    electricityPrice <= 0 ||
+    electricityPrice > 4000 ||
     !Number.isFinite(waterPrice) ||
-    waterPrice < 0
+    waterPrice <= 0
   ) {
-    fail(400, 'Đơn giá điện và nước phải là số không âm.');
+    fail(400, 'Giá điện phải lớn hơn 0 và tối đa 4.000 đồng/kWh; giá nước phải lớn hơn 0.');
   }
-  const effectiveFrom = data.effectiveFrom ? new Date(data.effectiveFrom) : new Date();
-  if (Number.isNaN(effectiveFrom.getTime())) fail(400, 'Ngày áp dụng không hợp lệ.');
+  const effectiveFrom = parseEffectiveDate(data.effectiveFrom);
+  const currentEffectiveFrom = property.utilityRate?.effectiveFrom;
+  if (currentEffectiveFrom && effectiveFrom < new Date(currentEffectiveFrom)) {
+    fail(400, 'Ngày áp dụng mới không được trước ngày áp dụng giá hiện tại.');
+  }
   property.utilityRate = { electricityPrice, waterPrice, effectiveFrom };
   await property.save();
   return property.utilityRate;
@@ -281,12 +317,14 @@ export async function configurePolicy(userId, propertyId, data) {
       ? currentPolicy.toObject()
       : { ...(currentPolicy || {}) };
   if (data.paymentDueDay !== undefined) {
+    if (data.paymentDueDay === '') fail(400, 'Ngày đến hạn phải từ ngày 1 đến ngày 28.');
     const day = Number(data.paymentDueDay);
     if (!Number.isInteger(day) || day < 1 || day > 28)
       fail(400, 'Ngày đến hạn phải từ ngày 1 đến ngày 28.');
     policy.paymentDueDay = day;
   }
   if (data.paymentGraceDays !== undefined) {
+    if (data.paymentGraceDays === '') fail(400, 'Thời gian gia hạn phải từ 0 đến 60 ngày.');
     const days = Number(data.paymentGraceDays);
     if (!Number.isInteger(days) || days < 0 || days > 60) {
       fail(400, 'Thời gian gia hạn phải từ 0 đến 60 ngày.');
@@ -294,6 +332,7 @@ export async function configurePolicy(userId, propertyId, data) {
     policy.paymentGraceDays = days;
   }
   if (data.depositMonths !== undefined) {
+    if (data.depositMonths === '') fail(400, 'Số tháng tiền cọc phải từ 0 đến 12.');
     const months = Number(data.depositMonths);
     if (!Number.isFinite(months) || months < 0 || months > 12) {
       fail(400, 'Số tháng tiền cọc phải từ 0 đến 12.');
@@ -316,10 +355,12 @@ export async function saveService(userId, propertyId, serviceId, data) {
   const property = await ownedProperty(userId, propertyId);
   const name = String(data.name || '').trim();
   const unitPrice = Number(data.unitPrice);
-  if (name.length < 2 || !Number.isFinite(unitPrice) || unitPrice < 0)
+  if (name.length < 2 || data.unitPrice === undefined || data.unitPrice === '' || !Number.isFinite(unitPrice) || unitPrice < 0)
     fail(400, 'Tên dịch vụ hoặc đơn giá không hợp lệ.');
   if (!['fixed', 'per_room', 'per_person'].includes(data.unitType || 'fixed'))
     fail(400, 'Đơn vị tính dịch vụ không hợp lệ.');
+  if (data.status !== undefined && !['active', 'inactive'].includes(data.status))
+    fail(400, 'Trạng thái dịch vụ không hợp lệ.');
   const duplicate = await Services.exists({
     property: property._id,
     name: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
@@ -371,7 +412,9 @@ export async function listPropertyRooms(userId, propertyId) {
 export async function setRoomPrice(userId, propertyId, roomId, price) {
   const property = await ownedProperty(userId, propertyId);
   const amount = Number(price);
-  if (!Number.isFinite(amount) || amount <= 0) fail(400, 'Giá thuê phải lớn hơn 0.');
+  if (price === undefined || price === '' || !Number.isFinite(amount) || amount <= 0 || amount > 10000000) {
+    fail(400, 'Giá thuê phải từ 1 đến 10.000.000 đồng/tháng.');
+  }
   const room = await Rooms.findOneAndUpdate(
     { _id: roomId, property: property._id },
     { $set: { price: amount } },

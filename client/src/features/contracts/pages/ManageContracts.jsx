@@ -6,6 +6,7 @@ import contractsAPI from '../api/contracts-api';
 import ContractList from '../components/ContractList';
 import ContractForm from '../components/ContractForm';
 import { CONTRACT_STATUS } from '../components/ContractStatusBadge';
+import { getCurrentUser } from '../../../shared/utils/auth';
 
 const FILTERS = [
   { value: 'all', label: 'Tất cả' },
@@ -15,9 +16,17 @@ const DAY = 24 * 60 * 60 * 1000;
 
 export default function ManageContracts() {
   const { propertyId } = useParams();
+  const canManageContracts = getCurrentUser()?.role === 'manager';
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     if (searchParams.get('create') !== '1') return;
+    if (!canManageContracts) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('create');
+      next.delete('request');
+      setSearchParams(next, { replace: true });
+      return;
+    }
     setInitialRequestId(searchParams.get('request') || '');
     setSelectedContract(null);
     setShowForm(true);
@@ -25,7 +34,7 @@ export default function ManageContracts() {
     next.delete('create');
     next.delete('request');
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, canManageContracts]);
   const [initialRequestId, setInitialRequestId] = useState('');
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -121,13 +130,13 @@ export default function ManageContracts() {
             Tạo, gia hạn và theo dõi hợp đồng thuê của từng phòng
           </p>
         </div>
-        <button
+        {canManageContracts && <button
           onClick={() => openForm()}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 active:scale-95 text-white font-extrabold text-xs shadow-md shadow-emerald-600/25 transition cursor-pointer self-start"
         >
           <Plus size={16} className="stroke-[2.5]" />
           Tạo hợp đồng
-        </button>
+        </button>}
       </div>
 
       {/* Thẻ thống kê */}
@@ -184,10 +193,10 @@ export default function ManageContracts() {
           ))}
         </div>
       ) : (
-        <ContractList contracts={filteredContracts} onEdit={openForm} onRefresh={fetchContracts} />
+        <ContractList contracts={filteredContracts} onEdit={openForm} onRefresh={fetchContracts} readOnly={!canManageContracts} />
       )}
 
-      {showForm && (
+      {showForm && canManageContracts && (
         <ContractForm
           contract={selectedContract}
           propertyId={propertyId}

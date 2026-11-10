@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Pencil, Ban, DoorOpen, Users } from 'lucide-react';
+import { Pencil, Ban, DoorOpen, Users, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import RoomStatusBadge from './RoomStatusBadge';
 import RoomStatusModal from './RoomStatusModal';
 
 export default function RoomList({ rooms, onEdit, onDeactivate, onRefresh }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const navigate = useNavigate();
 
   if (rooms.length === 0) {
     return (
@@ -78,6 +80,13 @@ export default function RoomList({ rooms, onEdit, onDeactivate, onRefresh }) {
                 </td>
                 <td className="py-3.5 px-3">
                   <div className="flex justify-end gap-1.5">
+                    <button
+                      onClick={() => navigate(`/rooms/${room._id}`)}
+                      title="Xem chi tiết"
+                      className="w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition cursor-pointer"
+                    >
+                      <Eye size={14} />
+                    </button>
                     <button
                       onClick={() => onEdit(room)}
                       title="Chỉnh sửa"
