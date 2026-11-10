@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'node:http';
 import { attachNotificationsSocket } from './modules/notifications/notifications.socket.js';
 import { allowedOrigins } from './config/origins.config.js';
+import { startContractExpiryCheckoutJob } from './modules/terminationrequests/contract-expiry-checkout.job.js';
 
 // Import all models to register schemas
 import './models/Users.js';
@@ -27,6 +28,7 @@ dotenv.config();
 
 async function bootstrap() {
   await connectDatabase();
+  startContractExpiryCheckoutJob();
   const server = createServer(app);
   attachNotificationsSocket(server, { allowedOrigins });
   server.listen(PORT, () => {

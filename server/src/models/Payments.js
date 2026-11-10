@@ -14,7 +14,7 @@ const paymentSchema = new mongoose.Schema(
     },
     method: {
       type: String,
-      enum: ['cash', 'transfer', 'gateway'],
+      enum: ['cash', 'transfer', 'gateway', 'deposit'],
       default: 'transfer',
     },
     provider: {

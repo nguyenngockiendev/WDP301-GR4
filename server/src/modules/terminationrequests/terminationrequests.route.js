@@ -12,6 +12,14 @@ import {
     getMyTerminationRequests,
     getManagerTerminationRequests,
     getManagerTerminationRequestDetail,
+    getCheckoutAssetInspection,
+    startCheckoutAssetInspection,
+    saveCheckoutAssetInspection,
+    getCheckoutReconciliation,
+    saveCheckoutReconciliation,
+    requestCheckoutPayment,
+    confirmCheckoutRefund,
+    finalizeCheckout,
 } from './terminationrequests.controller.js';
 
 const router = express.Router();
@@ -75,6 +83,20 @@ router.get(
     checkRole('manager'),
     getManagerTerminationRequests
 );
+
+// Kiểm tra tài sản trong checkout request
+router.get('/manager/:id/asset-inspection', authMiddleware, checkRole('manager'), getCheckoutAssetInspection);
+router.post('/manager/:id/asset-inspection/start', authMiddleware, checkRole('manager'), startCheckoutAssetInspection);
+router.put('/manager/:id/asset-inspection', authMiddleware, checkRole('manager'), saveCheckoutAssetInspection);
+
+// Đối soát công nợ, điện nước, phạt hợp đồng và tiền cọc
+router.get('/manager/:id/reconciliation', authMiddleware, checkRole('manager'), getCheckoutReconciliation);
+router.put('/manager/:id/reconciliation', authMiddleware, checkRole('manager'), saveCheckoutReconciliation);
+
+// Các bước thanh toán/hoàn cọc và xác nhận checkout cuối cùng.
+router.post('/manager/:id/request-payment', authMiddleware, checkRole('manager'), requestCheckoutPayment);
+router.post('/manager/:id/confirm-refund', authMiddleware, checkRole('manager'), confirmCheckoutRefund);
+router.post('/manager/:id/finalize', authMiddleware, checkRole('manager'), finalizeCheckout);
 
 // Xem chi tiết checkout request
 router.get(

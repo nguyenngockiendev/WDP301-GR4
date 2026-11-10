@@ -13,7 +13,7 @@ const billableStatuses = ['active', 'expired'];
 
 const validNumber = value => Number.isFinite(value) && value >= 0;
 
-const invoiceSummaryFields = 'contract billedTo billingMonth totalAmount paidAmount dueDate sentAt status';
+const invoiceSummaryFields = 'contract billedTo billingMonth invoiceType totalAmount paidAmount dueDate sentAt status';
 const invoiceContract = {
   path: 'contract',
   select: 'room',

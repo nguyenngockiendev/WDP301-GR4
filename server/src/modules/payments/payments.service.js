@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import Invoices from '../../models/Invoices.js';
 import Payments from '../../models/Payments.js';
+import TerminationRequests from '../../models/TerminationRequests.js';
+import { createNotification } from '../notifications/notifications.service.js';
 import { getInvoiceForPayment } from '../invoices/invoices.service.js';
 import { isValidPaymentAmount } from './payments.validation.js';
 import { createVnpayPaymentUrl } from './vnpay.service.js';
@@ -87,8 +89,11 @@ export const getPaymentStatus = async (paymentCode, userId) => {
 
 export const confirmGatewayPayment = async (result, provider) => {
   const session = await mongoose.startSession();
+  let paidInvoiceId = null;
+  let payerId = null;
+  let code = '99';
   try {
-    return await session.withTransaction(async () => {
+    code = await session.withTransaction(async () => {
       const query = findGatewayPayment(result.paymentCode, provider);
       const payment = query && await query.session(session);
       if (!payment) return '01';
@@ -120,9 +125,34 @@ export const confirmGatewayPayment = async (result, provider) => {
       payment.gatewayTransactionId = result.gatewayTransactionId;
       await invoice.save({ session });
       await payment.save({ session });
+      paidInvoiceId = invoice._id;
+      payerId = payment.payer;
       return '00';
     });
   } finally {
     await session.endSession();
   }
+
+  // Báo cho Manager checkout khi một hóa đơn thuộc đợt quyết toán được thanh toán.
+  // Lỗi gửi notification không được làm gateway/IPN hiểu nhầm giao dịch đã thanh toán là thất bại.
+  if (code === '00' && result.success && paidInvoiceId) {
+    try {
+      const checkoutRequest = await TerminationRequests.findOne({
+        'checkoutSettlement.paymentInvoiceIds': paidInvoiceId,
+      }).select('_id checkoutSettlement.paymentRequestedBy');
+      if (checkoutRequest?.checkoutSettlement?.paymentRequestedBy) {
+        await createNotification({
+          recipient: checkoutRequest.checkoutSettlement.paymentRequestedBy,
+          type: 'checkout_payment_received',
+          title: 'Tenant vừa thanh toán công nợ checkout',
+          content: 'Một hóa đơn thuộc yêu cầu trả phòng đã được thanh toán. Vui lòng kiểm tra trạng thái checkout; chỉ hoàn tất sau khi tất cả hóa đơn đã Paid.',
+          related: { entityType: 'TerminationRequest', entityId: checkoutRequest._id },
+        });
+      }
+    } catch (notificationError) {
+      console.error('Không gửi được thông báo thanh toán checkout:', notificationError.message);
+    }
+  }
+
+  return code;
 };

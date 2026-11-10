@@ -23,7 +23,7 @@ export default function SubmitCheckoutRequest() {
 
         if (!result?.canSubmit) {
           toast.warning(
-            'Bạn chưa có hợp đồng đang hoạt động và còn thời hạn nên không thể gửi yêu cầu trả phòng.',
+            'Bạn chưa có hợp đồng đang hoạt động hoặc yêu cầu trả phòng chưa phê duyệt dong nên chưa thể tạo yêu cầu trả phòng khác.',
           );
           navigate('/checkout-requests', { replace: true });
           return;

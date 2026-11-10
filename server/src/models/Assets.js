@@ -9,6 +9,12 @@ const assetSchema = new mongoose.Schema(
       index: true,
     },
     room: { type: mongoose.Schema.Types.ObjectId, ref: 'Room', default: null },
+    invoiceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Invoice',
+      default: null,
+      index: true,
+    },
     name: { type: String, required: true, trim: true, maxlength: 120 },
     category: { type: String, required: true, trim: true, maxlength: 60 },
     brand: { type: String, trim: true, maxlength: 80, default: '' },

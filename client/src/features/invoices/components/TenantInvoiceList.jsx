@@ -19,13 +19,16 @@ export default function TenantInvoiceList({ invoices, payingInvoiceId, onPay }) 
       {invoices.map(invoice => {
         const room = invoice.contract?.room;
         const [year, month] = invoice.billingMonth.split('-');
+        const title = invoice.invoiceType === 'checkout_asset'
+          ? 'Hóa đơn quyết toán trả phòng'
+          : `Hóa đơn tháng ${month}/${year}`;
         const balance = invoice.status === 'cancelled' ? 0 : Math.max(0, invoice.totalAmount - (invoice.paidAmount ?? 0));
 
         return (
           <li key={invoice._id} className="rounded-3xl border border-white bg-white/90 p-5 shadow-card">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-base font-extrabold text-content-main">Hóa đơn tháng {month}/{year}</h2>
+                <h2 className="text-base font-extrabold text-content-main">{title}</h2>
                 <p className="mt-1 text-sm text-content-sub">
                   {room?.property?.name || 'Nhà trọ'} · Phòng {room?.roomNumber || '—'}
                 </p>
