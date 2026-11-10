@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import reconciliationRoutes from '../modules/reconciliation/reconciliation.route.js';
 
 import authRoutes from '../modules/auth/auth.route.js';
 import roomsRoutes from '../modules/rooms/rooms.route.js';
@@ -21,7 +20,6 @@ import dashboardRoutes from '../modules/dashboard/dashboard.route.js';
 import reportsRoutes from '../modules/reports/reports.route.js';
 
 const router = Router();
-router.use('/reconciliation', reconciliationRoutes);
 
 router.use('/auth', authRoutes);
 router.use('/landlord', landlordRoutes);

@@ -110,38 +110,6 @@ export default function DashboardPage() {
             onDaysChange={setDays}
           />
         ))}
-      {!loading && dashboard && (
-        <div className="rounded-3xl border border-surface-border bg-surface-card p-6 shadow-card">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-bold">Thông báo gần đây</h2>
-            <Link to="/notifications" className="text-sm font-semibold text-primary">
-              Xem tất cả · {dashboard.unreadCount} chưa đọc
-            </Link>
-          </div>
-          {dashboard.notifications.length === 0 ? (
-            <p className="text-sm text-content-sub">Bạn chưa có thông báo.</p>
-          ) : (
-            <ul className="divide-y divide-surface-border">
-              {dashboard.notifications.map(notification => (
-                <li key={notification._id} className="py-3">
-                  <Link to="/notifications" className="font-semibold hover:text-primary">
-                    {notification.title}
-                  </Link>
-                  {!notification.isRead && (
-                    <span className="ml-2 text-xs text-primary">Chưa đọc</span>
-                  )}
-                  <p className="mt-1 break-words text-sm text-content-sub">
-                    {notification.content}
-                  </p>
-                  <p className="mt-1 text-xs text-content-muted">
-                    {new Date(notification.createdAt).toLocaleString('vi-VN')}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
     </section>
   );
 }

@@ -107,7 +107,7 @@ export const getPaymentStatus = async (paymentCode, userId) => {
   };
 };
 
-export const confirmGatewayPayment = async (result, provider, recoveryUserId = null) => {
+export const confirmGatewayPayment = async (result, provider) => {
   await Notifications.init();
   const session = await mongoose.startSession();
   try {
@@ -118,41 +118,7 @@ export const confirmGatewayPayment = async (result, provider, recoveryUserId = n
       const payment = query && (await query.session(session));
       if (!payment) return '01';
       if (payment.amount !== result.amount) return '04';
-      if (recoveryUserId) {
-        const user = await Users.findById(recoveryUserId).session(session);
-        const invoice = await Invoices.findById(payment.invoice).session(session);
-        const contract = invoice && (await Contracts.findById(invoice.contract).session(session));
-        const room = contract && (await Rooms.findById(contract.room).session(session));
-        const assignment =
-          room &&
-          (await ManagerAssignments.exists({
-            manager: recoveryUserId,
-            property: room.property,
-            status: 'active',
-          }).session(session));
-        if (user?.role !== 'manager' || user.status !== 'active' || !assignment) {
-          throw { status: 403, message: 'Bạn không còn quyền cập nhật giao dịch này.' };
-        }
-        if (!result.success || provider !== 'vnpay') return '99';
-        if (payment.status !== 'success') {
-          const paidPayments = await Payments.find({
-            invoice: payment.invoice,
-            status: 'success',
-          }).session(session);
-          const received = paidPayments.reduce((sum, item) => sum + item.amount, 0);
-          if (received !== (invoice.paidAmount ?? 0)) return '99';
-          const duplicate = await Payments.exists({
-            _id: { $ne: payment._id },
-            method: 'gateway',
-            provider: { $in: ['vnpay', null] },
-            status: 'success',
-            gatewayTransactionId: result.gatewayTransactionId,
-          }).session(session);
-          if (duplicate) return '99';
-        }
-      }
-      if (payment.status === 'success' || (payment.status === 'failed' && !recoveryUserId))
-        return '02';
+      if (['success', 'failed'].includes(payment.status)) return '02';
 
       if (!result.success) {
         payment.status = 'failed';
@@ -182,7 +148,6 @@ export const confirmGatewayPayment = async (result, provider, recoveryUserId = n
       payment.status = 'success';
       payment.paidAt = result.paidAt || new Date();
       payment.gatewayTransactionId = result.gatewayTransactionId;
-      if (recoveryUserId) payment.recordedBy = recoveryUserId;
       await invoice.save({ session });
       await payment.save({ session });
       await Notifications.updateOne(

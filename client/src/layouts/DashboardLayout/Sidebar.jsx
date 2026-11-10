@@ -3,7 +3,6 @@ import { NavLink } from 'react-router-dom';
 import { getCurrentUser } from '../../shared/utils/auth';
 import {
   LayoutDashboard,
-  Bell,
   DoorOpen,
   FileSignature,
   CalendarClock,
@@ -14,7 +13,6 @@ import {
   Building2,
   Sparkles,
   Settings,
-  ClipboardList,
   Search,
   FileText,
   UserCog,
@@ -33,8 +31,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       items: [
         { to: '/home', label: 'Trang chủ', icon: Building2, roles: ['tenant'] },
         { to: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-        { to: '/reports', label: 'Báo cáo & doanh thu', icon: FileText, roles: STAFF },
-        { to: '/notifications', label: 'Thông báo', icon: Bell },
+        { to: '/reports', label: 'Báo cáo tháng', icon: FileText, roles: STAFF },
       ],
     },
     {
@@ -66,7 +63,6 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       items: [
         { to: '/utility-readings', label: 'Số điện & nước', icon: Zap, roles: STAFF },
         { to: '/invoices', label: 'Quản lý hóa đơn', icon: ReceiptText, roles: STAFF },
-        { to: '/reconciliation', label: 'Đối soát nội bộ', icon: ClipboardList, roles: ['manager'] },
         { to: '/invoices/new', label: 'Lập hóa đơn', icon: FileText, roles: STAFF },
         { to: '/invoices/my', label: 'Hóa đơn của tôi', icon: ReceiptText, roles: ['tenant'] },
       ],
@@ -74,7 +70,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
   ];
 
   const menuSections = allSections
-    .map(section => ({ ...section, items: section.items.filter(item => !item.roles || item.roles.includes(role)) }))
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => !item.roles || item.roles.includes(role)),
+    }))
     .filter(section => section.items.length > 0);
 
   return (

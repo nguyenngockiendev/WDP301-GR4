@@ -39,16 +39,3 @@ export const markAllRead = async recipient => {
   if (result.modifiedCount) notifyRecipient(recipient);
   return { modifiedCount: result.modifiedCount };
 };
-
-// Internal entry point for other modules; never accepts a recipient from a public API.
-export const createNotification = async ({
-  recipient,
-  title,
-  content,
-  type = 'general',
-  related,
-}) => {
-  const notification = await Notifications.create({ recipient, title, content, type, related });
-  notifyRecipient(recipient);
-  return notification;
-};

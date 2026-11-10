@@ -1,3 +1,4 @@
+import Invoices from '../../models/Invoices.js';
 import Notifications from '../../models/Notifications.js';
 import Users from '../../models/Users.js';
 import Rooms from '../../models/Rooms.js';
@@ -48,7 +49,44 @@ export const notifyRentalResult = async request => {
   );
 };
 
+// Nhắc một lần mỗi ngày Việt Nam, sau thời gian gia hạn đã lưu trên hợp đồng.
+export const notifyOverdueInvoices = async (now = new Date()) => {
+  const today = new Date(now.getTime() + 7 * 3600000).toISOString().slice(0, 10);
+  for await (const invoice of Invoices.find({
+    status: { $in: ['unpaid', 'partially_paid', 'overdue'] },
+    sentAt: { $type: 'date', $lte: now },
+    dueDate: { $lt: now },
+    $expr: { $gt: ['$totalAmount', { $ifNull: ['$paidAmount', 0] }] },
+  }).cursor()) {
+    const balance = invoice.totalAmount - (invoice.paidAmount ?? 0);
+    if (!Number.isSafeInteger(balance) || balance <= 0) continue;
+    const contract = await Contracts.findById(invoice.contract)
+      .select('representative room paymentGraceDays')
+      .lean();
+    if (!contract) continue;
+    const room = await Rooms.findById(contract.room).select('roomNumber property').lean();
+    const property =
+      room && (await Properties.findById(room.property).select('status contractPolicy').lean());
+    if (!property || property.status !== 'active') continue;
+    const graceDays = contract.paymentGraceDays ?? property.contractPolicy?.paymentGraceDays ?? 0;
+    if (!Number.isInteger(graceDays) || graceDays < 0) continue;
+    const dueDay = new Date(invoice.dueDate.getTime() + 7 * 3600000).toISOString().slice(0, 10);
+    const overdueDays = Math.round((Date.parse(today) - Date.parse(dueDay)) / 86400000);
+    if (overdueDays <= graceDays) continue;
+    const recipient = invoice.billedTo || contract.representative;
+    if (!(await Users.exists({ _id: recipient, role: 'tenant', status: 'active' }))) continue;
+    await sendSystemNotification(
+      `invoice-overdue:${invoice.id}:${invoice.dueDate.toISOString()}:${today}`,
+      recipient,
+      `Hóa đơn đã quá hạn ${overdueDays} ngày`,
+      `Hóa đơn kỳ ${invoice.billingMonth}, phòng ${room.roomNumber} đã quá hạn ${overdueDays} ngày. Còn phải trả ${balance.toLocaleString('vi-VN')} ₫. Vui lòng kiểm tra và thanh toán hóa đơn.`,
+      { entityType: 'invoice', entityId: invoice._id },
+    );
+  }
+};
+
 export const runNotificationJobs = async (now = new Date()) => {
+  await notifyOverdueInvoices(now);
   for await (const request of RentalRequests.find({ notificationPending: true }).cursor())
     await notifyRentalResult(request);
   const until = new Date(now.getTime() + 7 * 86400000);

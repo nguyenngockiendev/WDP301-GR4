@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import {
@@ -17,11 +18,16 @@ function getCurrentMonth() {
 }
 
 export default function useUtilityReadings() {
+  const [searchParams] = useSearchParams();
   const [properties, setProperties] = useState([]);
   const [loadingProperties, setLoadingProperties] = useState(true);
   const [propertyError, setPropertyError] = useState('');
   const [propertyId, setPropertyId] = useState('');
-  const [billingMonth, setBillingMonth] = useState(getCurrentMonth);
+  const [billingMonth, setBillingMonth] = useState(() =>
+    /^20\d{2}-(0[1-9]|1[0-2])$/.test(searchParams.get('billingMonth') || '')
+      ? searchParams.get('billingMonth')
+      : getCurrentMonth(),
+  );
   const [roomData, setRoomData] = useState(emptyRoomData);
   const [savedData, setSavedData] = useState({ periodKey: '', readings: {}, error: '' });
   const [draftsByPeriod, setDraftsByPeriod] = useState({});
@@ -109,7 +115,9 @@ export default function useUtilityReadings() {
     };
 
     loadReadings();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [propertyId, billingMonth, periodKey, validMonth]);
 
   const loadingRooms = Boolean(propertyId && roomData.propertyId !== propertyId);
@@ -163,8 +171,16 @@ export default function useUtilityReadings() {
 
     for (const room of pendingRooms) {
       const reading = readings[room._id];
-      const values = [reading.oldElectricity, reading.newElectricity, reading.oldWater, reading.newWater];
-      const invalid = values.some(value => value == null || value === '' || !Number.isFinite(Number(value)) || Number(value) < 0);
+      const values = [
+        reading.oldElectricity,
+        reading.newElectricity,
+        reading.oldWater,
+        reading.newWater,
+      ];
+      const invalid = values.some(
+        value =>
+          value == null || value === '' || !Number.isFinite(Number(value)) || Number(value) < 0,
+      );
       if (invalid) {
         setSaveResult({ periodKey, error: `Nhập đủ chỉ số hợp lệ cho phòng ${room.roomNumber}.` });
         return;
@@ -174,7 +190,10 @@ export default function useUtilityReadings() {
       const oldWater = Number(reading.oldWater);
       const newWater = Number(reading.newWater);
       if (newElectricity < oldElectricity || newWater < oldWater) {
-        setSaveResult({ periodKey, error: `Số mới của phòng ${room.roomNumber} phải lớn hơn hoặc bằng số cũ.` });
+        setSaveResult({
+          periodKey,
+          error: `Số mới của phòng ${room.roomNumber} phải lớn hơn hoặc bằng số cũ.`,
+        });
         return;
       }
 
@@ -202,7 +221,10 @@ export default function useUtilityReadings() {
       });
       toast.success(response.message || 'Đã lưu chỉ số điện nước!');
     } catch (error) {
-      setSaveResult({ periodKey, error: error.response?.data?.message || 'Không lưu được chỉ số điện nước.' });
+      setSaveResult({
+        periodKey,
+        error: error.response?.data?.message || 'Không lưu được chỉ số điện nước.',
+      });
     } finally {
       setSaving(false);
     }
@@ -218,7 +240,10 @@ export default function useUtilityReadings() {
     loadingRooms,
     loadingReadings,
     validMonth,
-    error: propertyError || (loadingRooms ? '' : roomData.error) || (savedData.periodKey === periodKey ? savedData.error : ''),
+    error:
+      propertyError ||
+      (loadingRooms ? '' : roomData.error) ||
+      (savedData.periodKey === periodKey ? savedData.error : ''),
     rateError: loadingRooms ? '' : roomData.rateError,
     rooms: loadingRooms ? [] : roomData.rooms,
     contracts: loadingRooms ? [] : roomData.contracts,

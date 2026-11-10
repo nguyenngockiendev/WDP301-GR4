@@ -1,5 +1,4 @@
 import Profile from '../../features/profile/pages/Profile';
-import ReconciliationPage from '../../features/reconciliation/ReconciliationPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout/DashboardLayout';
 import ProtectedRoute from './ProtectedRoute';
@@ -53,10 +52,23 @@ export default function AppRoutes() {
         <Route path="/profile" element={<Profile />} />
         <Route element={<DashboardLayout />}>
           <Route path="dashboard" element={<DashboardEntry />} />
-          <Route path="properties" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertiesHome /></ProtectedRoute>} />
-          <Route path="settings" element={<ProtectedRoute roles={['landlord']}><SettingsPage /></ProtectedRoute>} />
+          <Route
+            path="properties"
+            element={
+              <ProtectedRoute roles={['landlord', 'manager']}>
+                <PropertiesHome />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <ProtectedRoute roles={['landlord']}>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="reports" element={<ReportsPage />} />
-          <Route path="reconciliation" element={<ProtectedRoute roles={['manager']}><ReconciliationPage /></ProtectedRoute>} />
           {routes.map(route => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}
