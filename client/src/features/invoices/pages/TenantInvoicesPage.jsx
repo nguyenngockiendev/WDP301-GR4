@@ -1,4 +1,5 @@
 import { ArrowLeft } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import InvoiceDetail from '../components/InvoiceDetail';
 import InvoicePaymentButton from '../components/InvoicePaymentButton';
@@ -10,6 +11,14 @@ export default function TenantInvoicesPage() {
   const { invoiceId } = useParams();
   const { data, loading, error, reload } = useTenantInvoices(invoiceId);
   const { payInvoice, payingInvoiceId, paymentError } = useInvoicePayment();
+  const [filter, setFilter] = useState('all');
+  const invoices = !invoiceId && Array.isArray(data) ? data : [];
+  const filteredInvoices = invoices.filter(invoice => {
+    if (filter === 'paid') return invoice.status === 'paid';
+    if (filter === 'unpaid') return ['unpaid', 'partially_paid', 'overdue'].includes(invoice.status)
+      && invoice.totalAmount > (invoice.paidAmount ?? 0);
+    return true;
+  });
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 pt-4">
@@ -42,7 +51,19 @@ export default function TenantInvoicesPage() {
           paymentAction={<InvoicePaymentButton invoice={data} payingInvoiceId={payingInvoiceId} onPay={payInvoice} />}
         />
       )}
-      {data && !invoiceId && <TenantInvoiceList invoices={data} payingInvoiceId={payingInvoiceId} onPay={payInvoice} />}
+      {data && !invoiceId && <>
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-3">
+          {[['all', 'Tất cả'], ['unpaid', 'Còn phải trả'], ['paid', 'Đã thanh toán']].map(([value, label]) => (
+            <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)}
+              className={`rounded-xl px-4 py-2 text-sm font-bold ${filter === value ? 'bg-primary text-white' : 'text-content-sub hover:bg-surface-bg'}`}>
+              {label}
+            </button>
+          ))}
+          <span className="ml-auto text-sm text-content-sub">{filteredInvoices.length} hóa đơn</span>
+          <button type="button" onClick={reload} className="rounded-xl border border-surface-border px-3 py-2 text-sm font-bold text-primary-dark">Làm mới</button>
+        </div>
+        <TenantInvoiceList invoices={filteredInvoices} payingInvoiceId={payingInvoiceId} onPay={payInvoice} />
+      </>}
     </div>
   );
 }

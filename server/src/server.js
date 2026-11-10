@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'node:http';
 import { attachNotificationsSocket } from './modules/notifications/notifications.socket.js';
 import { allowedOrigins } from './config/origins.config.js';
-import { startContractExpiryCheckoutJob } from './modules/terminationrequests/contract-expiry-checkout.job.js';
+import { startNotificationJobs } from './modules/notifications/notifications-jobs.service.js';
 
 // Import all models to register schemas
 import './models/Users.js';
@@ -28,7 +28,8 @@ dotenv.config();
 
 async function bootstrap() {
   await connectDatabase();
-  startContractExpiryCheckoutJob();
+  // Bật tại môi trường triển khai sau khi nhóm chốt lịch nhắc.
+  if (process.env.NOTIFICATION_JOBS_ENABLED === 'true') startNotificationJobs();
   const server = createServer(app);
   attachNotificationsSocket(server, { allowedOrigins });
   server.listen(PORT, () => {

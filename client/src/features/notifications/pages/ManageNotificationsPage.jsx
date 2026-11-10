@@ -5,6 +5,23 @@ import api from '../../../shared/api/axiosClient';
 export default function ManageNotificationsPage() {
   const [recipients, setRecipients] = useState([]);
   const [selected, setSelected] = useState('');
+  const [audience, setAudience] = useState('individual');
+  const [chosenIds, setChosenIds] = useState([]);
+  const properties = [
+    ...new Map(
+      recipients.map(item => [item.propertyId, { id: item.propertyId, name: item.propertyName }]),
+    ).values(),
+  ];
+  const selectedCount =
+    audience === 'properties'
+      ? new Set(
+          recipients
+            .filter(item => chosenIds.includes(item.propertyId))
+            .map(item => item.recipientId),
+        ).size
+      : audience === 'property'
+        ? recipients.filter(item => item.propertyId === selected).length
+        : recipients.filter(item => `${item.propertyId}:${item.recipientId}` === selected).length;
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [history, setHistory] = useState(null);
@@ -51,18 +68,37 @@ export default function ManageNotificationsPage() {
     const recipient = recipients.find(
       item => `${item.propertyId}:${item.recipientId}` === selected,
     );
-    if (!recipient) return;
+    if (!selectedCount) return;
+    if (
+      audience !== 'individual' &&
+      !window.confirm(
+        `Gửi thông báo cho ${selectedCount} người nhận tại ${properties
+          .filter(item =>
+            audience === 'property' ? item.id === selected : chosenIds.includes(item.id),
+          )
+          .map(item => item.name)
+          .join(', ')}?`,
+      )
+    )
+      return;
     setSending(true);
     setError('');
     setSuccess('');
     try {
-      await api.post('/notifications/send', {
-        propertyId: recipient.propertyId,
-        recipientId: recipient.recipientId,
+      const response = await api.post('/notifications/send', {
+        audience,
+        propertyId:
+          audience === 'properties'
+            ? undefined
+            : audience === 'property'
+              ? selected
+              : recipient.propertyId,
+        propertyIds: audience === 'properties' ? chosenIds : undefined,
+        recipientId: audience === 'individual' ? recipient.recipientId : undefined,
         title,
         content,
       });
-      setSuccess('Đã gửi thông báo thành công.');
+      setSuccess(`Đã gửi thông báo cho ${response.data.sentCount || 1} người nhận.`);
       setTitle('');
       setContent('');
       setPage(1);
@@ -91,7 +127,8 @@ export default function ManageNotificationsPage() {
         </Link>
       </div>
       <p className="text-sm text-content-sub">
-        Gửi thông báo cho người thuê có hợp đồng còn hiệu lực tại nhà trọ bạn đang quản lý.
+        Chủ trọ gửi cho quản lý được phân công. Quản lý gửi cho người thuê có hợp đồng còn hiệu lực
+        trong các dãy được giao.
       </p>
       {error && (
         <p role="alert" className="rounded-xl border border-status-danger p-4 text-status-danger">
@@ -120,33 +157,81 @@ export default function ManageNotificationsPage() {
           >
             <h2 className="font-bold">Soạn thông báo</h2>
             {!recipients.length && (
-              <p className="text-sm text-content-sub">
-                Chưa có người thuê đủ điều kiện nhận thông báo.
-              </p>
+              <p className="text-sm text-content-sub">Chưa có người nhận đủ điều kiện.</p>
             )}
-            <fieldset
-              disabled={sending || loading}
-              className="space-y-4 disabled:opacity-60"
-            >
+            <fieldset disabled={sending || loading} className="space-y-4 disabled:opacity-60">
               <label className="block text-sm font-semibold">
-                Người nhận
+                Phạm vi gửi
                 <select
-                  required
-                  value={selected}
-                  onChange={event => setSelected(event.target.value)}
+                  value={audience}
+                  onChange={event => {
+                    setAudience(event.target.value);
+                    setSelected('');
+                  }}
                   className={inputClass}
                 >
-                  <option value="">Chọn nhà trọ / phòng / người thuê</option>
-                  {recipients.map(item => (
-                    <option
-                      key={`${item.propertyId}:${item.recipientId}`}
-                      value={`${item.propertyId}:${item.recipientId}`}
-                    >
-                      {item.propertyName} / {item.roomNumber} — {item.fullName}
-                    </option>
-                  ))}
+                  <option value="individual">Một người nhận</option>
+                  <option value="property">Toàn bộ một dãy trọ</option>
+                  <option value="properties">Chọn nhiều dãy trọ</option>
                 </select>
               </label>
+              {audience === 'properties' ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold">
+                    Chọn dãy trọ ({selectedCount} người nhận, đã loại trùng)
+                  </p>
+                  {properties.map(item => (
+                    <label key={item.id} className="block text-sm">
+                      <input
+                        type="checkbox"
+                        className="mr-2"
+                        checked={chosenIds.includes(item.id)}
+                        onChange={event =>
+                          setChosenIds(current =>
+                            event.target.checked
+                              ? [...current, item.id]
+                              : current.filter(id => id !== item.id),
+                          )
+                        }
+                      />
+                      {item.name}
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <label className="block text-sm font-semibold">
+                  Người nhận
+                  <select
+                    required
+                    value={selected}
+                    onChange={event => setSelected(event.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">Chọn nhà trọ / người nhận</option>
+                    {audience === 'property'
+                      ? properties.map(item => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))
+                      : recipients.map(item => (
+                          <option
+                            key={`${item.propertyId}:${item.recipientId}`}
+                            value={`${item.propertyId}:${item.recipientId}`}
+                          >
+                            {item.propertyName} / {item.roomNumber} — {item.fullName}
+                          </option>
+                        ))}
+                  </select>
+                </label>
+              )}
+              {audience === 'property' && (
+                <p className="text-sm text-content-sub">
+                  {selectedCount} người nhận. Với quản lý: người đại diện và thành viên ở cùng còn
+                  hợp đồng hiệu lực, mỗi người nhận một lần. Chỉ liệt kê dãy có người nhận đủ điều
+                  kiện.
+                </p>
+              )}
               <label className="block text-sm font-semibold">
                 Tiêu đề
                 <input
@@ -169,7 +254,7 @@ export default function ManageNotificationsPage() {
                 />
               </label>
               <button
-                disabled={!title.trim() || !content.trim() || !recipients.some(item => `${item.propertyId}:${item.recipientId}` === selected)}
+                disabled={!title.trim() || !content.trim() || !selectedCount}
                 className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {sending ? 'Đang gửi…' : 'Gửi thông báo'}
@@ -179,7 +264,7 @@ export default function ManageNotificationsPage() {
           <div className="rounded-2xl border border-surface-border bg-surface-card p-6">
             <h2 className="font-bold">Thông báo tôi đã gửi ({history?.total || 0})</h2>
             <p className="mt-2 text-sm text-content-sub">
-              Trong phạm vi nhà trọ bạn hiện được phân công. Bấm Làm mới để cập nhật trạng thái đọc.
+              Trong phạm vi nhà trọ bạn hiện quản lý. Bấm Làm mới để cập nhật trạng thái đọc.
             </p>
             {!history?.items.length && <p className="mt-4">Chưa có thông báo đã gửi.</p>}
             <ul className="divide-y divide-surface-border">

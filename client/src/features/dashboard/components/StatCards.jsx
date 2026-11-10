@@ -1,26 +1,28 @@
 import React from 'react';
+import { House } from 'lucide-react';
 
-export default function StatCards() {
+export default function StatCards({ dashboard }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
       {/* Thẻ 1: Doanh Thu */}
       <div className="p-6 rounded-3xl bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-md transition flex flex-col justify-between">
         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-          Doanh Thu Tháng 10
+          Thực thu tháng {dashboard.revenue.at(-1).month}
         </span>
         <div className="my-3">
           <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-            54.500.000 <span className="text-base font-bold text-slate-800">đ</span>
+            {dashboard.revenue.at(-1).amount.toLocaleString('vi-VN')}{' '}
+            <span className="text-base font-bold text-slate-800">đ</span>
           </h3>
         </div>
         <div>
           <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-100/70 text-emerald-800 border border-emerald-200/60">
-            +14% so với tháng trước
+            Giao dịch thành công trong tháng
           </span>
         </div>
       </div>
 
-      {/* Thẻ 2: Tỷ Lệ Lấp Đầy (Có hình phòng 3D) */}
+      {/* Thẻ 2: Tỷ Lệ Lấp Đầy */}
       <div className="p-6 rounded-3xl bg-emerald-50/80 backdrop-blur-md border border-emerald-200/50 shadow-[0_8px_30px_rgb(5,150,105,0.04)] hover:shadow-md transition flex items-center justify-between relative overflow-hidden">
         <div className="flex flex-col justify-between h-full z-10">
           <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
@@ -28,26 +30,17 @@ export default function StatCards() {
           </span>
           <div className="my-2">
             <h3 className="text-3xl font-black text-emerald-950 tracking-tight">
-              75%
+              {dashboard.roomStats.occupancyRate}%
             </h3>
           </div>
           <span className="text-[11px] font-bold text-emerald-800">
-            18/24 phòng đang thuê
+            {dashboard.roomStats.occupied}/{dashboard.roomStats.total} phòng đang thuê
           </span>
         </div>
 
-        {/* Khối Isometric Room minh họa */}
         <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 p-1 shadow-md shadow-emerald-600/25 flex items-center justify-center text-white shrink-0">
           <div className="w-full h-full rounded-xl bg-white/10 backdrop-blur-xs flex flex-col items-center justify-center p-2 text-center">
-            <svg
-              className="w-8 h-8 fill-white/90 mb-1"
-              viewBox="0 0 24 24"
-            >
-              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
-            </svg>
-            <span className="text-[9px] font-extrabold uppercase tracking-wider text-emerald-100">
-              Phòng 3D
-            </span>
+            <House size={36} strokeWidth={1.8} aria-hidden="true" />
           </div>
         </div>
       </div>
@@ -59,12 +52,10 @@ export default function StatCards() {
         </span>
         <div className="my-2">
           <h3 className="text-3xl font-black text-slate-900 tracking-tight">
-            3
+            {dashboard.expiringCount}
           </h3>
         </div>
-        <span className="text-[11px] font-bold text-amber-700">
-          phòng cần gia hạn
-        </span>
+        <span className="text-[11px] font-bold text-amber-700">hợp đồng hết hạn trong 30 ngày</span>
       </div>
 
       {/* Thẻ 4: Yêu Cầu Chờ Duyệt */}
@@ -74,12 +65,10 @@ export default function StatCards() {
         </span>
         <div className="my-2">
           <h3 className="text-3xl font-black text-slate-900 tracking-tight">
-            2
+            {dashboard.pendingCount}
           </h3>
         </div>
-        <span className="text-[11px] font-bold text-slate-500">
-          khách đăng ký mới
-        </span>
+        <span className="text-[11px] font-bold text-slate-500">khách đăng ký mới</span>
       </div>
     </div>
   );

@@ -6,6 +6,8 @@ import Rooms from '../../models/Rooms.js';
 import Services from '../../models/Services.js';
 import UtilityReadings from '../../models/UtilityReadings.js';
 import Users from '../../models/Users.js';
+import Notifications from '../../models/Notifications.js';
+import { notifyRecipient } from '../notifications/notifications.events.js';
 import { assertPropertyAccess } from '../properties/properties.service.js';
 
 const billingMonthPattern = /^[1-9]\d{3}-(0[1-9]|1[0-2])$/;
@@ -71,10 +73,11 @@ export const getManagedInvoice = async (invoiceId, user) => {
 };
 
 export const sendInvoices = async (invoiceIds, user) => {
+  await Notifications.init();
   const ids = [...new Set(invoiceIds.map(id => id.toLowerCase()))];
   const session = await mongoose.startSession();
   try {
-    return await session.withTransaction(async () => {
+    const result = await session.withTransaction(async () => {
       const invoices = await Invoices.find({ _id: { $in: ids } })
         .select(invoiceSummaryFields)
         .populate({
@@ -119,6 +122,15 @@ export const sendInvoices = async (invoiceIds, user) => {
             update: { $set: { sentAt, billedTo } },
           },
         });
+        await Notifications.updateOne(
+          { eventKey: `invoice-sent:${invoice._id}`, recipient: billedTo },
+          { $setOnInsert: {
+            type: 'system', title: 'Bạn có hóa đơn mới',
+            content: `Hóa đơn ${label}. Tổng tiền: ${invoice.totalAmount.toLocaleString('vi-VN')} ₫. Vui lòng xem mục Hóa đơn để kiểm tra và thanh toán.`,
+            related: { entityType: 'invoice', entityId: invoice._id }, isRead: false,
+          } },
+          { upsert: true, session },
+        );
       }
 
       const result = await Invoices.bulkWrite(updates, { session });
@@ -127,6 +139,11 @@ export const sendInvoices = async (invoiceIds, user) => {
       }
       return { sentCount: result.modifiedCount };
     });
+    if (result.sentCount) {
+      const recipients = await Invoices.distinct('billedTo', { _id: { $in: ids } });
+      for (const recipient of recipients) notifyRecipient(recipient);
+    }
+    return result;
   } finally {
     await session.endSession();
   }

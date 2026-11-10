@@ -17,9 +17,15 @@ export const validateNotificationId = id => {
 
 export const validateSendNotification = body => {
   if (!body || typeof body !== 'object') throw { status: 400, message: 'Dữ liệu không hợp lệ.' };
-  const { recipientId, propertyId, title, content } = body;
-  validateNotificationId(recipientId);
-  validateNotificationId(propertyId);
+  const { recipientId, propertyId, propertyIds, title, content, audience = 'individual' } = body;
+  if (!['individual', 'property', 'properties'].includes(audience))
+    throw { status: 400, message: 'Phạm vi gửi không hợp lệ.' };
+  if (audience === 'individual') validateNotificationId(recipientId);
+  if (audience === 'properties') {
+    if (!Array.isArray(propertyIds) || !propertyIds.length || propertyIds.length > 100)
+      throw { status: 400, message: 'Chọn từ 1 đến 100 dãy trọ.' };
+    propertyIds.forEach(validateNotificationId);
+  } else validateNotificationId(propertyId);
   if (typeof title !== 'string' || !title.trim() || title.trim().length > 200) {
     throw { status: 400, message: 'Tiêu đề phải có từ 1 đến 200 ký tự.' };
   }
@@ -27,8 +33,11 @@ export const validateSendNotification = body => {
     throw { status: 400, message: 'Nội dung phải có từ 1 đến 5000 ký tự.' };
   }
   return {
-    recipientId: recipientId.toLowerCase(),
-    propertyId: propertyId.toLowerCase(),
+    audience,
+    recipientId: audience === 'individual' ? recipientId.toLowerCase() : undefined,
+    propertyId: audience === 'properties' ? undefined : propertyId.toLowerCase(),
+    propertyIds:
+      audience === 'properties' ? [...new Set(propertyIds.map(id => id.toLowerCase()))] : undefined,
     title: title.trim(),
     content: content.trim(),
   };
