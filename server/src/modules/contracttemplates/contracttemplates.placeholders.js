@@ -45,7 +45,7 @@ export const buildPlaceholderValues = contract => {
   const room = contract.room || {};
   const property = room.property || {};
   const owner = property.owner || {};
-  const rep = contract.representative || {};
+  const rep = contract.representative || contract.guestSnapshot || {};
   const members = contract.otherMembers || [];
 
   return {

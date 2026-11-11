@@ -92,6 +92,9 @@ export const getContractFormOptions = async (propertyId, user) => {
   const approvedRequests = await RentalRequests.find({ room: { $in: roomIds }, status: 'approved' })
     .populate('tenant', 'fullName email phone')
     .populate('room', 'roomNumber price maxTenants');
+  const alreadyContracted = new Set((await Contracts.distinct('rentalRequest', {
+    rentalRequest: { $in: approvedRequests.map(request => request._id) },
+  })).map(String));
 
   const tenants = await Users.find({ role: 'tenant', status: 'active' })
     .select('fullName email phone')
@@ -103,9 +106,8 @@ export const getContractFormOptions = async (propertyId, user) => {
 
   return {
     rooms: rooms.filter(r => !busy.has(String(r._id))),
-    approvedRequests: approvedRequests.filter(
-      r => r.room && r.tenant && !busy.has(String(r.room._id)),
-    ),
+    approvedRequests: approvedRequests.filter(r =>
+      r.room && (r.tenant || r.guest?.email) && !busy.has(String(r.room._id)) && !alreadyContracted.has(String(r._id))),
     tenants,
     templates,
     contractPolicy: property?.contractPolicy,
@@ -175,15 +177,23 @@ export const createContract = async (data, user) => {
   if (rentalRequest.status !== 'approved') {
     throw { status: 400, message: 'Yêu cầu thuê phải được phê duyệt' };
   }
+  if (await Contracts.exists({ rentalRequest: rentalRequest._id })) {
+    throw { status: 409, message: 'Yêu cầu thuê này đã có hợp đồng' };
+  }
 
   const activeContract = await Contracts.exists({ room: room._id, status: 'active' });
   if (activeContract) {
     throw { status: 400, message: 'Phòng này đã có hợp đồng hoạt động' };
   }
 
-  const representative = await Users.exists({ _id: rentalRequest.tenant, role: 'tenant' });
-  if (!representative) {
+  const representative = rentalRequest.tenant
+    ? await Users.exists({ _id: rentalRequest.tenant, role: 'tenant' })
+    : null;
+  if (rentalRequest.tenant && !representative) {
     throw { status: 404, message: 'Người đại diện không tồn tại hoặc không phải người thuê' };
+  }
+  if (!representative && !rentalRequest.guest?.email) {
+    throw { status: 400, message: 'Yêu cầu thuê chưa có thông tin người thuê' };
   }
 
   const propertyConfig = await Properties.findById(room.property).select('owner contractPolicy utilityRate');
@@ -209,7 +219,8 @@ export const createContract = async (data, user) => {
     template: template._id,
     templateTitle: template.title,
     templateContent: template.content,
-    representative: rentalRequest.tenant,
+    representative: rentalRequest.tenant || null,
+    guestSnapshot: !rentalRequest.tenant ? rentalRequest.guest : undefined,
     startDate: data.startDate,
     endDate: data.endDate,
     monthlyRent,

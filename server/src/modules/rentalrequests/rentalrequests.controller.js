@@ -34,6 +34,24 @@ export const createRentalRequest = async (req, res) => {
   }
 };
 
+export const createGuestRentalRequest = async (req, res) => {
+  try {
+    const newRequest = await rentalRequestsService.createGuestRentalRequest(req.body);
+    return sendSuccess(res, 201, 'Đã gửi yêu cầu thuê, quản lý sẽ liên hệ với bạn', newRequest);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
+
+export const createTenantAccountForRequest = async (req, res) => {
+  try {
+    const result = await rentalRequestsService.createTenantAccountForRequest(req.params.requestId, req.body, req.user);
+    return sendSuccess(res, 201, 'Đã tạo tài khoản người thuê', result);
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
+
 export const processRentalRequest = async (req, res) => {
   try {
     const { requestId } = req.params;

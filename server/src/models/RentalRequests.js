@@ -6,7 +6,12 @@ const rentalRequestSchema = new mongoose.Schema(
     tenant: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      default: null,
+    },
+    guest: {
+      fullName: { type: String, trim: true },
+      email: { type: String, trim: true, lowercase: true },
+      phone: { type: String, trim: true },
     },
     room: {
       type: mongoose.Schema.Types.ObjectId,

@@ -218,7 +218,7 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
                   <option value="">— Chọn yêu cầu thuê —</option>
                   {options.approvedRequests.map(request => (
                     <option key={request._id} value={request._id}>
-                      Phòng {request.room.roomNumber} · {request.tenant.fullName}
+                      Phòng {request.room.roomNumber} · {request.tenant?.fullName || request.guest?.fullName}
                     </option>
                   ))}
                 </select>
@@ -237,7 +237,7 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
                 </div>
                 <div>
                   <dt className={labelCls}>Người thuê đứng tên</dt>
-                  <dd className="font-semibold text-slate-800">{selectedRequest.tenant.fullName}</dd>
+                  <dd className="font-semibold text-slate-800">{selectedRequest.tenant?.fullName || selectedRequest.guest?.fullName}</dd>
                 </div>
               </dl>
             )}

@@ -38,7 +38,7 @@ export default function ContractDocumentModal({ contract, onClose }) {
   return (
     <Modal
       title={doc?.title || 'Văn bản hợp đồng'}
-      subtitle={`Phòng ${contract.room?.roomNumber || ''} · ${contract.representative?.fullName || ''}`}
+      subtitle={`Phòng ${contract.room?.roomNumber || ''} · ${contract.representative?.fullName || contract.guestSnapshot?.fullName || ''}`}
       onClose={onClose}
       maxWidth="max-w-3xl"
       footer={

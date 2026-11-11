@@ -164,6 +164,7 @@ export async function changeSigning(id, action, data, user) {
     };
 
     if (action === 'send') {
+      if (!contract.representative) conflict('Cần cấp tài khoản khách thuê trước khi gửi hợp đồng ký.');
       if (current && !['withdrawn', 'rejected'].includes(current.status))
         conflict('Hợp đồng đã được gửi ký.');
       await lockReservedRoom(contract, session);

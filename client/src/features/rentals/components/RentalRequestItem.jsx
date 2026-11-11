@@ -14,6 +14,7 @@ const initials = name =>
 
 export default function RentalRequestItem({ request, onProcess, onCreateContract, readOnly = false }) {
   const [action, setAction] = useState(null); // 'approved' | 'rejected' | null
+  const applicant = request.tenant || request.guest;
 
   const handleConfirm = async reason => {
     const ok = await onProcess(request._id, action, reason);
@@ -27,10 +28,10 @@ export default function RentalRequestItem({ request, onProcess, onCreateContract
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 text-white text-xs font-black flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
-              {initials(request.tenant?.fullName)}
+              {initials(applicant?.fullName)}
             </div>
             <div className="min-w-0">
-              <h4 className="text-sm font-black text-slate-900 truncate">{request.tenant?.fullName || 'Người thuê'}</h4>
+              <h4 className="text-sm font-black text-slate-900 truncate">{applicant?.fullName || 'Người thuê'}</h4>
               <p className="text-[11px] font-semibold text-slate-400">Gửi lúc {formatDate(request.createdAt)}</p>
             </div>
           </div>
@@ -58,10 +59,10 @@ export default function RentalRequestItem({ request, onProcess, onCreateContract
             Dọn vào: <b className="text-slate-800">{formatDate(request.expectedDate)}</b>
           </p>
           <p className="flex items-center gap-2 truncate">
-            <Phone size={13} className="text-slate-400 shrink-0" /> {request.tenant?.phone || '—'}
+            <Phone size={13} className="text-slate-400 shrink-0" /> {applicant?.phone || '—'}
           </p>
           <p className="flex items-center gap-2 truncate">
-            <Mail size={13} className="text-slate-400 shrink-0" /> {request.tenant?.email || '—'}
+            <Mail size={13} className="text-slate-400 shrink-0" /> {applicant?.email || '—'}
           </p>
           {request.note && (
             <p className="flex items-start gap-2 p-2.5 mt-2 rounded-xl bg-amber-50/60 border border-amber-100 text-slate-700">
@@ -99,13 +100,18 @@ export default function RentalRequestItem({ request, onProcess, onCreateContract
               </button>
             </>
           )}
-          {!readOnly && request.status === 'approved' && (
+          {!readOnly && request.status === 'approved' && !request.hasContract && (request.tenant || request.guest?.email) && (
             <button
               onClick={() => onCreateContract(request)}
               className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold transition cursor-pointer"
             >
               <FilePlus2 size={14} /> Tạo hợp đồng
             </button>
+          )}
+          {!readOnly && request.status === 'approved' && request.hasContract && !request.tenant && (
+            <p className="w-full rounded-xl bg-amber-50 px-3 py-2 text-center text-[11px] font-bold text-amber-800">
+              Đã lập hợp đồng · cấp tài khoản tại màn Hợp đồng
+            </p>
           )}
         </div>
       </div>

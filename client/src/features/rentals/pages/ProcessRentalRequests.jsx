@@ -76,7 +76,8 @@ export default function ProcessRentalRequests() {
     return requests.filter(r => {
       if (filter !== 'all' && r.status !== filter) return false;
       if (!kw) return true;
-      return [r.tenant?.fullName, r.tenant?.email, r.tenant?.phone, r.room?.roomNumber]
+      const applicant = r.tenant || r.guest;
+      return [applicant?.fullName, applicant?.email, applicant?.phone, r.room?.roomNumber]
         .filter(Boolean)
         .some(v => String(v).toLowerCase().includes(kw));
     });

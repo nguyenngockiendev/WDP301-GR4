@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { CalendarDays, Pencil, RefreshCw, UserRoundCog, Users, Wallet, DoorOpen, FileText } from 'lucide-react';
+import { CalendarDays, Pencil, RefreshCw, UserRoundCog, Users, Wallet, DoorOpen, FileText, UserPlus } from 'lucide-react';
 import ContractDocumentModal from './ContractDocumentModal';
 import contractsAPI from '../api/contracts-api';
 import RenewContractModal from './RenewContractModal';
@@ -10,6 +10,7 @@ import ContractStatusBadge from './ContractStatusBadge';
 import { formatCurrency, formatDate } from '../../../shared/utils/format';
 import { signingLabels } from '../signingLabels';
 import { getCurrentUser } from '../../../shared/utils/auth';
+import CreateTenantAccountModal from './CreateTenantAccountModal';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -17,10 +18,13 @@ export default function ContractItem({ contract, onEdit, onRefresh, readOnly = f
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showChangeRepModal, setShowChangeRepModal] = useState(false);
   const [showDocument, setShowDocument] = useState(false);
+  const [showCreateTenantAccount, setShowCreateTenantAccount] = useState(false);
   const [sending, setSending] = useState(false);
   const signingStatus = contract.signing?.status;
-  const canSend = !readOnly && getCurrentUser()?.role === 'manager' && contract.status === 'draft' &&
+  const canSend = !readOnly && getCurrentUser()?.role === 'manager' && contract.status === 'draft' && contract.representative &&
     contract.rentalRequest && (!signingStatus || ['rejected', 'withdrawn'].includes(signingStatus));
+  const canCreateTenantAccount = !readOnly && getCurrentUser()?.role === 'manager' && contract.status === 'draft' &&
+    contract.guestSnapshot?.email && !contract.representative && contract.rentalRequest;
   const editingLocked = contract.status === 'draft' && ['awaiting_tenant', 'awaiting_manager', 'signed'].includes(signingStatus);
 
   const daysLeft = Math.ceil((new Date(contract.endDate) - Date.now()) / DAY);
@@ -85,12 +89,12 @@ export default function ContractItem({ contract, onEdit, onRefresh, readOnly = f
         {/* Người đại diện */}
         <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50/80 border border-slate-100 mb-3">
           <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-slate-700 to-slate-900 text-white text-xs font-black flex items-center justify-center shrink-0">
-            {(contract.representative?.fullName || '?').trim().charAt(0).toUpperCase()}
+              {(contract.representative?.fullName || contract.guestSnapshot?.fullName || '?').trim().charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-extrabold text-slate-800 truncate">{contract.representative?.fullName || 'N/A'}</p>
+            <p className="text-xs font-extrabold text-slate-800 truncate">{contract.representative?.fullName || contract.guestSnapshot?.fullName || 'N/A'}</p>
             <p className="text-[11px] text-slate-400 truncate">
-              {contract.representative?.phone || contract.representative?.email || 'Người đại diện'}
+              {contract.representative?.phone || contract.representative?.email || contract.guestSnapshot?.phone || contract.guestSnapshot?.email || 'Người đại diện'}
             </p>
           </div>
           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500" title="Số người ở">
@@ -142,6 +146,11 @@ export default function ContractItem({ contract, onEdit, onRefresh, readOnly = f
             {sending ? 'Đang gửi…' : 'Gửi khách thuê ký'}
           </button>
         )}
+        {canCreateTenantAccount && (
+          <button type="button" onClick={() => setShowCreateTenantAccount(true)} className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100">
+            <UserPlus size={14} className="mr-1 inline" /> Cấp tài khoản khách
+          </button>
+        )}
         {!readOnly && <div className="mt-auto flex gap-2">
           {!editingLocked && (
             <button
@@ -171,6 +180,13 @@ export default function ContractItem({ contract, onEdit, onRefresh, readOnly = f
       </div>
 
       {showDocument && <ContractDocumentModal contract={contract} onClose={() => setShowDocument(false)} />}
+      {showCreateTenantAccount && (
+        <CreateTenantAccountModal
+          contract={contract}
+          onClose={() => setShowCreateTenantAccount(false)}
+          onCreated={onRefresh}
+        />
+      )}
 
       {showRenewModal && (
         <RenewContractModal contract={contract} onClose={() => setShowRenewModal(false)} onRenew={handleRenew} />

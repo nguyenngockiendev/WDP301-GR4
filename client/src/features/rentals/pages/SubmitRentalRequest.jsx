@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import rentalsAPI from '../api/rentals-api';
 import { btnPrimary, btnGhost, inputCls, labelCls } from '../../../shared/components/Modal';
+import { getCurrentUser } from '../../../shared/utils/auth';
 
 const toInputDate = d => {
   const x = new Date(d);
@@ -19,6 +20,7 @@ export default function SubmitRentalRequest({ roomId: roomIdProp, onSuccess, onC
   const navigate = useNavigate();
   const params = useParams();
   const roomId = roomIdProp || params.roomId;
+  const isGuest = !getCurrentUser();
   const today = toInputDate(new Date());
 
   const {
@@ -31,11 +33,10 @@ export default function SubmitRentalRequest({ roomId: roomIdProp, onSuccess, onC
   const onSubmit = async data => {
     try {
       setLoading(true);
-      await rentalsAPI.createRentalRequest({
-        ...data,
-        room: roomId,
-      });
-      toast.success('Gửi yêu cầu thuê thành công!');
+      const requestData = { ...data, room: roomId };
+      if (isGuest) await rentalsAPI.createGuestRentalRequest(requestData);
+      else await rentalsAPI.createRentalRequest(requestData);
+      toast.success(isGuest ? 'Đã gửi yêu cầu. Quản lý sẽ liên hệ với bạn.' : 'Gửi yêu cầu thuê thành công!');
       if (onSuccess) onSuccess();
       else navigate(`/rooms/${roomId}`);
     } catch (error) {
@@ -49,6 +50,26 @@ export default function SubmitRentalRequest({ roomId: roomIdProp, onSuccess, onC
 
   const form = (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {isGuest && (
+        <>
+          <div>
+            <label className={labelCls}>Họ và tên *</label>
+            <input className={inputCls} placeholder="Nguyễn Văn A" {...register('fullName', { required: 'Vui lòng nhập họ tên', minLength: { value: 2, message: 'Họ tên tối thiểu 2 ký tự' } })} />
+            {errors.fullName && <p className="mt-1 text-[11px] font-semibold text-rose-500">{errors.fullName.message}</p>}
+          </div>
+          <div>
+            <label className={labelCls}>Email *</label>
+            <input type="email" className={inputCls} placeholder="email@example.com" {...register('email', { required: 'Vui lòng nhập email', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Email không hợp lệ' } })} />
+            {errors.email && <p className="mt-1 text-[11px] font-semibold text-rose-500">{errors.email.message}</p>}
+          </div>
+          <div>
+            <label className={labelCls}>Số điện thoại *</label>
+            <input type="tel" className={inputCls} placeholder="09xxxxxxxx" {...register('phone', { required: 'Vui lòng nhập số điện thoại', pattern: { value: /^[0-9+().\-\s]{8,20}$/, message: 'Số điện thoại không hợp lệ' } })} />
+            {errors.phone && <p className="mt-1 text-[11px] font-semibold text-rose-500">{errors.phone.message}</p>}
+          </div>
+          <p className="text-xs text-slate-500">Chưa cần tạo tài khoản. Nếu yêu cầu được duyệt, quản lý sẽ tạo tài khoản thuê cho bạn.</p>
+        </>
+      )}
       <div>
         <label className={labelCls}>Ngày dự kiến nhận phòng *</label>
         <input

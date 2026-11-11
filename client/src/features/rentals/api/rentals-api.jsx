@@ -13,6 +13,14 @@ const rentalsAPI = {
     return api.post('/rental-requests', requestData);
   },
 
+  createGuestRentalRequest: async (requestData) => {
+    return api.post('/rental-requests/guest', requestData);
+  },
+
+  createTenantAccountForRequest: async (requestId, data) => {
+    return api.post(`/rental-requests/${requestId}/create-tenant-account`, data);
+  },
+
   processRentalRequest: async (requestId, data) => {
     return api.patch(`/rental-requests/${requestId}/process`, data);
   },

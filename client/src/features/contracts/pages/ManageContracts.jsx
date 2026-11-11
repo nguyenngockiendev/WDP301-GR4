@@ -85,7 +85,7 @@ export default function ManageContracts() {
     return contracts.filter(c => {
       if (statusFilter !== 'all' && c.status !== statusFilter) return false;
       if (!kw) return true;
-      return [c.room?.roomNumber, c.representative?.fullName, c.representative?.phone, c.representative?.email]
+      return [c.room?.roomNumber, c.representative?.fullName || c.guestSnapshot?.fullName, c.representative?.phone || c.guestSnapshot?.phone, c.representative?.email || c.guestSnapshot?.email]
         .filter(Boolean)
         .some(v => String(v).toLowerCase().includes(kw));
     });

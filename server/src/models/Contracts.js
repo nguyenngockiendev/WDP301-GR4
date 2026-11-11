@@ -49,7 +49,12 @@ const contractSchema = new mongoose.Schema(
     representative: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      default: null,
+    },
+    guestSnapshot: {
+      fullName: { type: String, trim: true },
+      email: { type: String, trim: true, lowercase: true },
+      phone: { type: String, trim: true },
     },
     otherMembers: [
       {
