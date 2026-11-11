@@ -73,7 +73,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
           icon: ClipboardList,
           roles: TENANT,
         },
-        { to: '/tenants', label: 'Khách thuê', icon: Users, roles: STAFF },
+        { to: '/tenants', label: 'Khách thuê', icon: Users, roles: [...MANAGER , ...STAFF] },
         { to: '/browse-rooms', label: 'Tìm phòng trống', icon: Search, roles: ['tenant'] },
       ],
     },

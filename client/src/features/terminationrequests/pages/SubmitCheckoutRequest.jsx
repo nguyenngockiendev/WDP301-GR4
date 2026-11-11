@@ -8,10 +8,15 @@ import terminationRequestsAPI from '../api/terminationrequests-api';
 export default function SubmitCheckoutRequest() {
   const [loading, setLoading] = useState(false);
   const [checkingEligibility, setCheckingEligibility] = useState(true);
-  const [eligibleContract, setEligibleContract] = useState(null);
+  const [eligibleContracts, setEligibleContracts] = useState([]);
+  const [selectedContractId, setSelectedContractId] = useState('');
+  const [eligibilityError, setEligibilityError] = useState('');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const requestedContractId = searchParams.get('contractId') ?? undefined;
+  const requestedContractId = searchParams.get('contractId') || undefined;
+  const eligibleContract = eligibleContracts.find(
+    (contract) => contract._id === (requestedContractId || selectedContractId),
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -19,22 +24,33 @@ export default function SubmitCheckoutRequest() {
     const checkEligibility = async () => {
       try {
         setCheckingEligibility(true);
+        setEligibilityError('');
+        setEligibleContracts([]);
+        setSelectedContractId('');
 
         const response = await terminationRequestsAPI.checkEligibility(requestedContractId);
         if (!isMounted) return;
         const result = response?.data ?? response;
 
-        if (!result?.canSubmit) {
-          toast.warning(
-            requestedContractId
-              ? 'Hợp đồng này không đủ điều kiện gửi yêu cầu trả phòng.'
-              : 'Bạn chưa có hợp đồng đang hiệu lực để gửi yêu cầu trả phòng.',
-          );
-          navigate('/checkout-requests', { replace: true });
+        let contracts = [];
+        if (Array.isArray(result?.contracts)) {
+          contracts = result.contracts.filter((contract) => contract.canSubmit);
+        } else if (result?.canSubmit && result.contract) {
+          contracts = [result.contract];
+        }
+
+        if (requestedContractId && !contracts.some((contract) => contract._id === requestedContractId)) {
+          setEligibilityError('Hợp đồng này không đủ điều kiện gửi yêu cầu trả phòng hoặc đã có yêu cầu đang xử lý.');
           return;
         }
 
-        setEligibleContract(result.contract || null);
+        if (!contracts.length) {
+          setEligibilityError('Bạn chưa có hợp đồng đủ điều kiện gửi yêu cầu trả phòng.');
+          return;
+        }
+
+        setEligibleContracts(contracts);
+        if (contracts.length === 1) setSelectedContractId(contracts[0]._id);
       } catch (error) {
         if (!isMounted) return;
         const message =
@@ -42,8 +58,7 @@ export default function SubmitCheckoutRequest() {
           error.message ||
           'Không thể kiểm tra điều kiện gửi yêu cầu trả phòng';
 
-        toast.error(message);
-        navigate('/checkout-requests', { replace: true });
+        setEligibilityError(message);
       } finally {
         if (isMounted) {
           setCheckingEligibility(false);
@@ -56,15 +71,18 @@ export default function SubmitCheckoutRequest() {
     return () => {
       isMounted = false;
     };
-  }, [navigate, requestedContractId]);
+  }, [requestedContractId]);
 
   const handleSubmit = async (payload) => {
+    if (loading || !eligibleContract) return;
+
     try {
       setLoading(true);
       await terminationRequestsAPI.create({
         contractId: eligibleContract._id,
         moveOutDate: payload.moveOutDate,
         reason: payload.reason,
+        refundBankAccount: payload.refundBankAccount,
       });
       toast.success('Gửi yêu cầu trả phòng thành công');
       navigate('/checkout-requests');
@@ -90,10 +108,6 @@ export default function SubmitCheckoutRequest() {
     );
   }
 
-  if (!eligibleContract) {
-    return null;
-  }
-
   return (
     <section className="mx-auto max-w-5xl py-7">
       <Link
@@ -115,23 +129,50 @@ export default function SubmitCheckoutRequest() {
         </p>
       </div>
 
-      <div className="mb-5 flex gap-3 rounded-2xl border border-sky-100 bg-sky-50/80 p-4 text-sm leading-6 text-sky-800">
-        <Info size={18} className="mt-0.5 shrink-0" />
-        <div>
-          <p>
-            Hợp đồng hợp lệ của bạn:{' '}
-            <strong>
-              {eligibleContract.room?.roomNumber || 'Phòng đang thuê'}
-            </strong>
-          </p>
-          <p>
-            Sau khi gửi, bạn có thể theo dõi tiến độ xử lý trong mục “Yêu cầu trả phòng của tôi”.
-            Việc gửi yêu cầu chưa đồng nghĩa hợp đồng đã kết thúc.
-          </p>
-        </div>
-      </div>
+      {eligibilityError && (
+        <p role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {eligibilityError}
+        </p>
+      )}
 
-      <CheckoutRequestForm onSubmit={handleSubmit} loading={loading} />
+      {!requestedContractId && eligibleContracts.length > 1 && (
+        <div className="mb-5 rounded-2xl bg-white/85 p-4">
+          <label htmlFor="checkout-contract" className="mb-2 block text-sm font-bold text-slate-700">
+            Chọn hợp đồng trả phòng
+          </label>
+          <select
+            id="checkout-contract"
+            value={selectedContractId}
+            onChange={(event) => setSelectedContractId(event.target.value)}
+            disabled={loading}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
+          >
+            <option value="">Chọn phòng và hợp đồng</option>
+            {eligibleContracts.map((contract) => (
+              <option key={contract._id} value={contract._id}>
+                {contract.room?.roomNumber || 'Phòng đang thuê'}
+                {contract.room?.property?.name && ` · ${contract.room.property.name}`}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {eligibleContract && (
+        <>
+          <div className="mb-5 flex gap-3 rounded-2xl border border-sky-100 bg-sky-50/80 p-4 text-sm leading-6 text-sky-800">
+            <Info size={18} className="mt-0.5 shrink-0" />
+            <div>
+              <p>Phòng trả: <strong>{eligibleContract.room?.roomNumber || 'Phòng đang thuê'}</strong></p>
+              <p>
+                Sau khi gửi, bạn có thể theo dõi tiến độ xử lý trong mục “Yêu cầu trả phòng của tôi”.
+                Việc gửi yêu cầu chưa đồng nghĩa hợp đồng đã kết thúc.
+              </p>
+            </div>
+          </div>
+          <CheckoutRequestForm key={eligibleContract._id} onSubmit={handleSubmit} loading={loading} />
+        </>
+      )}
     </section>
   );
 }

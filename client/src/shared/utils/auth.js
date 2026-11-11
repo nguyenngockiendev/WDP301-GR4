@@ -33,8 +33,8 @@ export const getCurrentUser = () => {
   return user;
 };
 
-/** Trang mặc định sau khi đăng nhập: người thuê về trang Home, chủ trọ / quản lý vào trang quản lý. */
-export const getDefaultPathForRole = role => (role === 'tenant' ? '/home' : '/dashboard');
+/** Dashboard hiển thị nội dung theo vai trò của tài khoản đăng nhập. */
+export const getDefaultPathForRole = () => '/dashboard';
 
 /**
  * Trang cần quay lại sau khi đăng nhập: trang người dùng đang xem trước khi bị bắt đăng nhập
@@ -43,9 +43,8 @@ export const getDefaultPathForRole = role => (role === 'tenant' ? '/home' : '/da
 export const getPostLoginPath = (from, role) => {
   const path = from?.pathname ? `${from.pathname}${from.search || ''}${from.hash || ''}` : '';
   if (!path || path.startsWith('/login') || path.startsWith('/register') || path.startsWith('/forgot-password')) {
-    return getDefaultPathForRole(role);
+    return getDefaultPathForRole();
   }
-  // Người thuê không vào trang quản lý
-  if (role === 'tenant' && path.startsWith('/dashboard')) return '/home';
+  if (role === 'tenant' && path.startsWith('/dashboard')) return getDefaultPathForRole();
   return path;
 };

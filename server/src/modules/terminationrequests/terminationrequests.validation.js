@@ -1,4 +1,8 @@
 export function validateCreateTerminationRequest(body) {
+  if (!body?.contractId || typeof body.contractId !== 'string') {
+    return 'Vui lòng chọn hợp đồng/phòng muốn trả';
+  }
+
   if (!body?.reason || typeof body.reason !== 'string' || !body.reason.trim()) {
     return 'Lý do trả phòng không được để trống';
   }
@@ -31,6 +35,20 @@ export function validateCreateTerminationRequest(body) {
 
   if (body.moveOutDate < today) {
     return 'Ngày dự kiến trả phòng không được ở trong quá khứ';
+  }
+
+  const bank = body?.refundBankAccount;
+  if (!bank || typeof bank !== 'object') {
+    return 'Vui lòng nhập thông tin tài khoản nhận hoàn cọc';
+  }
+  if (!bank.bankName || typeof bank.bankName !== 'string' || !bank.bankName.trim()) {
+    return 'Tên ngân hàng không được để trống';
+  }
+  if (!bank.accountNumber || typeof bank.accountNumber !== 'string' || !/^[0-9]{6,25}$/.test(bank.accountNumber.trim())) {
+    return 'Số tài khoản ngân hàng phải gồm 6-25 chữ số';
+  }
+  if (!bank.accountHolder || typeof bank.accountHolder !== 'string' || !bank.accountHolder.trim()) {
+    return 'Tên chủ tài khoản không được để trống';
   }
 
   return null;

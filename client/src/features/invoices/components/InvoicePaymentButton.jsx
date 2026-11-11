@@ -14,7 +14,7 @@ export default function InvoicePaymentButton({ invoice, payingInvoiceId, onPay }
       onClick={() => onPay(invoice)}
       className="inline-flex items-center gap-2 rounded-xl bg-gradient-emerald px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
     >
-      <CreditCard size={16} /> {payingInvoiceId === invoice._id ? 'Đang mở VNPay…' : invoice.invoiceType === 'deposit' ? 'Thanh toán tiền cọc' : 'Thanh toán'}
+      <CreditCard size={16} /> {payingInvoiceId === invoice._id ? 'Đang mở VNPay…' : invoice.invoiceType === 'deposit' ? 'Thanh toán tiền cọc' : invoice.invoiceType === 'checkout_payment' ? 'Thanh toán qua VNPay' : 'Thanh toán'}
     </button>
   );
 }

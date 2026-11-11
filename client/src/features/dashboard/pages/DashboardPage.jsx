@@ -51,14 +51,16 @@ export default function DashboardPage() {
     return () => controller.abort();
   }, [propertyId, days, refreshCount, realtimeRevision]);
 
+  const isTenant = (dashboard?.user.role ?? getCurrentUser()?.role) === 'tenant';
+  const refresh = () => setRefreshCount(value => value + 1);
+
   return (
-    <section className="mx-auto max-w-7xl space-y-6 py-6">
+    <section className={`mx-auto space-y-6 py-6 ${isTenant ? 'max-w-6xl sm:py-8' : 'max-w-7xl'}`}>
+      {isTenant ? <TenantDashboard dashboard={dashboard} loading={loading} onRefresh={refresh} /> : (
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-primary">HAVEN STAY</p>
-          <h1 className="mt-2 text-2xl font-bold">
-            {dashboard?.user.role === 'tenant' ? 'Không gian của tôi' : 'Tổng quan nhà trọ'}
-          </h1>
+          <h1 className="mt-2 text-2xl font-bold">Tổng quan nhà trọ</h1>
           {dashboard && (
             <p className="mt-2 text-sm text-content-sub">
               Xin chào, {dashboard.user.fullName}. Cập nhật lúc{' '}
@@ -68,13 +70,14 @@ export default function DashboardPage() {
         </div>
         <button
           disabled={loading}
-          onClick={() => setRefreshCount(value => value + 1)}
+          onClick={refresh}
           className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
         >
           Làm mới
         </button>
       </div>
-      {loading && (
+      )}
+      {loading && (!isTenant || !dashboard) && (
         <p role="status" className="rounded-2xl bg-surface-card p-8 text-content-sub">
           Đang tải dữ liệu…
         </p>
@@ -97,11 +100,7 @@ export default function DashboardPage() {
           )}
         </div>
       )}
-      {!loading &&
-        dashboard &&
-        (dashboard.user.role === 'tenant' ? (
-          <TenantDashboard dashboard={dashboard} />
-        ) : (
+      {!loading && dashboard && !isTenant && (
           <ManagerDashboard
             dashboard={dashboard}
             propertyId={propertyId}
@@ -109,7 +108,7 @@ export default function DashboardPage() {
             onPropertyChange={setPropertyId}
             onDaysChange={setDays}
           />
-        ))}
+      )}
     </section>
   );
 }

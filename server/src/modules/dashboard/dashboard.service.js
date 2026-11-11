@@ -8,6 +8,7 @@ import TerminationRequests from '../../models/TerminationRequests.js';
 import Invoices from '../../models/Invoices.js';
 import Payments from '../../models/Payments.js';
 import { getMyInvoices } from '../invoices/invoices.service.js';
+import { getContractStartCutoff } from '../contracts/contract-dates.js';
 
 export const getDashboard = async (user, { propertyId, days = 30 } = {}) => {
   // Lấy vai trò từ DB để tài khoản bị khóa hoặc đổi quyền có hiệu lực ngay.
@@ -38,14 +39,14 @@ const getTenantDashboard = async (user, now) => {
       ['unpaid', 'partially_paid', 'overdue'].includes(invoice.status) &&
       invoice.totalAmount > invoice.paidAmount,
   );
-  const recentPayments = await Payments.find({ payer: user.userId, status: 'success' })
+  const recentPayments = await Payments.find({ payer: user.userId, status: 'success', method: { $ne: 'checkout' } })
     .select('invoice amount paidAt method')
     .sort({ paidAt: -1, _id: -1 })
     .limit(5)
     .lean();
   const contracts = await Contracts.find({
     status: 'active',
-    startDate: { $lte: now },
+    startDate: { $lte: getContractStartCutoff(now) },
     endDate: { $gte: now },
     $or: [{ representative: user.userId }, { otherMembers: user.userId }],
   })
@@ -75,6 +76,7 @@ const getTenantDashboard = async (user, now) => {
           _id: invoice._id,
           billingMonth: invoice.billingMonth,
           invoiceType: invoice.invoiceType,
+          roomNumber: invoice.contract?.room?.roomNumber,
           dueDate: invoice.dueDate,
           balance: invoice.totalAmount - invoice.paidAmount,
         })),
@@ -116,7 +118,7 @@ const getManagedDashboard = async (user, propertyId, days, now) => {
   const active = {
     room: { $in: roomIds },
     status: 'active',
-    startDate: { $lte: now },
+    startDate: { $lte: getContractStartCutoff(now) },
     endDate: { $gte: now },
   };
   const expiring = { ...active, endDate: { $gte: now, $lte: until } };
@@ -198,6 +200,7 @@ const getRevenue = async (contractIds, now) => {
     {
       $match: {
         invoice: { $in: invoiceIds },
+        method: { $ne: 'checkout' },
         status: 'success',
         paidAt: { $gte: revenueStart, $lte: now },
       },

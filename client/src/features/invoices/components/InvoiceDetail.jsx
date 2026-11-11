@@ -6,7 +6,7 @@ import InvoiceStatusBadge from './InvoiceStatusBadge';
 export default function InvoiceDetail({ invoice, paymentAction }) {
   const room = invoice.contract?.room;
   const [year, month] = invoice.billingMonth.split('-');
-  const title = invoice.invoiceType === 'checkout_asset'
+  const title = ['checkout_asset', 'checkout_payment'].includes(invoice.invoiceType)
     ? 'Hóa đơn quyết toán trả phòng'
     : invoice.invoiceType === 'deposit' ? 'Hóa đơn tiền đặt cọc' : `Hóa đơn tháng ${month}/${year}`;
   const paidAmount = invoice.paidAmount ?? 0;
@@ -61,7 +61,9 @@ export default function InvoiceDetail({ invoice, paymentAction }) {
         </div>
         <div>
           <dt className="text-sm text-primary-900">Còn phải trả</dt>
-          <dd className="mt-1 text-xl font-black text-primary-900">{formatCurrency(balance)}</dd>
+          <dd className="mt-1 text-xl font-black text-primary-900">
+            {invoice.checkoutPaymentInvoice && balance > 0 ? 'Đã gộp vào hóa đơn trả phòng' : formatCurrency(balance)}
+          </dd>
         </div>
       </dl>
 

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ArrowRight, CalendarDays, FileText, Send } from 'lucide-react';
 
+const bankInputClass = 'mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10';
+
 const getToday = () => {
   const today = new Date();
   const year = today.getFullYear();
@@ -20,11 +22,17 @@ export default function CheckoutRequestForm({
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (!moveOutDate || !reason.trim()) return;
+    if (loading || existingRequest || !moveOutDate || !reason.trim()) return;
 
+    const fields = new FormData(event.currentTarget);
     onSubmit({
       moveOutDate,
       reason: reason.trim(),
+      refundBankAccount: {
+        bankName: fields.get('bankName').trim(),
+        accountNumber: fields.get('accountNumber').trim(),
+        accountHolder: fields.get('accountHolder').trim(),
+      },
     });
   };
 
@@ -40,7 +48,7 @@ export default function CheckoutRequestForm({
         <div>
           <h2 className="text-lg font-extrabold text-slate-800">Thông tin yêu cầu</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Hợp đồng được hệ thống tự động xác định từ tài khoản của bạn.
+            Điền ngày dự kiến rời phòng, lý do và tài khoản nhận tiền nếu có khoản hoàn cọc.
           </p>
         </div>
       </div>
@@ -86,6 +94,32 @@ export default function CheckoutRequestForm({
           required
         />
       </div>
+
+      <fieldset className="mb-6">
+        <legend className="mb-3 text-sm font-extrabold text-slate-800">Tài khoản nhận hoàn cọc</legend>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <label className="text-sm font-bold text-slate-700">
+            Ngân hàng <span className="text-rose-500">*</span>
+            <input name="bankName" className={bankInputClass} pattern={'.*\\S.*'} required />
+          </label>
+          <label className="text-sm font-bold text-slate-700">
+            Số tài khoản <span className="text-rose-500">*</span>
+            <input
+              name="accountNumber"
+              inputMode="numeric"
+              pattern="[0-9]{6,25}"
+              maxLength={25}
+              title="Nhập từ 6 đến 25 chữ số"
+              className={bankInputClass}
+              required
+            />
+          </label>
+          <label className="text-sm font-bold text-slate-700">
+            Tên chủ tài khoản <span className="text-rose-500">*</span>
+            <input name="accountHolder" className={bankInputClass} pattern={'.*\\S.*'} required />
+          </label>
+        </div>
+      </fieldset>
 
       <button
         type="submit"

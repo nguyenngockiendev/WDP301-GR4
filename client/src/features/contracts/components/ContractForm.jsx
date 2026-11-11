@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import Modal, { btnPrimary, btnGhost, inputCls, labelCls } from '../../../shared/components/Modal';
+import { formatCurrency } from '../../../shared/utils/format';
 import contractsAPI from '../api/contracts-api';
 import { CONTRACT_STATUS } from './ContractStatusBadge';
 
 const toInputDate = d => (d ? new Date(d).toISOString().split('T')[0] : '');
+const VIETNAM_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 const addYears = (date, years) => {
   const d = new Date(date);
@@ -15,7 +17,8 @@ const addYears = (date, years) => {
 
 export default function ContractForm({ contract, propertyId, initialRequestId, onSubmit, onCancel }) {
   const isEdit = Boolean(contract);
-  const today = toInputDate(new Date());
+  const datesOnly = !isEdit || (Boolean(contract.rentalRequest) && contract.status === 'draft');
+  const today = toInputDate(new Date(Date.now() + VIETNAM_OFFSET_MS));
 
   const {
     register,
@@ -34,21 +37,15 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
           template: String(contract.template?._id || contract.template || ''),
         }
       : {
-          rentalRequest: '',
-          room: '',
-          representative: '',
           startDate: today,
           endDate: addYears(today, 1),
-          monthlyRent: '',
-          depositAmount: '',
-          status: 'active',
-          template: '',
         },
   });
 
-  const [options, setOptions] = useState({ rooms: [], approvedRequests: [], tenants: [] });
-  const [loadingOptions, setLoadingOptions] = useState(true);
+  const [options, setOptions] = useState({ approvedRequests: [], tenants: [] });
+  const [loadingOptions, setLoadingOptions] = useState(!(isEdit && datesOnly));
   const [optionsLoaded, setOptionsLoaded] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState(initialRequestId || '');
 
   // Người ở cùng (otherMembers) — cần để đổi người đại diện sau này
   const [members, setMembers] = useState(() =>
@@ -56,38 +53,31 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
   );
   const [memberKeyword, setMemberKeyword] = useState('');
 
+  const setDatesFromRequest = request => {
+    const startDate = toInputDate(request?.expectedDate) || today;
+    setValue('startDate', startDate);
+    setValue('endDate', addYears(startDate, 1));
+  };
+
   useEffect(() => {
-    // Sửa hợp đồng cũng cần danh sách người thuê để chọn người ở cùng
+    if (isEdit && datesOnly) return;
     contractsAPI
       .getFormOptions(propertyId)
       .then(res => {
-        setOptions(res.data || { rooms: [], approvedRequests: [], tenants: [] });
+        setOptions(res.data || { approvedRequests: [], tenants: [] });
         setOptionsLoaded(true);
-        if (!isEdit && res.data?.templates?.length) setValue('template', res.data.templates[0]._id);
         if (!isEdit && initialRequestId) {
-          const req = res.data?.approvedRequests?.find(r => r._id === initialRequestId);
-          if (req) {
-            setValue('rentalRequest', req._id);
-            setValue('room', req.room._id);
-            setValue('representative', req.tenant._id);
-            setValue('monthlyRent', req.room.price);
-            if (req.expectedDate) {
-              setValue('startDate', toInputDate(req.expectedDate));
-              setValue('endDate', addYears(req.expectedDate, 1));
-            }
-          } else toast.error('Yêu cầu không còn khả dụng để lập hợp đồng. Vui lòng kiểm tra lại.');
+          const request = res.data?.approvedRequests?.find(r => r._id === initialRequestId);
+          if (request) setDatesFromRequest(request);
         }
       })
       .catch(err => toast.error(err.response?.data?.message || 'Không tải được danh sách phòng / người thuê'))
       .finally(() => setLoadingOptions(false));
   }, [propertyId]);
 
-  const representativeId = isEdit ? String(contract.representative?._id || contract.representative || '') : watch('representative');
-  const selectedRoomId = watch('room');
-  const selectedRequestId = watch('rentalRequest');
-  const selectedRoom = options.rooms.find(room => String(room._id) === String(selectedRoomId))
-    || options.approvedRequests.find(request => String(request._id) === String(selectedRequestId))?.room
-    || (isEdit ? contract.room : null);
+  const selectedRequest = options.approvedRequests.find(request => request._id === selectedRequestId);
+  const representativeId = String(contract?.representative?._id || contract?.representative || '');
+  const selectedRoom = isEdit ? contract.room : selectedRequest?.room;
   const roomCapacity = selectedRoom ? Math.min(4, Math.max(1, Number(selectedRoom.maxTenants) || 1)) : 4;
   const selectedOtherMembers = members.filter(id => id !== String(representativeId));
   const exceedsRoomCapacity = selectedOtherMembers.length + 1 > roomCapacity;
@@ -108,51 +98,39 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
   const toggleMember = id =>
     setMembers(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
 
-  // Chọn yêu cầu thuê đã duyệt -> tự điền phòng, người đại diện, giá thuê
   const handlePickRequest = requestId => {
-    setValue('rentalRequest', requestId);
-    const req = options.approvedRequests.find(r => r._id === requestId);
-    if (!req) return;
-    setValue('room', req.room._id, { shouldValidate: true });
-    setValue('representative', req.tenant._id, { shouldValidate: true });
-    if (req.room.price) setValue('monthlyRent', req.room.price, { shouldValidate: true });
-    if (req.expectedDate) setValue('startDate', toInputDate(req.expectedDate));
+    setSelectedRequestId(requestId);
+    setDatesFromRequest(options.approvedRequests.find(request => request._id === requestId));
   };
 
-  // Chọn phòng -> gợi ý giá thuê theo giá phòng
-  const handlePickRoom = roomId => {
-    setValue('room', roomId, { shouldValidate: true });
-    const room = options.rooms.find(r => r._id === roomId);
-    if (room?.price) setValue('monthlyRent', room.price, { shouldValidate: true });
-  };
-
-  const monthlyRent = watch('monthlyRent');
-  useEffect(() => {
-    if (!isEdit && optionsLoaded && monthlyRent !== '') {
-      setValue('depositAmount', Number(monthlyRent) * Number(options.contractPolicy?.depositMonths ?? 1));
-    }
-  }, [monthlyRent, optionsLoaded, options.contractPolicy?.depositMonths, isEdit, setValue]);
-
-  const selectedTemplate = (options.templates || []).find(t => t._id === watch('template'));
-  const moneyLocked = isEdit && contract.status !== 'draft';
+  const templates = options.templates || [];
+  const selectedTemplate = isEdit ? templates.find(t => t._id === watch('template')) : templates[0];
+  const moneyLocked = datesOnly || contract.status !== 'draft';
+  const monthlyRent = isEdit ? contract.monthlyRent : selectedRoom?.price;
+  const depositAmount = isEdit
+    ? contract.depositAmount
+    : Math.round(monthlyRent * (options.contractPolicy?.depositMonths ?? 1));
 
   // Mẫu hợp đồng: bắt buộc khi tạo; khi sửa chỉ đổi được nếu hợp đồng còn Nháp hoặc chưa có mẫu
   const originalTemplateId = isEdit ? String(contract.template?._id || contract.template || '') : '';
-  const canChooseTemplate = !isEdit || !originalTemplateId || contract.status === 'draft';
-  const noTemplates = !loadingOptions && optionsLoaded && options.templates?.length === 0;
-  const signingDraft = isEdit
-    ? Boolean(contract.rentalRequest) && contract.status === 'draft'
-    : Boolean(watch('rentalRequest'));
+  const canChooseTemplate = !datesOnly && (!originalTemplateId || contract.status === 'draft');
+  const noTemplates = !loadingOptions && optionsLoaded && templates.length === 0;
+  const canCreate = selectedRequest && selectedTemplate && Number.isFinite(monthlyRent) && monthlyRent > 0
+    && Number.isSafeInteger(depositAmount) && depositAmount >= 0;
 
   const submit = data => {
+    if (!isEdit) {
+      if (!canCreate) return;
+      return onSubmit({ rentalRequest: selectedRequest._id, startDate: data.startDate, endDate: data.endDate });
+    }
+    if (datesOnly) return onSubmit({ startDate: data.startDate, endDate: data.endDate });
+
     const payload = { ...data };
-    if (signingDraft) payload.status = 'draft';
-    if (!payload.rentalRequest) delete payload.rentalRequest;
-    if (isEdit && (!canChooseTemplate || !payload.template || payload.template === originalTemplateId)) {
+    if (!canChooseTemplate || !payload.template || payload.template === originalTemplateId) {
       delete payload.template;
     }
     // Khi sửa mà không tải được danh sách người thuê thì không gửi otherMembers (tránh xóa nhầm)
-    if (!isEdit || optionsLoaded) {
+    if (optionsLoaded) {
       payload.otherMembers = members.filter(id => id !== String(representativeId));
     }
     if (moneyLocked) {
@@ -171,14 +149,14 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
       subtitle={
         isEdit
           ? `Phòng ${contract.room?.roomNumber || ''} · ${contract.representative?.fullName || ''}`
-          : 'Chọn từ yêu cầu thuê đã duyệt hoặc nhập thủ công'
+          : 'Lập hợp đồng từ yêu cầu thuê đã duyệt'
       }
       onClose={onCancel}
       maxWidth="max-w-2xl"
       footer={
         <>
           <button type="button" className={btnGhost} onClick={onCancel}>Hủy</button>
-          <button type="submit" form="contract-form" className={btnPrimary} disabled={isSubmitting || (!isEdit && (loadingOptions || !optionsLoaded || noTemplates || exceedsRoomCapacity))}>
+          <button type="submit" form="contract-form" className={btnPrimary} disabled={isSubmitting || (!isEdit && (loadingOptions || !canCreate))}>
             {isEdit ? 'Cập nhật' : 'Tạo hợp đồng'}
           </button>
         </>
@@ -186,15 +164,15 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
     >
       <form id="contract-form" onSubmit={handleSubmit(submit)} className="space-y-4">
         {!isEdit && optionsLoaded && <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">
-          Dùng mẫu do chủ tòa nhà cấu hình. Ngày đóng tiền: {options.contractPolicy?.paymentDueDay ?? 5}; tiền cọc gợi ý: {options.contractPolicy?.depositMonths ?? 1} tháng tiền thuê. Điền phòng, người thuê và thời hạn bên dưới.
+          Giá thuê và tiền cọc lấy từ cấu hình của chủ trọ. Quản lý chỉ nhập ngày bắt đầu và ngày kết thúc.
         </p>}
         {canChooseTemplate ? (
           <div>
-            <label className={labelCls}>Mẫu hợp đồng {!isEdit && '*'}</label>
+            <label className={labelCls}>Mẫu hợp đồng</label>
             <select
               className={inputCls}
               disabled={loadingOptions}
-              {...register('template', { required: isEdit ? false : 'Vui lòng chọn mẫu hợp đồng' })}
+              {...register('template')}
             >
               <option value="">{loadingOptions ? 'Đang tải...' : '— Chọn mẫu do chủ trọ soạn —'}</option>
               {(options.templates || []).map(t => (
@@ -210,11 +188,14 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
             )}
             {err('template')}
           </div>
-        ) : (
+        ) : isEdit && (
           <p className="text-[11px] font-semibold text-slate-500">
             Mẫu hợp đồng: <span className="text-slate-800">{contract.templateTitle || contract.template?.title}</span>
-            <span className="text-slate-400"> (chỉ đổi được khi hợp đồng ở trạng thái Nháp)</span>
           </p>
+        )}
+
+        {!isEdit && noTemplates && (
+          <p className="text-sm text-amber-700">Tòa nhà chưa có mẫu hợp đồng đang áp dụng. Chủ trọ cần cấu hình mẫu hợp đồng.</p>
         )}
 
         {selectedTemplate && <details open className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
@@ -223,68 +204,46 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
           <pre className="mt-3 max-h-64 overflow-y-auto whitespace-pre-wrap text-xs font-sans">{selectedTemplate.content}</pre>
         </details>}
         {!isEdit && (
-          <>
-            {options.approvedRequests.length > 0 && (
-              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
-                <label className={labelCls}>Từ yêu cầu thuê đã duyệt</label>
+          <div className="space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+            {loadingOptions && <p className="text-sm text-slate-500">Đang tải yêu cầu thuê...</p>}
+            {!loadingOptions && !initialRequestId && options.approvedRequests.length > 0 && (
+              <div>
+                <label className={labelCls} htmlFor="contract-rental-request">Yêu cầu thuê đã duyệt</label>
                 <select
+                  id="contract-rental-request"
                   className={inputCls}
-                  value={watch('rentalRequest')}
-                  onChange={e => handlePickRequest(e.target.value)}
+                  value={selectedRequestId}
+                  onChange={event => handlePickRequest(event.target.value)}
                 >
-                  <option value="">— Không chọn (nhập thủ công) —</option>
-                  {options.approvedRequests.map(r => (
-                    <option key={r._id} value={r._id}>
-                      Phòng {r.room.roomNumber} · {r.tenant.fullName} ({r.tenant.email})
+                  <option value="">— Chọn yêu cầu thuê —</option>
+                  {options.approvedRequests.map(request => (
+                    <option key={request._id} value={request._id}>
+                      Phòng {request.room.roomNumber} · {request.tenant.fullName}
                     </option>
                   ))}
                 </select>
               </div>
             )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Phòng *</label>
-                <select
-                  className={inputCls}
-                  disabled={loadingOptions}
-                  {...register('room', { required: 'Vui lòng chọn phòng' })}
-                  onChange={e => handlePickRoom(e.target.value)}
-                >
-                  <option value="">{loadingOptions ? 'Đang tải...' : '— Chọn phòng —'}</option>
-                  {options.rooms.map(r => (
-                    <option key={r._id} value={r._id}>
-                      Phòng {r.roomNumber} · {Number(r.price || 0).toLocaleString('vi-VN')} đ · tối đa {r.maxTenants || 1} người
-                    </option>
-                  ))}
-                </select>
-                {!loadingOptions && options.rooms.length === 0 && (
-                  <p className="mt-1 text-[11px] font-semibold text-amber-600">Tất cả phòng đều đã có hợp đồng.</p>
-                )}
-                {err('room')}
-              </div>
-
-              <div>
-                <label className={labelCls}>Người đại diện *</label>
-                <select
-                  className={inputCls}
-                  disabled={loadingOptions}
-                  {...register('representative', { required: 'Vui lòng chọn người đại diện' })}
-                >
-                  <option value="">{loadingOptions ? 'Đang tải...' : '— Chọn người thuê —'}</option>
-                  {options.tenants.map(t => (
-                    <option key={t._id} value={t._id}>
-                      {t.fullName} · {t.phone || t.email}
-                    </option>
-                  ))}
-                </select>
-                {err('representative')}
-              </div>
-            </div>
-          </>
+            {!loadingOptions && !selectedRequest && (initialRequestId || options.approvedRequests.length === 0) && (
+              <p className="text-sm text-slate-600">
+                {initialRequestId ? 'Yêu cầu này không còn khả dụng để lập hợp đồng.' : 'Chưa có yêu cầu thuê đã duyệt để lập hợp đồng.'}
+              </p>
+            )}
+            {selectedRequest && (
+              <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className={labelCls}>Phòng đã đặt</dt>
+                  <dd className="font-semibold text-slate-800">{selectedRoom.roomNumber}</dd>
+                </div>
+                <div>
+                  <dt className={labelCls}>Người thuê đứng tên</dt>
+                  <dd className="font-semibold text-slate-800">{selectedRequest.tenant.fullName}</dd>
+                </div>
+              </dl>
+            )}
+          </div>
         )}
-
-        <div>
+        {!datesOnly && <div>
           <label className={labelCls}>
             Người ở cùng {selectedOtherMembers.length > 0 && `(${selectedOtherMembers.length})`}
           </label>
@@ -325,9 +284,9 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
           <p className="mt-1 text-[11px] font-semibold text-slate-400">
             Người ở cùng có thể được chọn làm người đại diện mới khi đổi đại diện.
           </p>
-        </div>
+        </div>}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {(isEdit || selectedRequest) && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>Ngày bắt đầu *</label>
             <input type="date" className={inputCls} {...register('startDate', { required: 'Bắt buộc' })} />
@@ -345,46 +304,47 @@ export default function ContractForm({ contract, propertyId, initialRequestId, o
             />
             {err('endDate')}
           </div>
-          <div>
-            <label className={labelCls}>Tiền thuê / tháng (VNĐ) *</label>
+          {moneyLocked ? <div>
+            <p className={labelCls}>Tiền thuê / tháng</p>
+            <p className={`${inputCls} bg-slate-50`}>{formatCurrency(monthlyRent)}</p>
+          </div> : <div>
+            <label className={labelCls}>Tiền thuê / tháng (VNĐ)</label>
             <input
               type="number"
               className={inputCls}
-              disabled={moneyLocked}
               placeholder="5000000"
               {...register('monthlyRent', {
-                required: moneyLocked ? false : 'Bắt buộc',
+                required: 'Bắt buộc',
                 min: { value: 1, message: 'Phải lớn hơn 0' },
               })}
             />
             {err('monthlyRent')}
-          </div>
-          <div>
+          </div>}
+          {moneyLocked ? <div>
+            <p className={labelCls}>Tiền đặt cọc</p>
+            <p className={`${inputCls} bg-slate-50`}>{formatCurrency(depositAmount)}</p>
+          </div> : <div>
             <label className={labelCls}>Tiền đặt cọc (VNĐ)</label>
             <input
               type="number"
               className={inputCls}
-              disabled={moneyLocked}
               placeholder="0"
               {...register('depositAmount', { min: { value: 0, message: 'Không được âm' } })}
             />
             {err('depositAmount')}
-          </div>
-        </div>
-        {moneyLocked && (
-          <p className="text-[11px] font-semibold text-slate-400">
-            Tiền thuê và tiền cọc chỉ sửa được khi hợp đồng ở trạng thái Nháp.
-          </p>
+          </div>}
+        </div>}
+        {!isEdit && selectedRequest && !canCreate && !noTemplates && (
+          <p className="text-sm text-amber-700">Chủ trọ cần kiểm tra cấu hình giá thuê và tiền cọc của phòng.</p>
         )}
 
         <div>
           <label className={labelCls}>Trạng thái</label>
-          {signingDraft ? (
+          {datesOnly ? (
             <p className="text-sm text-slate-600">Lưu nháp để gửi cho khách thuê ký.</p>
           ) : (
           <div className="flex flex-wrap gap-2">
             {Object.entries(CONTRACT_STATUS)
-              .filter(([value]) => isEdit || value === 'active' || value === 'draft')
               .map(([value, c]) => {
                 const active = watch('status') === value;
                 return (

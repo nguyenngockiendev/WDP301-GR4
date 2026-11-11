@@ -81,12 +81,12 @@ const getFinanceReport = async (roomIds, month, start, cutoff) => {
       .select('billingMonth totalAmount dueDate updatedAt')
       .lean(),
     Payments.find({ invoice: { $in: invoiceIds }, status: 'success', paidAt: { $lte: cutoff } })
-      .select('invoice amount paidAt')
+      .select('invoice amount paidAt method')
       .lean(),
   ]);
 
   const periodInvoices = invoices.filter(invoice => invoice.billingMonth === month);
-  const periodPayments = payments.filter(payment => payment.paidAt >= start);
+  const periodPayments = payments.filter(payment => payment.paidAt >= start && payment.method !== 'checkout');
   // Tiền đã trả sau cuối kỳ không được trừ vào công nợ kỳ này.
   let openingBalance = 0;
   let outstanding = 0;

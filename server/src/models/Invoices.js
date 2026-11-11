@@ -53,7 +53,7 @@ const invoiceSchema = new mongoose.Schema(
     // Phân biệt hóa đơn tháng và hóa đơn checkout tài sản
     invoiceType: {
       type: String,
-      enum: ['monthly', 'checkout_asset', 'deposit'],
+      enum: ['monthly', 'checkout_asset', 'checkout_payment', 'deposit'],
       default: 'monthly',
       index: true,
     },
@@ -63,6 +63,11 @@ const invoiceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'TerminationRequest',
       default: null,
+    },
+
+    checkoutPaymentInvoice: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Invoice',
     },
 
     billedTo: {

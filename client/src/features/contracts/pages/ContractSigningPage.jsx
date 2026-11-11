@@ -59,6 +59,8 @@ export default function ContractSigningPage() {
 
   const signing = document.signing;
   const deposit = document.depositInvoice;
+  const isWaitingForActivation = signing.status === 'signed' && document.status === 'draft' &&
+    (!deposit || deposit.status === 'paid');
   const tenantCanSign = role === 'tenant' && signing.status === 'awaiting_tenant';
   const managerCanSign = role === 'manager' && signing.status === 'awaiting_manager';
   const canWithdraw = role === 'manager' && ['awaiting_tenant', 'awaiting_manager'].includes(signing.status);
@@ -72,8 +74,10 @@ export default function ContractSigningPage() {
       <Link to={role === 'tenant' ? '/contracts/my' : '/contracts'} className="text-sm font-semibold text-emerald-700">Về danh sách hợp đồng</Link>
       <h1 className="text-2xl font-black text-slate-900">{signing.title}</h1>
       <p className="font-semibold text-emerald-700">{signingLabels[signing.status]}</p>
-      {signing.status === 'signed' && document.status === 'draft' && (
-        <p className="text-sm text-slate-600">Ngày bắt đầu thuê {new Date(document.startDate).toLocaleDateString('vi-VN')}</p>
+      {isWaitingForActivation && (
+        <p className="text-sm text-slate-600">
+          Chờ hiệu lực · Ngày bắt đầu thuê {new Date(document.startDate).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+        </p>
       )}
       {signing.status === 'signed' && document.status === 'active' && (
         <p className="text-sm text-emerald-700">Hợp đồng đang có hiệu lực.</p>

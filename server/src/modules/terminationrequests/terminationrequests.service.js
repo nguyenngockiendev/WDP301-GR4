@@ -5,64 +5,80 @@ import Rooms from '../../models/Rooms.js';
 import Assets from '../../models/Assets.js';
 import Invoices from '../../models/Invoices.js';
 import Payments from '../../models/Payments.js';
+import Notifications from '../../models/Notifications.js';
+import { notifyRecipient } from '../notifications/notifications.events.js';
 import { createNotification } from '../notifications/notifications.service.js';
+import { isValidPaymentAmount } from '../payments/payments.validation.js';
 import UtilityReadings from '../../models/UtilityReadings.js';
 import Properties from '../../models/Properties.js';
 import ManagerAssignments from '../../models/ManagerAssignments.js';
 import { validateCreateTerminationRequest } from './terminationrequests.validation.js';
+import { getContractStartCutoff } from '../contracts/contract-dates.js';
 
-// Kiểm tra người dùng có hợp đồng active và còn thời hạn hay không.
-export const canSubmitCheckoutRequest = async (userId, contractId) => {
-  if (contractId !== undefined && (typeof contractId !== 'string' || !mongoose.isObjectIdOrHexString(contractId))) {
-    throw { status: 400, message: 'Mã hợp đồng không hợp lệ' };
-  }
+// Trả về TẤT CẢ hợp đồng active của Tenant để Tenant tự chọn phòng muốn checkout.
+export const getCheckoutEligibility = async (userId) => {
   const now = new Date();
-
-  const contract = await Contracts.findOne({
-    ...(contractId ? { _id: contractId } : {}),
+  const contracts = await Contracts.find({
     status: 'active',
-    startDate: { $lte: now },
+    startDate: { $lte: getContractStartCutoff(now) },
     endDate: { $gte: now },
-    $or: [
-      { representative: userId },
-      { otherMembers: userId },
-    ],
+    $or: [{ representative: userId }, { otherMembers: userId }],
   })
-    .select('_id room startDate endDate status')
-    .populate('room', 'roomNumber');
+    .select('_id room startDate endDate status monthlyRent depositAmount')
+    .populate({
+      path: 'room',
+      select: 'roomNumber area price property',
+      populate: { path: 'property', select: 'name address' },
+    })
+    .sort({ startDate: -1 })
+    .lean();
 
-  return contract;
+  if (!contracts.length) return [];
+
+  const requests = await TerminationRequests.find({
+    contract: { $in: contracts.map((contract) => contract._id) },
+    status: { $in: ['pending', 'approved'] },
+  }).select('contract status').lean();
+  const pendingByContract = new Set(requests.map((item) => String(item.contract)));
+
+  return contracts.map((contract) => ({
+    ...contract,
+    hasPendingRequest: pendingByContract.has(String(contract._id)),
+    canSubmit: !pendingByContract.has(String(contract._id)),
+  }));
 };
 
 export const createTerminationRequest = async (data, userId) => {
   const validationError = validateCreateTerminationRequest(data);
+  if (validationError) throw { status: 400, message: validationError };
 
-  if (validationError) {
-    throw {
-      status: 400,
-      message: validationError,
-    };
+  if (!mongoose.isValidObjectId(data.contractId)) {
+    throw { status: 400, message: 'Vui lòng chọn hợp đồng/phòng muốn trả' };
   }
 
-  const contract = await canSubmitCheckoutRequest(userId, data.contractId);
+  // Không tin contractId từ client: luôn kiểm tra hợp đồng thuộc Tenant đăng nhập.
+  const now = new Date();
+  const contract = await Contracts.findOne({
+    _id: data.contractId,
+    status: 'active',
+    startDate: { $lte: getContractStartCutoff(now) },
+    endDate: { $gte: now },
+    $or: [{ representative: userId }, { otherMembers: userId }],
+  }).populate({
+    path: 'room',
+    populate: { path: 'property', select: 'name address' },
+  });
 
   if (!contract) {
-    throw {
-      status: 400,
-      message: 'Bạn không có hợp đồng đang hoạt động và còn thời hạn để gửi yêu cầu trả phòng',
-    };
+    throw { status: 403, message: 'Hợp đồng được chọn không tồn tại, không còn hiệu lực hoặc không thuộc tài khoản của bạn' };
   }
 
   const existingRequest = await TerminationRequests.findOne({
     contract: contract._id,
     status: { $in: ['pending', 'approved'] },
   });
-
   if (existingRequest) {
-    throw {
-      status: 400,
-      message: 'Hợp đồng này đã có yêu cầu trả phòng đang được xử lý',
-    };
+    throw { status: 409, message: 'Hợp đồng/phòng này đã có yêu cầu trả phòng đang được xử lý' };
   }
 
   const terminationRequest = await TerminationRequests.create({
@@ -71,20 +87,17 @@ export const createTerminationRequest = async (data, userId) => {
     requestedDate: new Date(),
     moveOutDate: new Date(`${data.moveOutDate}T00:00:00.000Z`),
     reason: data.reason.trim(),
+    refundBankAccount: {
+      bankName: data.refundBankAccount.bankName.trim(),
+      accountNumber: data.refundBankAccount.accountNumber.trim(),
+      accountHolder: data.refundBankAccount.accountHolder.trim().toUpperCase(),
+    },
     status: 'pending',
   });
 
   return terminationRequest.populate([
-    {
-      path: 'contract',
-      populate: {
-        path: 'room',
-      },
-    },
-    {
-      path: 'requestedBy',
-      select: 'fullName email phone',
-    },
+    { path: 'contract', populate: { path: 'room', populate: { path: 'property', select: 'name address' } } },
+    { path: 'requestedBy', select: 'fullName email phone' },
   ]);
 };
 
@@ -292,6 +305,7 @@ const serializeAssetInspection = (assets, invoice) => {
         invoiceType: invoice.invoiceType,
         billingMonth: invoice.billingMonth,
         totalAmount: invoice.totalAmount,
+        assetAmount: (invoice.items || []).filter(item => item.asset).reduce((sum, item) => sum + Number(item.amount || 0), 0),
         paidAmount: invoice.paidAmount,
         dueDate: invoice.dueDate,
         status: invoice.status,
@@ -310,9 +324,9 @@ const serializeAssetInspection = (assets, invoice) => {
                 model: asset.model,
                 assetCode: asset.assetCode,
                 purchasePrice: asset.purchasePrice || 0,
-                status: asset.status,
-                invoiceId: asset.invoiceId || null,
-                inspectionStatus: invoiceItem?.assetStatus || asset.status,
+                status: invoiceItem?.assetStatus || 'in_use',
+                invoiceId: invoice?._id || null,
+                inspectionStatus: invoiceItem?.assetStatus || 'in_use',
                 maintenanceCost: invoiceItem?.assetStatus === 'maintenance' ? invoiceItem.amount : 0,
                 images: invoiceItem?.images || [],
             };
@@ -341,16 +355,11 @@ export const getCheckoutAssetInspection = async (managerId, requestId) => {
     return serializeAssetInspection(assets, invoice);
 };
 
-// Tạo invoice một lần cho mỗi checkout request và gắn invoiceId vào Asset của phòng.
+// Tạo invoice riêng cho từng checkout request; không ghi trạng thái checkout vào Asset dùng chung.
 export const startCheckoutAssetInspection = async (managerId, requestId) => {
     const { request, room } = await getManagerCheckoutContext(managerId, requestId);
     if (['rejected', 'completed'].includes(request.status)) {
         throw { status: 400, message: 'Không thể kiểm tra tài sản cho yêu cầu đã bị từ chối hoặc hoàn tất' };
-    }
-
-    const assets = await Assets.find({ property: room.property, room: room._id }).sort({ name: 1 });
-    if (assets.length === 0) {
-        throw { status: 400, message: 'Phòng này chưa có tài sản được gán để kiểm tra' };
     }
 
     let invoice = await Invoices.findOne({
@@ -389,10 +398,6 @@ export const startCheckoutAssetInspection = async (managerId, requestId) => {
         }
     }
 
-    await Assets.updateMany(
-        { property: room.property, room: room._id },
-        { $set: { invoiceId: invoice._id } },
-    );
 
     const refreshedAssets = await Assets.find({ property: room.property, room: room._id }).sort({ name: 1 }).lean();
     return serializeAssetInspection(refreshedAssets, invoice.toObject());
@@ -424,7 +429,6 @@ export const saveCheckoutAssetInspection = async (managerId, requestId, data) =>
     const roomAssets = await Assets.find({
         property: room.property,
         room: room._id,
-        invoiceId: invoice._id,
     });
 
     if (data.assets.length !== roomAssets.length) {
@@ -443,7 +447,6 @@ export const saveCheckoutAssetInspection = async (managerId, requestId, data) =>
     const invoiceItems = [];
     const invoiceImages = [];
     let totalImageCharacters = 0;
-    const updates = [];
     let totalAmount = 0;
 
     for (const asset of roomAssets) {
@@ -504,15 +507,9 @@ export const saveCheckoutAssetInspection = async (managerId, requestId, data) =>
             assetStatus: status,
             images,
         });
-        updates.push({ asset, status });
     }
 
-    // Chỉ cập nhật DB sau khi toàn bộ dữ liệu đầu vào đã được kiểm tra.
-    for (const { asset, status } of updates) {
-        asset.status = status;
-        asset.invoiceId = invoice._id;
-        await asset.save();
-    }
+    // Kết quả được lưu riêng trong invoice gắn với terminationRequest, không sửa Asset master.
 
     const nonAssetItems = (invoice.items || []).filter(
         existingItem => ['electricity', 'water'].includes(existingItem.type)
@@ -527,7 +524,7 @@ export const saveCheckoutAssetInspection = async (managerId, requestId, data) =>
     invoice.adjustedBy = managerId;
     await invoice.save();
 
-    const savedAssets = await Assets.find({ property: room.property, room: room._id, invoiceId: invoice._id })
+    const savedAssets = await Assets.find({ property: room.property, room: room._id })
         .sort({ name: 1 })
         .lean();
 
@@ -582,13 +579,14 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
     const checkoutDate = request.moveOutDate || new Date();
     const billingMonth = getCheckoutMonth(checkoutDate);
 
-    const [property, currentMonthReading, previousReading, debts, assetInvoice, depositInvoice] = await Promise.all([
+    const [property, currentMonthReading, previousReading, debts, assetInvoice, previousContracts, depositInvoice] = await Promise.all([
         Properties.findById(room.property).select('utilityRate').lean(),
         UtilityReadings.findOne({ room: room._id, billingMonth }).lean(),
         UtilityReadings.findOne({ room: room._id, billingMonth: { $lt: billingMonth } })
             .sort({ billingMonth: -1 }).lean(),
         Invoices.find({
             contract: contract._id,
+            checkoutPaymentInvoice: null,
             status: { $in: ['unpaid', 'partially_paid', 'overdue'] },
             $or: [{ invoiceType: 'monthly' }, { invoiceType: { $exists: false } }],
         }).sort({ billingMonth: 1, createdAt: 1 }).select('_id billingMonth items totalAmount paidAmount status dueDate').lean(),
@@ -597,16 +595,37 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
             terminationRequest: request._id,
             invoiceType: 'checkout_asset',
         }).select('_id items totalAmount status').lean(),
+        Contracts.find({
+            room: room._id,
+            _id: { $ne: contract._id },
+            status: 'terminated',
+        }).select('_id endDate').sort({ endDate: -1 }).lean(),
         contract.signing?.depositInvoice
-            ? Invoices.findOne({ _id: contract.signing.depositInvoice, contract: contract._id, invoiceType: 'deposit' })
-                .select('paidAmount').lean()
+            ? Invoices.findOne({
+                _id: contract.signing.depositInvoice,
+                contract: contract._id,
+                invoiceType: 'deposit',
+            }).select('paidAmount').lean()
             : null,
     ]);
 
-    // Nếu đã có chỉ số trong kỳ checkout, lấy chỉ số cũ của kỳ đó làm mốc.
-    const oldElectricity = currentMonthReading?.oldElectricity
+    // Nếu phòng đã có hợp đồng checkout trước đó, lấy chỉ số chốt cuối của lần checkout đó
+    // làm chỉ số đầu cho hợp đồng mới (kể cả hai hợp đồng kết thúc/bắt đầu cùng tháng).
+    let previousCheckout = null;
+    if (previousContracts.length) {
+        previousCheckout = await TerminationRequests.findOne({
+            contract: { $in: previousContracts.map((item) => item._id) },
+            status: 'completed',
+            moveOutDate: { $lte: contract.startDate },
+            'checkoutReconciliation.calculatedAt': { $ne: null },
+        }).select('checkoutReconciliation moveOutDate').sort({ moveOutDate: -1, updatedAt: -1 }).lean();
+    }
+
+    const oldElectricity = previousCheckout?.checkoutReconciliation?.electricity?.newIndex
+        ?? currentMonthReading?.oldElectricity
         ?? previousReading?.newElectricity ?? 0;
-    const oldWater = currentMonthReading?.oldWater
+    const oldWater = previousCheckout?.checkoutReconciliation?.water?.newIndex
+        ?? currentMonthReading?.oldWater
         ?? previousReading?.newWater ?? 0;
 
     const electricityPrice = Number(
@@ -638,8 +657,8 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
         checkoutDate,
         oldElectricity,
         oldWater,
-        newElectricity: saved.electricity?.newIndex ?? currentMonthReading?.newElectricity ?? '',
-        newWater: saved.water?.newIndex ?? currentMonthReading?.newWater ?? '',
+        newElectricity: saved.electricity?.newIndex ?? '',
+        newWater: saved.water?.newIndex ?? '',
         electricityPrice,
         waterPrice,
         debtInvoices,
@@ -794,8 +813,6 @@ export const saveCheckoutReconciliation = async (managerId, requestId, data) => 
 
 // ================= CHECKOUT PAYMENT / REFUND / FINAL CONFIRMATION =================
 
-// Manager yêu cầu Tenant thanh toán phần công nợ còn lại sau khi đã cấn trừ tiền cọc.
-// Các hóa đơn công nợ cũ và hóa đơn checkout tài sản vẫn được thanh toán qua module Payments hiện có.
 export const requestCheckoutPayment = async (managerId, requestId) => {
     const { request, room } = await getManagerCheckoutContext(managerId, requestId);
     const reconciliation = request.checkoutReconciliation;
@@ -816,133 +833,172 @@ export const requestCheckoutPayment = async (managerId, requestId) => {
         };
     }
 
-    const session = await mongoose.startSession();
-    let notificationPayload = null;
-    let result = null;
-    try {
-        await session.withTransaction(async () => {
-            const freshRequest = await TerminationRequests.findById(request._id).session(session);
-            if (!freshRequest || ['completed', 'rejected'].includes(freshRequest.status)) {
-                throw { status: 409, message: 'Checkout request không còn ở trạng thái có thể yêu cầu thanh toán' };
-            }
-            if (freshRequest.checkoutSettlement?.paymentRequestedAt) {
-                result = {
-                    paymentRequestedAt: freshRequest.checkoutSettlement.paymentRequestedAt,
-                    paymentInvoiceIds: freshRequest.checkoutSettlement.paymentInvoiceIds || [],
-                    alreadyRequested: true,
-                };
-                return;
-            }
-
-            const savedReconciliation = freshRequest.checkoutReconciliation;
-            const checkoutInvoice = await Invoices.findOne({
-                contract: request.contract._id,
-                terminationRequest: freshRequest._id,
-                invoiceType: 'checkout_asset',
-            }).session(session);
-            const debtIds = savedReconciliation.previousDebtInvoiceIds || [];
-            const invoiceIds = [...new Set([
-                ...debtIds.map(String),
-                ...(checkoutInvoice ? [String(checkoutInvoice._id)] : []),
-            ])];
-            if (!invoiceIds.length) {
-                throw { status: 400, message: 'Không tìm thấy hóa đơn công nợ để yêu cầu thanh toán' };
-            }
-
-            const invoices = await Invoices.find({
-                _id: { $in: invoiceIds },
-                contract: request.contract._id,
-                status: { $ne: 'cancelled' },
-            }).sort({ billingMonth: 1, createdAt: 1 }).session(session);
-
-            const expectedDebt = Number(savedReconciliation.additionalPayment || 0);
-            const currentDebt = invoices.reduce(
-                (sum, invoice) => sum + Math.max(0, Number(invoice.totalAmount || 0) - Number(invoice.paidAmount || 0)),
-                0,
-            );
-            const depositAvailable = Number(savedReconciliation.depositAmount || 0);
-            const depositToAllocate = Math.max(
-                0,
-                depositAvailable - Number(freshRequest.checkoutSettlement?.allocatedDeposit || 0),
-            );
-            const expectedAfterDeposit = Math.max(0, currentDebt - depositToAllocate);
-            if (expectedAfterDeposit !== expectedDebt) {
-                throw {
-                    status: 409,
-                    message: `Công nợ sau khi cấn trừ tiền cọc dự kiến là ${expectedAfterDeposit.toLocaleString('vi-VN')}đ, không khớp quyết toán ${expectedDebt.toLocaleString('vi-VN')}đ. Vui lòng kiểm tra lại các hóa đơn.`,
-                };
-            }
-
-            // Cấn trừ tiền cọc vào hóa đơn cũ trước, sau đó mới đến hóa đơn checkout.
-            let remainingDeposit = depositToAllocate;
-            for (const invoice of invoices) {
-                const balance = Math.max(0, Number(invoice.totalAmount || 0) - Number(invoice.paidAmount || 0));
-                const allocation = Math.min(balance, remainingDeposit);
-                if (allocation > 0) {
-                    invoice.paidAmount = Number(invoice.paidAmount || 0) + allocation;
-                    invoice.status = invoice.paidAmount >= invoice.totalAmount ? 'paid' : 'partially_paid';
-                    await Payments.create([{
-                        invoice: invoice._id,
-                        payer: request.contract.representative,
-                        method: 'deposit',
-                        amount: allocation,
-                        status: 'success',
-                        recordedBy: managerId,
-                        paidAt: new Date(),
-                    }], { session });
-                    remainingDeposit -= allocation;
-                }
-                invoice.billedTo = request.contract.representative;
-                if (!invoice.sentAt) invoice.sentAt = new Date();
-                if (invoice.status === 'draft') {
-                    invoice.status = invoice.paidAmount >= invoice.totalAmount ? 'paid' : 'unpaid';
-                }
-                await invoice.save({ session });
-            }
-
-            freshRequest.checkoutSettlement = {
-                ...(freshRequest.checkoutSettlement?.toObject?.() || freshRequest.checkoutSettlement || {}),
-                allocatedDeposit: depositAvailable,
-                paymentInvoiceIds: invoices.map(invoice => invoice._id),
-                paymentRequestedAt: new Date(),
-                paymentRequestedBy: managerId,
-                refundAmount: Number(savedReconciliation.depositRefund || 0),
-            };
-            await freshRequest.save({ session });
-
-            result = {
-                paymentRequestedAt: freshRequest.checkoutSettlement.paymentRequestedAt,
-                paymentInvoiceIds: freshRequest.checkoutSettlement.paymentInvoiceIds,
-                remainingAmount: expectedDebt,
-                alreadyRequested: false,
-            };
-            notificationPayload = {
-                recipient: request.contract.representative,
-                sender: managerId,
-                property: room.property,
-                type: 'checkout_payment',
-                title: 'Yêu cầu thanh toán khi trả phòng',
-                content: `Bạn cần thanh toán thêm ${expectedDebt.toLocaleString('vi-VN')}đ để hoàn tất thủ tục trả phòng. Vui lòng vào mục Hóa đơn của tôi để thanh toán các hóa đơn còn nợ.`,
-                related: { entityType: 'TerminationRequest', entityId: freshRequest._id },
-            };
-        });
-    } finally {
-        await session.endSession();
-    }
-
-    if (notificationPayload && !result?.alreadyRequested) {
-        try {
-            await createNotification(notificationPayload);
-        } catch (notificationError) {
-            console.error('Không gửi được thông báo yêu cầu thanh toán checkout:', notificationError.message);
+    await Promise.all([Invoices.init(), Payments.init(), Notifications.init()]);
+    const result = await mongoose.connection.transaction(async session => {
+        const freshRequest = await TerminationRequests.findById(request._id).session(session);
+        if (!freshRequest || ['completed', 'rejected'].includes(freshRequest.status)) {
+            throw { status: 409, message: 'Checkout request không còn ở trạng thái có thể yêu cầu thanh toán' };
         }
-    }
+        if (freshRequest.checkoutSettlement?.paymentRequestedAt) {
+            return {
+                paymentRequestedAt: freshRequest.checkoutSettlement.paymentRequestedAt,
+                paymentInvoiceIds: freshRequest.checkoutSettlement.paymentInvoiceIds || [],
+                alreadyRequested: true,
+            };
+        }
+
+        const savedReconciliation = freshRequest.checkoutReconciliation;
+        const checkoutInvoice = await Invoices.findOne({
+            contract: request.contract._id,
+            terminationRequest: freshRequest._id,
+            invoiceType: 'checkout_asset',
+        }).session(session);
+        if (!checkoutInvoice || !savedReconciliation?.calculatedAt) {
+            throw { status: 409, message: 'Chưa có hóa đơn đối soát trả phòng hợp lệ' };
+        }
+
+        const debtIds = new Set(savedReconciliation.previousDebtInvoiceIds.map(String));
+        const invoices = await Invoices.find({
+            contract: request.contract._id,
+            checkoutPaymentInvoice: null,
+            $or: [
+                { _id: checkoutInvoice._id, status: { $ne: 'cancelled' } },
+                {
+                    invoiceType: { $in: ['monthly', null] },
+                    status: { $in: ['unpaid', 'partially_paid', 'overdue'] },
+                    $expr: { $gt: ['$totalAmount', { $ifNull: ['$paidAmount', 0] }] },
+                },
+            ],
+        }).sort({ billingMonth: 1, createdAt: 1 }).session(session);
+        if (invoices.length !== debtIds.size + 1 || invoices.some(invoice => invoice.id !== checkoutInvoice.id && !debtIds.has(invoice.id))) {
+            throw { status: 409, message: 'Hóa đơn công nợ đã thay đổi. Vui lòng lưu lại quyết toán.' };
+        }
+
+        const expectedDebt = Number(savedReconciliation.additionalPayment || 0);
+        if (!isValidPaymentAmount(expectedDebt)) {
+            throw { status: 400, message: 'Số tiền thanh toán thêm không hợp lệ cho VNPay' };
+        }
+        const currentDebt = invoices.reduce(
+            (sum, invoice) => sum + Math.max(0, Number(invoice.totalAmount || 0) - Number(invoice.paidAmount || 0)),
+            0,
+        );
+        const depositAvailable = Number(savedReconciliation.depositAmount || 0);
+        const depositToAllocate = Math.max(
+            0,
+            depositAvailable - Number(freshRequest.checkoutSettlement?.allocatedDeposit || 0),
+        );
+        const expectedAfterDeposit = Math.max(0, currentDebt - depositToAllocate);
+        if (expectedAfterDeposit !== expectedDebt) {
+            throw {
+                status: 409,
+                message: `Công nợ sau khi cấn trừ tiền cọc dự kiến là ${expectedAfterDeposit.toLocaleString('vi-VN')}đ, không khớp quyết toán ${expectedDebt.toLocaleString('vi-VN')}đ. Vui lòng kiểm tra lại các hóa đơn.`,
+            };
+        }
+
+        const now = new Date();
+        const hasOpenPayment = await Payments.exists({
+            invoice: { $in: invoices.map(invoice => invoice._id) },
+            method: 'gateway',
+            status: { $in: ['pending', 'cancelled'] },
+            expiresAt: { $gt: now },
+        }).session(session);
+        if (hasOpenPayment) {
+            throw { status: 409, message: 'Có giao dịch VNPay của hóa đơn cũ đang chờ kết quả. Vui lòng thử lại sau khi giao dịch hoàn tất hoặc hết hạn.' };
+        }
+
+        const items = invoices.flatMap(invoice => {
+            const balance = invoice.totalAmount - (invoice.paidAmount ?? 0);
+            if (balance <= 0) return [];
+            if (invoice.id !== checkoutInvoice.id || balance !== checkoutInvoice.totalAmount) {
+                const description = invoice.id === checkoutInvoice.id
+                    ? 'Số tiền còn lại của hóa đơn đối soát trả phòng'
+                    : `Công nợ còn lại kỳ ${invoice.billingMonth}`;
+                return [{ type: 'other', description, amount: balance }];
+            }
+            return invoice.items.map(({ type, description, quantity, unitPrice, amount }) => ({
+                type, description, quantity, unitPrice, amount,
+            }));
+        });
+        if (depositToAllocate > 0) {
+            items.push({ type: 'other', description: 'Trừ tiền cọc đã đóng', amount: -depositToAllocate });
+        }
+        if (items.reduce((sum, item) => sum + item.amount, 0) !== expectedDebt) {
+            throw { status: 409, message: 'Chi tiết hóa đơn không khớp số tiền quyết toán. Vui lòng kiểm tra lại.' };
+        }
+
+        const [paymentInvoice] = await Invoices.create([{
+            contract: request.contract._id,
+            billedTo: request.contract.representative,
+            invoiceType: 'checkout_payment',
+            terminationRequest: freshRequest._id,
+            billingMonth: `CHECKOUT-PAYMENT-${freshRequest._id}`,
+            items,
+            totalAmount: expectedDebt,
+            dueDate: checkoutInvoice.dueDate > now ? checkoutInvoice.dueDate : now,
+            sentAt: now,
+            status: 'unpaid',
+            createdBy: managerId,
+        }], { session });
+
+        // Cấn trừ tiền cọc vào hóa đơn cũ trước, sau đó mới đến hóa đơn checkout.
+        let remainingDeposit = depositToAllocate;
+        for (const invoice of invoices) {
+            const balance = Math.max(0, Number(invoice.totalAmount || 0) - Number(invoice.paidAmount || 0));
+            if (!balance) continue;
+            const allocation = Math.min(balance, remainingDeposit);
+            if (allocation > 0) {
+                invoice.paidAmount = Number(invoice.paidAmount || 0) + allocation;
+                invoice.status = invoice.paidAmount >= invoice.totalAmount ? 'paid' : 'partially_paid';
+                await Payments.create([{
+                    invoice: invoice._id,
+                    payer: request.contract.representative,
+                    method: 'deposit',
+                    amount: allocation,
+                    status: 'success',
+                    recordedBy: managerId,
+                    paidAt: now,
+                }], { session });
+                remainingDeposit -= allocation;
+            }
+            if (balance > allocation) invoice.checkoutPaymentInvoice = paymentInvoice._id;
+            await invoice.save({ session });
+        }
+
+        freshRequest.checkoutSettlement = {
+            ...(freshRequest.checkoutSettlement?.toObject?.() || freshRequest.checkoutSettlement || {}),
+            allocatedDeposit: depositAvailable,
+            paymentInvoiceIds: [paymentInvoice._id],
+            paymentRequestedAt: now,
+            paymentRequestedBy: managerId,
+            refundAmount: Number(savedReconciliation.depositRefund || 0),
+        };
+        await freshRequest.save({ session });
+
+        await Notifications.create([{
+            recipient: request.contract.representative,
+            sender: managerId,
+            property: room.property,
+            type: 'checkout_payment',
+            title: 'Hóa đơn thanh toán khi trả phòng',
+            content: `Bạn cần thanh toán thêm ${expectedDebt.toLocaleString('vi-VN')}đ sau khi trừ tiền cọc. Mở hóa đơn để xem chi tiết và thanh toán.`,
+            related: { entityType: 'invoice', entityId: paymentInvoice._id },
+        }], { session });
+
+        return {
+            paymentRequestedAt: freshRequest.checkoutSettlement.paymentRequestedAt,
+            paymentInvoiceIds: freshRequest.checkoutSettlement.paymentInvoiceIds,
+            remainingAmount: expectedDebt,
+            alreadyRequested: false,
+        };
+    });
+
+    if (!result.alreadyRequested) notifyRecipient(request.contract.representative);
     return result;
 };
 
 // Manager xác nhận đã hoàn tiền thực tế cho Tenant (không tự động chuyển tiền).
-export const confirmCheckoutRefund = async (managerId, requestId) => {
-    const { request } = await getManagerCheckoutContext(managerId, requestId);
+export const confirmCheckoutRefund = async (managerId, requestId, data = {}) => {
+    const { request, room } = await getManagerCheckoutContext(managerId, requestId);
     const refundAmount = Number(request.checkoutReconciliation?.depositRefund || 0);
     if (!request.checkoutReconciliation?.calculatedAt) {
         throw { status: 400, message: 'Vui lòng lưu quyết toán tiền cọc trước' };
@@ -950,16 +1006,44 @@ export const confirmCheckoutRefund = async (managerId, requestId) => {
     if (refundAmount < 10000) {
         throw { status: 400, message: 'Số tiền hoàn dưới 10.000đ hoặc không phát sinh hoàn cọc, không cần xác nhận hoàn tiền' };
     }
-    if (request.checkoutSettlement?.refundConfirmedAt) {
+    if (request.checkoutSettlement?.refundConfirmedAt && request.checkoutSettlement?.refundProofImage) {
         return request.checkoutSettlement;
     }
+    if (['completed', 'rejected'].includes(request.status)) {
+        throw { status: 400, message: 'Không thể xác nhận hoàn cọc cho yêu cầu đã bị từ chối hoặc hoàn tất' };
+    }
+    const proofImage = typeof data.proofImage === 'string' ? data.proofImage : '';
+    const encodedImage = /^data:image\/(?:jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(proofImage)?.[1];
+    if (!encodedImage || encodedImage.length % 4 !== 0) {
+        throw { status: 400, message: 'Vui lòng tải ảnh bill chuyển khoản (JPG, PNG hoặc WEBP)' };
+    }
+    if (Buffer.byteLength(encodedImage, 'base64') > 3 * 1024 * 1024) {
+        throw { status: 400, message: 'Ảnh bill không được vượt quá 3 MB' };
+    }
+    const confirmedAt = new Date();
     request.checkoutSettlement = {
         ...(request.checkoutSettlement?.toObject?.() || request.checkoutSettlement || {}),
         refundAmount,
-        refundConfirmedAt: new Date(),
+        refundProofImage: proofImage,
+        refundConfirmedAt: confirmedAt,
         refundConfirmedBy: managerId,
     };
     await request.save();
+
+    // Thông báo dẫn Tenant về danh sách checkout; ảnh bill được hiển thị trong chi tiết request.
+    try {
+        await createNotification({
+            recipient: request.requestedBy,
+            sender: managerId,
+            property: room.property,
+            type: 'checkout_refund',
+            title: 'Manager đã xác nhận hoàn tiền cọc',
+            content: `Manager đã xác nhận chuyển khoản hoàn cọc ${refundAmount.toLocaleString('vi-VN')}đ. Ảnh bill được đính kèm trong chi tiết yêu cầu checkout của bạn. Checkout sẽ chỉ hoàn tất sau khi Manager xác nhận bước cuối cùng.`,
+            related: { entityType: 'termination_request', entityId: request._id },
+        });
+    } catch (notificationError) {
+        console.error('Không gửi được thông báo hoàn cọc:', notificationError.message);
+    }
     return request.checkoutSettlement;
 };
 
@@ -981,8 +1065,8 @@ export const finalizeCheckout = async (managerId, requestId) => {
 
     const refundAmount = Number(reconciliation.depositRefund || 0);
     const additionalPayment = Number(reconciliation.additionalPayment || 0);
-    if (refundAmount >= 10000 && !settlement.refundConfirmedAt) {
-        throw { status: 400, message: 'Manager cần xác nhận đã hoàn tiền cọc cho Tenant trước khi hoàn tất checkout' };
+    if (refundAmount >= 10000 && (!settlement.refundConfirmedAt || !settlement.refundProofImage)) {
+        throw { status: 400, message: 'Manager cần tải ảnh bill và xác nhận đã hoàn tiền cọc cho Tenant trước khi hoàn tất checkout' };
     }
     if (additionalPayment > 0) {
         if (!settlement.paymentRequestedAt || !settlement.paymentInvoiceIds?.length) {

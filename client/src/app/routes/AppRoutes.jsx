@@ -1,8 +1,9 @@
 import Profile from '../../features/profile/pages/Profile';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout/DashboardLayout';
 import ProtectedRoute from './ProtectedRoute';
 import { authRoutes } from '../../features/auth/routes/AuthRoutes';
+import HomePage from '../../features/home/HomePage';
 import roomsRoutes from '../../features/rooms/routes/RoomsRoutes';
 import BrowseRooms from '../../features/rooms/pages/BrowseRooms';
 import RoomDetail from '../../features/rooms/pages/RoomDetail';
@@ -22,9 +23,20 @@ import utilityReadingsRoutes from '../../features/utility-readings/routes/Utilit
 import invoiceRoutes from '../../features/invoices/routes/InvoiceRoutes';
 import PropertiesHome from '../../features/landlord/PropertiesHome';
 import PropertyOperationsPage from '../../features/landlord/PropertyOperationsPage';
+import { getCurrentUser } from '../../shared/utils/auth';
 // Dashboard hiển thị dữ liệu theo vai trò của tài khoản đang đăng nhập.
 function DashboardEntry() {
   return <DashboardPage />;
+}
+
+function BrowseRoomsEntry() {
+  if (!getCurrentUser()) return <BrowseRooms />;
+
+  return (
+    <DashboardLayout defaultCollapsed={window.matchMedia('(max-width: 767px)').matches}>
+      <BrowseRooms embedded />
+    </DashboardLayout>
+  );
 }
 
 export default function AppRoutes() {
@@ -44,8 +56,8 @@ export default function AppRoutes() {
   ];
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/home" replace />} />
-      <Route path="/browse-rooms" element={<BrowseRooms />} />
+      <Route path="/" element={<HomePage />} />
+      <Route path="/browse-rooms" element={<BrowseRoomsEntry />} />
       <Route path="/rooms/:roomId" element={<RoomDetail />} />
 
       {authRoutes.map(route => (

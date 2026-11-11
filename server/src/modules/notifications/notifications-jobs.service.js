@@ -7,6 +7,7 @@ import Contracts from '../../models/Contracts.js';
 import ManagerAssignments from '../../models/ManagerAssignments.js';
 import RentalRequests from '../../models/RentalRequests.js';
 import { notifyRecipient } from './notifications.events.js';
+import { getContractStartCutoff } from '../contracts/contract-dates.js';
 
 // Một sự kiện chỉ tạo một bản cho mỗi người, kể cả khi chạy lại sau lỗi.
 export const sendSystemNotification = async (eventKey, recipient, title, content, related) => {
@@ -53,6 +54,7 @@ export const notifyRentalResult = async request => {
 export const notifyOverdueInvoices = async (now = new Date()) => {
   const today = new Date(now.getTime() + 7 * 3600000).toISOString().slice(0, 10);
   for await (const invoice of Invoices.find({
+    checkoutPaymentInvoice: null,
     status: { $in: ['unpaid', 'partially_paid', 'overdue'] },
     sentAt: { $type: 'date', $lte: now },
     dueDate: { $lt: now },
@@ -79,7 +81,7 @@ export const notifyOverdueInvoices = async (now = new Date()) => {
       `invoice-overdue:${invoice.id}:${invoice.dueDate.toISOString()}:${today}`,
       recipient,
       `Hóa đơn đã quá hạn ${overdueDays} ngày`,
-      `Hóa đơn kỳ ${invoice.billingMonth}, phòng ${room.roomNumber} đã quá hạn ${overdueDays} ngày. Còn phải trả ${balance.toLocaleString('vi-VN')} ₫. Vui lòng kiểm tra và thanh toán hóa đơn.`,
+      `${invoice.invoiceType === 'checkout_payment' ? 'Hóa đơn trả phòng' : `Hóa đơn kỳ ${invoice.billingMonth}`}, phòng ${room.roomNumber} đã quá hạn ${overdueDays} ngày. Còn phải trả ${balance.toLocaleString('vi-VN')} ₫. Vui lòng kiểm tra và thanh toán hóa đơn.`,
       { entityType: 'invoice', entityId: invoice._id },
     );
   }
@@ -92,7 +94,7 @@ export const runNotificationJobs = async (now = new Date()) => {
   const until = new Date(now.getTime() + 7 * 86400000);
   for await (const contract of Contracts.find({
     status: 'active',
-    startDate: { $lte: now },
+    startDate: { $lte: getContractStartCutoff(now) },
     endDate: { $gt: now, $lte: until },
   }).cursor()) {
     const room = await Rooms.findById(contract.room).select('property roomNumber').lean();

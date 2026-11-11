@@ -8,6 +8,7 @@ import { notifyRecipient } from '../notifications/notifications.events.js';
 import { assertPropertyAccess } from '../properties/properties.service.js';
 import { renderContractDocument } from './contracts.service.js';
 import { isValidPaymentAmount } from '../payments/payments.validation.js';
+import { getContractStartCutoff } from './contract-dates.js';
 
 const waiting = ['awaiting_tenant', 'awaiting_manager'];
 const signingFields = '+signing.document +signing.tenantSignature +signing.managerSignature';
@@ -63,8 +64,12 @@ export const listTenantSigningContracts = userId =>
       { 'signing.status': 'signed', 'signing.tenantSignature.signedBy': userId },
     ],
   })
-    .select('room status startDate signing.title signing.status')
-    .populate('room', 'roomNumber')
+    .select('room status startDate endDate signing.title signing.status')
+    .populate({
+      path: 'room',
+      select: 'roomNumber property',
+      populate: { path: 'property', select: 'name' },
+    })
     .sort({ updatedAt: -1 })
     .lean();
 
@@ -210,7 +215,9 @@ export async function changeSigning(id, action, data, user) {
           notify(contract.representative, 'Hợp đồng đã ký đủ, chờ đóng cọc',
             'Mở hợp đồng để thanh toán tiền cọc qua VNPay.');
         } else {
-          if (contract.startDate <= now) await activateContract(contract, room, session);
+          if (contract.startDate <= getContractStartCutoff(now)) {
+            await activateContract(contract, room, session);
+          }
           notify(
             contract.representative,
             'Hợp đồng đã ký đủ',
@@ -244,7 +251,7 @@ function dueSignedContracts(now) {
   return {
     status: 'draft',
     'signing.status': 'signed',
-    startDate: { $lte: now },
+    startDate: { $lte: getContractStartCutoff(now) },
     endDate: { $gte: now },
   };
 }

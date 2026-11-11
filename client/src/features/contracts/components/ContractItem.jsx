@@ -79,7 +79,7 @@ export default function ContractItem({ contract, onEdit, onRefresh, readOnly = f
               <p className="text-[11px] font-semibold text-slate-400 truncate">{contract.room?.property?.name || 'Nhà trọ'}</p>
             </div>
           </div>
-          <ContractStatusBadge status={contract.status} />
+          <ContractStatusBadge status={contract.status} signingStatus={signingStatus} />
         </div>
 
         {/* Người đại diện */}

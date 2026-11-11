@@ -15,7 +15,7 @@ const billableStatuses = ['active', 'expired'];
 
 const validNumber = value => Number.isFinite(value) && value >= 0;
 
-const invoiceSummaryFields = 'contract billedTo billingMonth invoiceType totalAmount paidAmount dueDate sentAt status';
+const invoiceSummaryFields = 'contract billedTo billingMonth invoiceType checkoutPaymentInvoice totalAmount paidAmount dueDate sentAt status';
 const invoiceContract = {
   path: 'contract',
   select: 'room',
@@ -175,7 +175,7 @@ export const getMyInvoices = async userId => {
     .lean();
 
   return invoices.map(invoice => {
-    const canPay = isInvoiceRecipient(invoice, userId) && isDepositPayable(invoice);
+    const canPay = !invoice.checkoutPaymentInvoice && isInvoiceRecipient(invoice, userId) && isDepositPayable(invoice);
     if (invoice.contract) delete invoice.contract.representative;
     return { ...invoice, canPay };
   });
@@ -206,7 +206,7 @@ export const getMyInvoice = async (invoiceId, userId) => {
   if (!invoice) throw { status: 404, message: 'Không tìm thấy hóa đơn!' };
 
   const recipientId = getInvoiceRecipientId(invoice);
-  const canPay = isInvoiceRecipient(invoice, userId) && isDepositPayable(invoice);
+  const canPay = !invoice.checkoutPaymentInvoice && isInvoiceRecipient(invoice, userId) && isDepositPayable(invoice);
   const recipient = recipientId ? await Users.findById(recipientId).select('fullName').lean() : null;
   if (invoice.contract) {
     if (invoice.billedTo) delete invoice.contract.representative;
@@ -218,12 +218,15 @@ export const getMyInvoice = async (invoiceId, userId) => {
 
 export const getInvoiceForPayment = async ({ invoiceId, roomId }, userId, session) => {
   const invoice = await Invoices.findOne({ _id: invoiceId, sentAt: { $ne: null } })
-    .select('contract billedTo status totalAmount paidAmount invoiceType')
+    .select('contract billedTo status totalAmount paidAmount invoiceType checkoutPaymentInvoice')
     .populate('contract', 'room representative status endDate signing.depositInvoice')
     .session(session)
     .lean();
   if (!invoice || String(invoice.contract?.room) !== roomId.toLowerCase() || !isInvoiceRecipient(invoice, userId)) {
     throw { status: 404, message: 'Không tìm thấy hóa đơn cần thanh toán của bạn!' };
+  }
+  if (invoice.checkoutPaymentInvoice) {
+    throw { status: 409, message: 'Số tiền còn lại đã được gộp vào hóa đơn trả phòng.' };
   }
   if (!isDepositPayable(invoice)) {
     throw { status: 409, message: 'Hợp đồng không còn chờ đóng cọc.' };

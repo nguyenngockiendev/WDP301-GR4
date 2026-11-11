@@ -241,6 +241,18 @@ export default function NotificationBell() {
                       Mở hợp đồng
                     </Link>
                   )}
+                  {item.type === 'checkout_payment' && item.related?.entityType === 'invoice' && item.related.entityId && (
+                    <Link
+                      to={`/invoices/my/${item.related.entityId}`}
+                      onClick={() => {
+                        void readNotification(item);
+                        setOpen(false);
+                      }}
+                      className="mb-3 ml-9 inline-flex rounded-lg px-2 py-1 text-sm font-semibold text-primary hover:bg-primary-50"
+                    >
+                      Xem hóa đơn trả phòng
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

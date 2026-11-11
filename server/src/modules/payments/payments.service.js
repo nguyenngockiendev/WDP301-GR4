@@ -17,7 +17,7 @@ const payableStatuses = ['unpaid', 'partially_paid', 'overdue'];
 async function getPendingPayment(invoice, userId, amount, returnOrigin, session) {
   const now = new Date();
   const pending = { invoice: invoice._id, method: 'gateway', status: 'pending' };
-  if (invoice.invoiceType === 'deposit') {
+  if (['deposit', 'checkout_payment'].includes(invoice.invoiceType)) {
     const existing = await Payments.findOneAndUpdate(
       { ...pending, provider: 'vnpay', payer: userId, amount, expiresAt: { $gt: now } },
       { $set: { returnOrigin } },
@@ -102,6 +102,34 @@ export const getPaymentStatus = async (paymentCode, userId) => {
   };
 };
 
+async function settleCheckoutInvoices(invoice, payment, paidAt, session) {
+  const sources = await Invoices.find({
+    contract: invoice.contract,
+    checkoutPaymentInvoice: invoice._id,
+    status: { $ne: 'cancelled' },
+  }).session(session);
+  const remaining = sources.map(source => source.totalAmount - (source.paidAmount ?? 0));
+  if (
+    !remaining.every(isValidPaymentAmount) ||
+    remaining.reduce((sum, amount) => sum + amount, 0) !== payment.amount
+  ) return false;
+
+  for (const source of sources) {
+    source.paidAmount = source.totalAmount;
+    source.status = 'paid';
+    await source.save({ session });
+  }
+  await Payments.insertMany(sources.map((source, index) => ({
+    invoice: source._id,
+    payer: payment.payer,
+    method: 'checkout',
+    amount: remaining[index],
+    status: 'success',
+    paidAt,
+  })), { session });
+  return true;
+}
+
 export const confirmGatewayPayment = async result => {
   await Notifications.init();
   const session = await mongoose.startSession();
@@ -130,6 +158,7 @@ export const confirmGatewayPayment = async result => {
       const validTransactionId = /^[1-9]\d*$/.test(result.gatewayTransactionId || '');
       if (
         !validTransactionId ||
+        invoice.checkoutPaymentInvoice ||
         !payableStatuses.includes(invoice.status) ||
         !Number.isSafeInteger(balance) ||
         balance < payment.amount
@@ -137,17 +166,23 @@ export const confirmGatewayPayment = async result => {
         return '99';
       }
 
+      const paidAt = result.paidAt || new Date();
+      if (invoice.invoiceType === 'checkout_payment' && !(await settleCheckoutInvoices(invoice, payment, paidAt, session))) {
+        return '99';
+      }
+
       invoice.paidAmount = paidAmount + payment.amount;
       invoice.status = invoice.paidAmount === invoice.totalAmount ? 'paid' : 'partially_paid';
       payment.status = 'success';
-      payment.paidAt = result.paidAt || new Date();
+      payment.paidAt = paidAt;
       payment.gatewayTransactionId = result.gatewayTransactionId;
       await invoice.save({ session });
       await payment.save({ session });
       if (invoice.invoiceType === 'deposit' && invoice.status === 'paid') {
         paidDepositContractId = invoice.contract;
       }
-      const invoiceLabel = invoice.invoiceType === 'deposit' ? 'tiền đặt cọc' : `hóa đơn kỳ ${invoice.billingMonth}`;
+      const invoiceLabel = invoice.invoiceType === 'deposit' ? 'tiền đặt cọc'
+        : invoice.invoiceType === 'checkout_payment' ? 'hóa đơn trả phòng' : `hóa đơn kỳ ${invoice.billingMonth}`;
       await Notifications.updateOne(
         { eventKey: `payment-success:${payment.id}`, recipient: payment.payer },
         {

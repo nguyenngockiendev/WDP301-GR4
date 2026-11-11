@@ -18,10 +18,11 @@ export default function CheckoutRequestDetail({ request, onClose }) {
   if (!request) return null;
   const contract = request.contract || {};
   const room = contract.room || {};
+  const settlement = request.checkoutSettlement;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-xl rounded-3xl border border-white bg-white p-6 shadow-2xl sm:p-8">
+      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-white bg-white p-6 shadow-2xl sm:p-8">
         <div className="mb-6 flex items-start justify-between">
           <div>
             <p className="text-xs font-extrabold uppercase tracking-wider text-emerald-600">Chi tiết yêu cầu</p>
@@ -43,6 +44,13 @@ export default function CheckoutRequestDetail({ request, onClose }) {
           <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Lý do trả phòng</p>
           <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">{request.reason || 'Không có nội dung.'}</p>
         </div>
+        {settlement?.refundConfirmedAt && settlement.refundProofImage && (
+          <div className="mt-4 rounded-2xl border border-emerald-100 p-4">
+            <p className="text-sm font-bold text-emerald-800">Đã hoàn cọc {Number(settlement.refundAmount).toLocaleString('vi-VN')} ₫</p>
+            <p className="mt-1 text-xs text-slate-500">Xác nhận lúc {formatDateTime(settlement.refundConfirmedAt)}</p>
+            <img src={settlement.refundProofImage} alt="Biên lai chuyển khoản hoàn cọc" className="mt-3 max-h-64 max-w-full rounded-lg border border-slate-200 object-contain" />
+          </div>
+        )}
         <p className="mt-5 text-xs leading-5 text-slate-400">Trạng thái được hiển thị theo dữ liệu backend. Nếu landlord chưa xử lý, yêu cầu sẽ tiếp tục ở trạng thái đang chờ.</p>
       </div>
     </div>

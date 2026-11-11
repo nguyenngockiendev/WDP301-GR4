@@ -12,7 +12,7 @@ const terminationRequestsAPI = {
   getCheckoutReconciliation: (id) => api.get(`${BASE_URL}/manager/${id}/reconciliation`),
   saveCheckoutReconciliation: (id, payload) => api.put(`${BASE_URL}/manager/${id}/reconciliation`, payload),
   requestCheckoutPayment: id => api.post(`${BASE_URL}/manager/${id}/request-payment`),
-  confirmCheckoutRefund: id => api.post(`${BASE_URL}/manager/${id}/confirm-refund`),
+  confirmCheckoutRefund: (id, proofImage) => api.post(`${BASE_URL}/manager/${id}/confirm-refund`, { proofImage }),
   finalizeCheckout: id => api.post(`${BASE_URL}/manager/${id}/finalize`),
 };
 export default terminationRequestsAPI;

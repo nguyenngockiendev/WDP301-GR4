@@ -42,6 +42,11 @@ export default function ManagerCheckoutRequestDetail() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [refundProof, setRefundProof] = useState(null);
+  const [readingRefundProof, setReadingRefundProof] = useState(false);
+  const [confirmingRefund, setConfirmingRefund] = useState(false);
+  const [sendingCheckoutPayment, setSendingCheckoutPayment] = useState(false);
+  const refundProofImage = refundProof?.requestId === id ? refundProof.image : '';
 
   const loadPage = useCallback(async () => {
     try {
@@ -85,7 +90,7 @@ export default function ManagerCheckoutRequestDetail() {
       setInvoice(result.invoice || null);
       setAssets(result.assets || []);
       setInspections(Object.fromEntries((result.assets || []).map(asset => [asset._id, initialInspection(asset)])));
-      toast.success('Đã tạo hóa đơn kiểm tra tài sản');
+      toast.success('Đã chuẩn bị hóa đơn checkout');
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || 'Không thể bắt đầu kiểm tra tài sản');
     } finally {
@@ -170,7 +175,7 @@ export default function ManagerCheckoutRequestDetail() {
   const utilityAmount = electricityAmount + waterAmount;
   const penaltyAmount = Number(reconciliation?.penalty?.amount || 0);
   const debtAmount = Number(reconciliation?.previousDebtAmount || 0);
-  const assetAmount = Number(reconciliation?.assetAmount || invoice?.totalAmount || 0);
+  const assetAmount = Number(invoice?.assetAmount ?? reconciliation?.assetAmount ?? 0);
   const depositAmount = Number(reconciliation?.depositAmount || 0);
   const totalDeductions = debtAmount + assetAmount + utilityAmount + penaltyAmount;
   const depositRefund = Math.max(0, depositAmount - totalDeductions);
@@ -200,7 +205,9 @@ export default function ManagerCheckoutRequestDetail() {
         assetAmount: result.summary?.assetAmount ?? current.assetAmount,
         previousDebtAmount: result.summary?.previousDebtAmount ?? current.previousDebtAmount,
       }));
-      if (result.invoice) setInvoice(current => ({ ...current, ...result.invoice }));
+      if (result.invoice) {
+        setInvoice(current => ({ ...current, ...result.invoice, assetAmount: result.summary?.assetAmount ?? current?.assetAmount }));
+      }
       toast.success('Đã lưu đối soát điện nước, công nợ và quyết toán tiền cọc');
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || 'Không thể lưu đối soát checkout');
@@ -210,23 +217,54 @@ export default function ManagerCheckoutRequestDetail() {
   };
 
   const requestCheckoutPayment = async () => {
+    if (sendingCheckoutPayment) return;
     try {
+      setSendingCheckoutPayment(true);
       const response = await terminationRequestsAPI.requestCheckoutPayment(id);
       toast.success(response?.message || 'Đã gửi yêu cầu thanh toán cho Tenant');
       await loadPage();
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || 'Không thể gửi yêu cầu thanh toán');
+    } finally {
+      setSendingCheckoutPayment(false);
+    }
+  };
+
+  const handleRefundProof = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      return toast.error('Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP');
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      return toast.error('Ảnh biên lai không được vượt quá 3 MB');
+    }
+
+    try {
+      setReadingRefundProof(true);
+      const image = await fileToBase64(file);
+      setRefundProof({ requestId: id, image });
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setReadingRefundProof(false);
     }
   };
 
   const confirmRefund = async () => {
+    if (!refundProofImage || readingRefundProof || confirmingRefund) return;
     if (!window.confirm('Xác nhận Manager đã thực tế hoàn tiền cọc cho Tenant?')) return;
     try {
-      await terminationRequestsAPI.confirmCheckoutRefund(id);
+      setConfirmingRefund(true);
+      await terminationRequestsAPI.confirmCheckoutRefund(id, refundProofImage);
+      setRefundProof(null);
       toast.success('Đã xác nhận hoàn tiền cọc');
       await loadPage();
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || 'Không thể xác nhận hoàn tiền');
+    } finally {
+      setConfirmingRefund(false);
     }
   };
 
@@ -282,7 +320,7 @@ export default function ManagerCheckoutRequestDetail() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section id="checkout-asset-inspection" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:p-6">
           <div>
             <div className="flex items-center gap-2"><ClipboardCheck className="text-emerald-700" size={20}/><h2 className="font-bold text-slate-900">Kiểm tra tài sản trong phòng</h2></div>
@@ -290,7 +328,8 @@ export default function ManagerCheckoutRequestDetail() {
           </div>
           {!invoice ? (
             <button type="button" onClick={startInspection} disabled={starting} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60">
-              {starting ? <LoaderCircle className="animate-spin" size={17}/> : <ClipboardCheck size={17}/>} Bắt đầu kiểm tra & tạo hóa đơn
+              {starting ? <LoaderCircle className="animate-spin" size={17}/> : <ClipboardCheck size={17}/>}
+              {assets.length > 0 ? 'Bắt đầu kiểm tra & tạo hóa đơn' : 'Chuẩn bị hóa đơn checkout'}
             </button>
           ) : (
             <span className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">Invoice: {String(invoice._id).slice(-8).toUpperCase()}</span>
@@ -298,7 +337,11 @@ export default function ManagerCheckoutRequestDetail() {
         </div>
 
         {!invoice ? (
-          <div className="p-8 text-center text-sm text-slate-500">Nhấn “Bắt đầu kiểm tra” để tạo hóa đơn và gắn Invoice ID vào các tài sản thuộc phòng này.</div>
+          <div className="p-8 text-center text-sm text-slate-500">
+            {assets.length > 0
+              ? 'Nhấn “Bắt đầu kiểm tra & tạo hóa đơn” để ghi nhận tình trạng tài sản trước khi quyết toán.'
+              : 'Phòng này chưa có tài sản được gán. Nhấn “Chuẩn bị hóa đơn checkout” để tiếp tục quyết toán.'}
+          </div>
         ) : assets.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500">Phòng này chưa có tài sản nào được gán.</div>
         ) : (
@@ -453,7 +496,13 @@ export default function ManagerCheckoutRequestDetail() {
               </div>
             </div>
             <div className="mt-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-              <p className="text-xs text-slate-500">Lưu sẽ cập nhật hóa đơn checkout và lưu bản đối soát vào yêu cầu trả phòng. Công nợ cũ vẫn nằm trong các hóa đơn gốc.</p>
+              {invoice ? (
+                <p className="text-xs text-slate-500">Lưu sẽ cập nhật hóa đơn checkout và lưu bản đối soát vào yêu cầu trả phòng. Công nợ cũ vẫn nằm trong các hóa đơn gốc.</p>
+              ) : (
+                <a href="#checkout-asset-inspection" className="text-sm font-semibold text-purple-700 underline">
+                  Tạo hóa đơn checkout ở mục Kiểm tra tài sản để mở nút lưu.
+                </a>
+              )}
               <button type="button" onClick={saveReconciliation} disabled={savingReconciliation || !invoice} className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-700 px-5 py-3 text-sm font-bold text-white hover:bg-purple-800 disabled:opacity-60">
                 {savingReconciliation ? <LoaderCircle className="animate-spin" size={17}/> : <Save size={17}/>} Lưu đối soát & quyết toán
               </button>
@@ -476,8 +525,10 @@ export default function ManagerCheckoutRequestDetail() {
           const settlement = request.checkoutSettlement || {};
           const refundNeeded = refund >= 10000;
           const paymentNeeded = extra > 0;
-          const ready = Boolean(saved?.calculatedAt)
-            && (!refundNeeded || Boolean(settlement.refundConfirmedAt))
+          const refundConfirmed = Boolean(settlement.refundConfirmedAt && settlement.refundProofImage);
+          const canSettle = !['completed', 'rejected'].includes(request.status);
+          const ready = canSettle && Boolean(saved?.calculatedAt)
+            && (!refundNeeded || refundConfirmed)
             && (!paymentNeeded || (
               Boolean(settlement.paymentRequestedAt)
               && Boolean(settlement.paymentCompleted)
@@ -492,7 +543,7 @@ export default function ManagerCheckoutRequestDetail() {
                     <p className="text-xs text-slate-500">Số tiền cần hoàn cho Tenant</p>
                     <p className="mt-1 text-xl font-black text-emerald-700">{money(refund)}</p>
                     {refundNeeded ? (
-                      settlement.refundConfirmedAt
+                      refundConfirmed
                         ? <p className="mt-2 text-xs font-semibold text-emerald-700">Đã xác nhận hoàn tiền lúc {new Date(settlement.refundConfirmedAt).toLocaleString('vi-VN')}</p>
                         : <p className="mt-2 text-xs text-amber-700">Manager cần hoàn tiền thực tế và xác nhận tại đây.</p>
                     ) : <p className="mt-2 text-xs text-slate-500">Dưới 10.000đ hoặc không có tiền hoàn, bỏ qua bước hoàn tiền.</p>}
@@ -503,29 +554,56 @@ export default function ManagerCheckoutRequestDetail() {
                     {paymentNeeded ? (
                       settlement.paymentRequestedAt
                         ? <p className="mt-2 text-xs font-semibold text-blue-700">Đã gửi yêu cầu lúc {new Date(settlement.paymentRequestedAt).toLocaleString('vi-VN')}. Tenant thanh toán tại mục Hóa đơn của tôi.</p>
-                        : <p className="mt-2 text-xs text-amber-700">Gửi thông báo và mở các hóa đơn còn nợ cho Tenant thanh toán.</p>
+                        : <p className="mt-2 text-xs text-amber-700">Tạo hóa đơn trả phòng cho số tiền còn thiếu và gửi thông báo cho khách thuê.</p>
                     ) : <p className="mt-2 text-xs text-slate-500">Không phát sinh khoản cần thanh toán thêm.</p>}
                   </div>
                 </div>
               )}
 
-              {saved?.calculatedAt && refundNeeded && !settlement.refundConfirmedAt && (
-                <button type="button" onClick={confirmRefund} className="w-full rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800 hover:bg-emerald-100">
-                  Xác nhận đã hoàn {money(refund)} cho Tenant
-                </button>
+              {refundConfirmed && (
+                <img src={settlement.refundProofImage} alt="Biên lai hoàn cọc đã lưu" className="max-h-64 max-w-full rounded-xl border border-slate-200 object-contain" />
               )}
 
-              {saved?.calculatedAt && paymentNeeded && !settlement.paymentRequestedAt && (
-                <button type="button" onClick={requestCheckoutPayment} className="w-full rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white hover:bg-blue-800">
-                  Gửi yêu cầu thanh toán {money(extra)} và thông báo Tenant
+              {canSettle && saved?.calculatedAt && refundNeeded && !refundConfirmed && (
+                <div className="space-y-3 rounded-xl border border-emerald-200 p-4">
+                  <label htmlFor="refund-proof" className="block text-sm font-bold text-slate-800">
+                    Ảnh biên lai chuyển khoản hoàn cọc
+                  </label>
+                  <input
+                    id="refund-proof"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={readingRefundProof || confirmingRefund}
+                    onChange={handleRefundProof}
+                    aria-describedby="refund-proof-help"
+                    className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-3 file:py-2 file:font-semibold file:text-emerald-800"
+                  />
+                  <p id="refund-proof-help" className="text-xs text-slate-500">Chọn ảnh JPG, PNG hoặc WEBP, tối đa 3 MB.</p>
+                  {refundProofImage && (
+                    <div className="flex items-start gap-3">
+                      <img src={refundProofImage} alt="Xem trước biên lai hoàn cọc" className="max-h-48 max-w-[80%] rounded-lg border border-slate-200 object-contain" />
+                      <button type="button" disabled={readingRefundProof || confirmingRefund} onClick={() => setRefundProof(null)} aria-label="Xóa ảnh biên lai" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+                  <button type="button" onClick={confirmRefund} disabled={!refundProofImage || readingRefundProof || confirmingRefund} className="w-full rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50">
+                    {confirmingRefund ? 'Đang lưu xác nhận...' : `Xác nhận đã hoàn ${money(refund)} cho Tenant`}
+                  </button>
+                </div>
+              )}
+
+              {canSettle && saved?.calculatedAt && paymentNeeded && !settlement.paymentRequestedAt && (
+                <button type="button" disabled={sendingCheckoutPayment} onClick={requestCheckoutPayment} className="w-full rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-50">
+                  {sendingCheckoutPayment ? 'Đang tạo hóa đơn...' : `Tạo và gửi hóa đơn trả phòng ${money(extra)}`}
                 </button>
               )}
 
               {settlement.paymentRequestedAt && paymentNeeded && (
                 <div className="rounded-xl bg-blue-50 p-4 text-sm text-blue-800">
-                  Tenant được thông báo thanh toán qua các hóa đơn trong mục <b>Hóa đơn của tôi</b>.
+                  Khách thuê xem yêu cầu thanh toán trong mục <b>Hóa đơn của tôi</b>.
                   {settlement.paymentCompleted
-                    ? <p className="mt-1 font-semibold text-emerald-700">Đã thanh toán đủ tất cả hóa đơn checkout và công nợ cũ.</p>
+                    ? <p className="mt-1 font-semibold text-emerald-700">Đã thanh toán đủ số tiền còn thiếu khi trả phòng.</p>
                     : <p className="mt-1 text-xs">Đang chờ thanh toán đủ. Sau khi cổng thanh toán xác nhận, tải lại trang để cập nhật trạng thái.</p>}
                   <p className="mt-1 text-xs">Hệ thống kiểm tra trạng thái hóa đơn ở backend trước khi cho phép hoàn tất.</p>
                 </div>
@@ -534,9 +612,9 @@ export default function ManagerCheckoutRequestDetail() {
               <button type="button" onClick={finalize} disabled={!ready || request.status === 'completed'} className="w-full rounded-xl bg-emerald-700 px-4 py-3 text-sm font-black text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40">
                 {request.status === 'completed' ? 'Checkout đã hoàn tất' : 'Manager xác nhận checkout cuối cùng · Kết thúc hợp đồng & mở phòng'}
               </button>
-              {!ready && saved?.calculatedAt && (
+              {canSettle && !ready && saved?.calculatedAt && (
                 <p className="text-center text-xs text-slate-500">
-                  {refundNeeded && !settlement.refundConfirmedAt
+                  {refundNeeded && !refundConfirmed
                     ? 'Chưa xác nhận hoàn tiền cọc.'
                     : paymentNeeded && !settlement.paymentRequestedAt
                       ? 'Chưa gửi yêu cầu thanh toán cho Tenant.'
