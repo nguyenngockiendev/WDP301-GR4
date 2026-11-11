@@ -1,3 +1,5 @@
+import Notifications from '../src/models/Notifications.js';
+import { notifyRecipient } from '../src/modules/notifications/notifications.events.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -7,7 +9,13 @@ import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { WebSocket } from 'ws';
 import { attachNotificationsSocket } from '../src/modules/notifications/notifications.socket.js';
-import { createNotification, markRead } from '../src/modules/notifications/notifications.service.js';
+import { markRead } from '../src/modules/notifications/notifications.service.js';
+
+const createNotification = async data => {
+  const notification = await Notifications.create(data);
+  notifyRecipient(notification.recipient);
+  return notification;
+};
 
 test('WebSocket authenticates, isolates recipients, broadcasts persisted changes and rejects invalid origins and expired tokens', async t => {
 

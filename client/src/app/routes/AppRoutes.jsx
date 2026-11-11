@@ -1,9 +1,9 @@
 import Profile from '../../features/profile/pages/Profile';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout/DashboardLayout';
 import ProtectedRoute from './ProtectedRoute';
-import { getCurrentUser } from '../../shared/utils/auth';
 import { authRoutes } from '../../features/auth/routes/AuthRoutes';
+import HomePage from '../../features/home/HomePage';
 import roomsRoutes from '../../features/rooms/routes/RoomsRoutes';
 import BrowseRooms from '../../features/rooms/pages/BrowseRooms';
 import RoomDetail from '../../features/rooms/pages/RoomDetail';
@@ -11,6 +11,7 @@ import contractsRoutes from '../../features/contracts/routes/ContractsRoutes';
 import rentalsRoutes from '../../features/rentals/routes/RentalsRoutes';
 import tenantsRoutes from '../../features/tenants/routes/TenantsRoutes';
 import DashboardPage from '../../features/dashboard/pages/DashboardPage';
+import ReportsPage from '../../features/reports/ReportsPage';
 import notificationsRoutes from '../../features/notifications/routes/NotificationsRoutes';
 import shortcuts from '../../features/properties/routes/RentalsRoutes';
 import terminationRequestsRoutes from '../../features/terminationrequests/routes/TerminationRequestsRoutes';
@@ -21,9 +22,21 @@ import SettingsPage from '../../features/landlord/SettingsPage';
 import utilityReadingsRoutes from '../../features/utility-readings/routes/UtilityReadingsRoutes';
 import invoiceRoutes from '../../features/invoices/routes/InvoiceRoutes';
 import PropertiesHome from '../../features/landlord/PropertiesHome';
-// Người thuê không dùng trang quản lý: /dashboard chuyển về trang Home
+import PropertyOperationsPage from '../../features/landlord/PropertyOperationsPage';
+import { getCurrentUser } from '../../shared/utils/auth';
+// Dashboard hiển thị dữ liệu theo vai trò của tài khoản đang đăng nhập.
 function DashboardEntry() {
-  return getCurrentUser()?.role === 'tenant' ? <Navigate to="/home" replace /> : <DashboardPage />;
+  return <DashboardPage />;
+}
+
+function BrowseRoomsEntry() {
+  if (!getCurrentUser()) return <BrowseRooms />;
+
+  return (
+    <DashboardLayout defaultCollapsed={window.matchMedia('(max-width: 767px)').matches}>
+      <BrowseRooms embedded />
+    </DashboardLayout>
+  );
 }
 
 export default function AppRoutes() {
@@ -43,8 +56,8 @@ export default function AppRoutes() {
   ];
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/home" replace />} />
-      <Route path="/browse-rooms" element={<BrowseRooms />} />
+      <Route path="/" element={<HomePage />} />
+      <Route path="/browse-rooms" element={<BrowseRoomsEntry />} />
       <Route path="/rooms/:roomId" element={<RoomDetail />} />
 
       {authRoutes.map(route => (
@@ -55,8 +68,24 @@ export default function AppRoutes() {
         <Route path="/profile" element={<Profile />} />
         <Route element={<DashboardLayout />}>
           <Route path="dashboard" element={<DashboardEntry />} />
-          <Route path="properties" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertiesHome /></ProtectedRoute>} />
-          <Route path="settings" element={<ProtectedRoute roles={['landlord']}><SettingsPage /></ProtectedRoute>} />
+          <Route
+            path="properties"
+            element={
+              <ProtectedRoute roles={['landlord', 'manager']}>
+                <PropertiesHome />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="properties/:propertyId/operations" element={<ProtectedRoute roles={['landlord', 'manager']}><PropertyOperationsPage /></ProtectedRoute>} />
+          <Route
+            path="settings"
+            element={
+              <ProtectedRoute roles={['landlord']}>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="reports" element={<ReportsPage />} />
           {routes.filter(route => !['/browse-rooms', '/rooms/:roomId'].includes(route.path)).map(route => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}

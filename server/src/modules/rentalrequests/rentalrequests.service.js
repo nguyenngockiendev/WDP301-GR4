@@ -1,5 +1,6 @@
 import RentalRequests from '../../models/RentalRequests.js';
 import Rooms from '../../models/Rooms.js';
+import { notifyRentalResult } from '../notifications/notifications-jobs.service.js';
 import { assertPropertyAccess } from '../properties/properties.service.js';
 
 const populateFields = [
@@ -80,11 +81,14 @@ export const processRentalRequest = async (requestId, data, user) => {
   }
 
   request.status = data.status;
+  request.notificationPending = true;
   request.processedBy = user.userId;
   if (data.status === 'rejected') {
     request.rejectReason = data.rejectReason;
   }
 
   await request.save();
+  try { await notifyRentalResult(request); }
+  catch (error) { console.error('[Notifications] Sẽ thử lại thông báo thuê:', error.message); }
   return request.populate(populateFields);
 };

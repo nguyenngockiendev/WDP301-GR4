@@ -4,6 +4,7 @@ import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import authRouter from '../src/modules/auth/auth.route.js';
+import contractsRouter from '../src/modules/contracts/contracts.route.js';
 import * as roomsService from '../src/modules/rooms/rooms.service.js';
 import { before, after, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -53,24 +54,49 @@ test('assigned manager sees only active templates for their building', async () 
   assert.equal(options.contractPolicy.depositMonths, 2);
 });
 
-test('manager cannot use a template from another building, even with same owner', async () => {
-  await assert.rejects(contracts.createContract({ room: room.id, template: otherTemplate.id }, manager), e => e.status === 403);
+test('creation requires an approved request and an active template for its building', async () => {
+  const draftRequest = await rentals.createRentalRequest({ room: room.id, expectedDate: '2026-12-01' }, { userId: tenant.id, role: 'tenant' });
+  await assert.rejects(contracts.createContract({ room: room.id }, manager), e => e.status === 400);
+  await assert.rejects(contracts.createContract({ rentalRequest: draftRequest.id }, manager), e => e.status === 400 && /phê duyệt/.test(e.message));
+  await rentals.processRentalRequest(draftRequest.id, { status: 'approved' }, manager);
   await Templates.findByIdAndUpdate(template.id, { status: 'inactive' });
-  await assert.rejects(contracts.createContract({ room: room.id, template: template.id }, manager), e => e.status === 400);
+  await assert.rejects(contracts.createContract({ rentalRequest: draftRequest.id, template: otherTemplate.id }, manager), e => e.status === 400 && /mẫu hợp đồng/.test(e.message));
   await Templates.findByIdAndUpdate(template.id, { status: 'active' });
 });
 
-test('manager fills tenant information and saves owner template and policy snapshots', async () => {
-  const contract = await contracts.createContract({ room: room.id, template: template.id, representative: tenant.id, monthlyRent: 3000000, depositAmount: 6000000, startDate: '2026-11-10', endDate: '2027-11-10' }, manager);
+test('contract draft uses the approved booking and owner settings and only dates can be edited', async () => {
+  const options = await contracts.getContractFormOptions(building.id, manager);
+  const rentalRequest = options.approvedRequests.find(item => String(item.room._id) === room.id);
+  const contract = await contracts.createContract({
+    rentalRequest: rentalRequest.id, room: otherBuilding.id, representative: outsider.userId,
+    template: otherTemplate.id, monthlyRent: 1, depositAmount: 0, status: 'active', otherMembers: [outsider.userId],
+    startDate: '2026-12-01', endDate: '2027-12-01',
+  }, manager);
+  assert.equal(contract.room.id, room.id);
+  assert.equal(contract.representative.id, tenant.id);
+  assert.equal(contract.template.id, template.id);
+  assert.equal(contract.monthlyRent, 3000000);
+  assert.equal(contract.depositAmount, 6000000);
+  assert.equal(contract.status, 'draft');
+  assert.equal(contract.otherMembers.length, 0);
   assert.equal(contract.paymentDueDay, 12);
   assert.equal(contract.paymentGraceDays, 4);
   assert.equal(contract.utilityRateSnapshot.electricityPrice, 4100);
+  await assert.rejects(contracts.changeRepresentative(contract.id, outsider.userId, manager), e => e.status === 409);
+  const updated = await contracts.updateContract(contract.id, {
+    endDate: '2027-12-15', monthlyRent: 2, depositAmount: 3, template: otherTemplate.id, otherMembers: [outsider.userId],
+  }, manager);
+  assert.equal(updated.endDate.toISOString().slice(0, 10), '2027-12-15');
+  assert.equal(updated.monthlyRent, 3000000);
+  assert.equal(updated.depositAmount, 6000000);
+  assert.equal(updated.template.id, template.id);
+  assert.equal(updated.otherMembers.length, 0);
   await templates.updateTemplate(template.id, { content: 'Changed' }, owner);
   await Properties.findByIdAndUpdate(building.id, { 'utilityRate.electricityPrice': 9000, 'contractPolicy.paymentDueDay': 20 });
   const document = await contracts.getContractDocument(contract.id, manager);
   assert.equal(document.content.includes('Changed'), false);
   assert.ok(JSON.stringify(document).includes('4.100'));
-  assert.equal((await Rooms.findById(room.id)).status, 'occupied');
+  assert.equal((await Rooms.findById(room.id)).status, 'reserved');
 });
 
 
@@ -134,8 +160,15 @@ test('landlord views requests but only assigned manager processes and creates fr
   const options = await contracts.getContractFormOptions(building.id, manager);
   assert.ok(options.templates[0].content);
   assert.ok(options.approvedRequests.some(item => item.id === req.id));
-  const data = { room: vacant.id, representative: tenant.id, template: template.id, rentalRequest: req.id, monthlyRent: 2500000, startDate: '2026-12-01', endDate: '2027-12-01' };
+  const data = { rentalRequest: req.id, startDate: '2026-12-01', endDate: '2027-12-01' };
   await assert.rejects(contracts.createContract(data, owner), e => e.status === 403);
-  const result = await contracts.createContract(data, manager);
-  assert.equal(String(result.rentalRequest._id), req.id);
+  await assert.rejects(contracts.createContract(data, outsider), e => e.status === 403);
+  process.env.JWT_SECRET = 'contract-configuration-test-secret';
+  const app = express(); app.use(express.json()); app.use('/contracts', contractsRouter);
+  const token = jwt.sign(manager, process.env.JWT_SECRET, { expiresIn: '1h' });
+  const result = await request(app).post('/contracts').set('Authorization', 'Bearer ' + token).send(data);
+  assert.equal(result.status, 201);
+  assert.equal(result.body.data.rentalRequest._id, req.id);
+  assert.equal(result.body.data.monthlyRent, 2500000);
+  assert.equal(result.body.data.depositAmount, 5000000);
 });

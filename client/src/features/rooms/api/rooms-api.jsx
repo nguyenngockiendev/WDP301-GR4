@@ -25,8 +25,8 @@ const roomsAPI = {
     return api.patch(`/rooms/${roomId}/deactivate`);
   },
 
-  searchAvailableRooms: async (filters) => {
-    return api.get('/rooms/search', { params: filters });
+  searchAvailableRooms: async (filters, signal) => {
+    return api.get('/rooms/search', { params: filters, signal });
   },
 };
 

@@ -7,6 +7,6 @@ const router = Router();
 
 router.use(requireAuth, requireRole('landlord', 'manager'));
 router.get('/', getUtilityReadings);
-router.post('/', createLimiter(10, 5, true), saveUtilityReadings);
+router.post('/', requireRole('manager'), createLimiter(10, 5, true), saveUtilityReadings);
 
 export default router;

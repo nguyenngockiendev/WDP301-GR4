@@ -4,8 +4,8 @@ import Sidebar from './Sidebar';
 import { Outlet } from 'react-router-dom';
 import { NotificationsProvider } from '../../features/notifications/hooks/useNotifications';
 
-export default function DashboardLayout() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+export default function DashboardLayout({ children, defaultCollapsed = false }) {
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
   return (
     <NotificationsProvider>
@@ -28,8 +28,8 @@ export default function DashboardLayout() {
       {/* Khung nội dung chính bên phải */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto px-8 pb-8">
-          <Outlet />
+        <main className={`flex-1 overflow-y-auto pb-8 ${children ? 'px-3 sm:px-8' : 'px-8'}`}>
+          {children ?? <Outlet />}
         </main>
       </div>
     </div>

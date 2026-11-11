@@ -2,6 +2,17 @@ import mongoose from 'mongoose';
 
 const roomSchema = new mongoose.Schema(
   {
+    statusHistory: [
+      {
+        _id: false,
+        status: {
+          type: String,
+          enum: ['available', 'occupied', 'maintenance', 'reserved'],
+          required: true,
+        },
+        at: { type: Date, required: true },
+      },
+    ],
     name: { type: String, trim: true },
     floor: { type: Number, default: 1, min: 0 },
     property: {
@@ -54,9 +65,16 @@ const roomSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
+roomSchema.set('optimisticConcurrency', true);
+// Mọi luồng đổi trạng thái hiện tại dùng room.save(), nên lưu lịch sử cùng bản ghi phòng.
+roomSchema.pre('save', function () {
+  if (this.isNew || this.isModified('status') || !this.statusHistory.length) {
+    this.statusHistory.push({ status: this.status, at: new Date() });
+  }
+});
 const Rooms = mongoose.model('Room', roomSchema);
 
 export default Rooms;

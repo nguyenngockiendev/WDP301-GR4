@@ -115,12 +115,11 @@ export default function ManagersPage({ accountsOnly = false }) {
   }
 
   function toggleProperty(propertyId) {
-    setSelectedProperties(current => current.includes(propertyId)
-      ? current.filter(id => id !== propertyId)
-      : [...current, propertyId]);
+    setSelectedProperties(current => current[0] === propertyId ? [] : [propertyId]);
   }
 
-  const activeManagers = managers.filter(manager => manager.status === 'active' && manager.isVerified);
+  const assignedManagerIds = new Set(assignments.map(item => String(item.manager?._id || item.manager)));
+  const activeManagers = managers.filter(manager => manager.status === 'active' && manager.isVerified && !assignedManagerIds.has(String(manager._id)));
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 pt-2">
@@ -233,7 +232,7 @@ export default function ManagersPage({ accountsOnly = false }) {
       {!accountsOnly && <form onSubmit={assignManager} className={`${cardClass} space-y-4 p-5`}>
         <div>
           <h2 className="font-extrabold text-slate-800">Phân công nhà trọ</h2>
-          <p className="mt-1 text-xs text-slate-500">Chọn quản lý viên đang hoạt động và nhà trọ thuộc quyền sở hữu.</p>
+          <p className="mt-1 text-xs text-slate-500">Mỗi quản lý viên chỉ phụ trách một nhà trọ. Gỡ phân công cũ trước khi chuyển sang nhà trọ khác.</p>
         </div>
         <select required value={managerId} onChange={event => setManagerId(event.target.value)} className={inputCls}>
           <option value="">Chọn quản lý viên</option>
@@ -242,7 +241,7 @@ export default function ManagersPage({ accountsOnly = false }) {
         <div className="grid gap-2 sm:grid-cols-2">
           {properties.filter(property => property.status === 'active').map(property => (
             <label key={property._id} className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 p-3 text-sm transition hover:border-emerald-300">
-              <input type="checkbox" checked={selectedProperties.includes(property._id)} onChange={() => toggleProperty(property._id)} className="mt-0.5 accent-emerald-600" />
+              <input type="radio" name="assignedProperty" checked={selectedProperties.includes(property._id)} onChange={() => toggleProperty(property._id)} className="mt-0.5 accent-emerald-600" />
               <span><strong className="block text-slate-700">{property.name}</strong><span className="text-xs text-slate-500">{property.address}</span></span>
             </label>
           ))}

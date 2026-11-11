@@ -16,6 +16,8 @@ import managerAssignmentsRoutes from '../modules/managerassignments/managerassig
 import utilityReadingsRoutes from '../modules/utility-readings/utility-readings.route.js';
 import invoicesRoutes from '../modules/invoices/invoices.route.js';
 import paymentsRoutes from '../modules/payments/payments.route.js';
+import dashboardRoutes from '../modules/dashboard/dashboard.route.js';
+import reportsRoutes from '../modules/reports/reports.route.js';
 
 const router = Router();
 
@@ -35,5 +37,7 @@ router.use('/manager-assignments', managerAssignmentsRoutes);
 router.use('/utility-readings', utilityReadingsRoutes);
 router.use('/invoices', invoicesRoutes);
 router.use('/payments', paymentsRoutes);
+router.use('/dashboard', dashboardRoutes);
+router.use('/reports', reportsRoutes);
 
 export default router;

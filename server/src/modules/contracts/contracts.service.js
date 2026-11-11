@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Contracts from '../../models/Contracts.js';
 import RentalRequests from '../../models/RentalRequests.js';
 import Rooms from '../../models/Rooms.js';
@@ -38,6 +39,12 @@ const resolveTemplateForProperty = async (templateId, propertyId) => {
   return template;
 };
 
+const getActivePropertyTemplates = (propertyId, ownerId) => ContractTemplates.find({
+  createdBy: ownerId,
+  property: propertyId,
+  status: 'active',
+}).sort({ updatedAt: -1, _id: -1 });
+
 // Các trường được phép sửa qua API cập nhật
 const EDITABLE_FIELDS = [
   'startDate',
@@ -50,8 +57,8 @@ const EDITABLE_FIELDS = [
 ];
 
 /** Lấy hợp đồng và kiểm tra user có quyền với nhà trọ chứa phòng của hợp đồng. */
-const findContractWithAccess = async (contractId, user) => {
-  const contract = await Contracts.findById(contractId);
+const findContractWithAccess = async (contractId, user, selection) => {
+  const contract = await Contracts.findById(contractId).select(selection);
   if (!contract) {
     throw { status: 404, message: 'Hợp đồng không tồn tại' };
   }
@@ -74,7 +81,7 @@ export const getContractFormOptions = async (propertyId, user) => {
   await assertPropertyAccess(user, propertyId);
 
   const rooms = await Rooms.find({ property: propertyId })
-    .select('roomNumber price status')
+    .select('roomNumber price status maxTenants')
     .sort({ roomNumber: 1 });
   const roomIds = rooms.map(r => r._id);
   const busyRoomIds = await Contracts.find({ room: { $in: roomIds }, status: 'active' }).distinct(
@@ -84,18 +91,15 @@ export const getContractFormOptions = async (propertyId, user) => {
 
   const approvedRequests = await RentalRequests.find({ room: { $in: roomIds }, status: 'approved' })
     .populate('tenant', 'fullName email phone')
-    .populate('room', 'roomNumber price');
+    .populate('room', 'roomNumber price maxTenants');
 
   const tenants = await Users.find({ role: 'tenant', status: 'active' })
     .select('fullName email phone')
     .sort({ fullName: 1 })
     .limit(500);
 
-  // Mẫu hợp đồng đang dùng của chủ nhà trọ (landlord tạo, manager chọn để điền)
   const property = await Properties.findById(propertyId).select('owner contractPolicy utilityRate');
-  const templates = await ContractTemplates.find({ createdBy: property?.owner, property: propertyId, status: 'active' })
-    .select('title content updatedAt')
-    .sort({ updatedAt: -1 });
+  const templates = await getActivePropertyTemplates(propertyId, property?.owner).select('title content updatedAt');
 
   return {
     rooms: rooms.filter(r => !busy.has(String(r._id))),
@@ -116,7 +120,14 @@ export const getContractById = async (contractId, user) => {
 
 /** Văn bản hợp đồng: nội dung mẫu (bản lưu lúc lập hợp đồng) đã điền dữ liệu thật. */
 export const getContractDocument = async (contractId, user) => {
-  const contract = await findContractWithAccess(contractId, user);
+  const contract = await findContractWithAccess(contractId, user, '+signing.document');
+  if (contract.signing?.document && contract.signing.status !== 'withdrawn' && contract.signing.status !== 'rejected') {
+    return { contractId, status: contract.status, title: contract.signing.title, content: contract.signing.document };
+  }
+  return renderContractDocument(contract);
+};
+
+export const renderContractDocument = async contract => {
   await contract.populate([
     {
       path: 'room',
@@ -149,81 +160,82 @@ export const getContractDocument = async (contractId, user) => {
 };
 
 export const createContract = async (data, user) => {
-  if (data.rentalRequest && user.role !== 'manager') throw { status: 403, message: 'Chỉ quản lý được tạo hợp đồng từ yêu cầu thuê' };
-  const room = await Rooms.findById(data.room);
+  if (user.role !== 'manager') throw { status: 403, message: 'Chỉ quản lý được tạo hợp đồng từ yêu cầu thuê' };
+  if (!mongoose.isObjectIdOrHexString(data.rentalRequest)) {
+    throw { status: 400, message: 'Vui lòng chọn yêu cầu thuê đã duyệt' };
+  }
+  const rentalRequest = await RentalRequests.findById(data.rentalRequest);
+  if (!rentalRequest) throw { status: 404, message: 'Yêu cầu thuê không tồn tại' };
+
+  const room = await Rooms.findById(rentalRequest.room);
   if (!room) {
     throw { status: 404, message: 'Phòng không tồn tại' };
   }
   await assertPropertyAccess(user, room.property);
+  if (rentalRequest.status !== 'approved') {
+    throw { status: 400, message: 'Yêu cầu thuê phải được phê duyệt' };
+  }
 
-  const template = await resolveTemplateForProperty(data.template, room.property);
-
-  const activeContract = await Contracts.findOne({ room: data.room, status: 'active' });
+  const activeContract = await Contracts.exists({ room: room._id, status: 'active' });
   if (activeContract) {
     throw { status: 400, message: 'Phòng này đã có hợp đồng hoạt động' };
   }
 
-  const representative = await Users.findOne({ _id: data.representative, role: 'tenant' });
+  const representative = await Users.exists({ _id: rentalRequest.tenant, role: 'tenant' });
   if (!representative) {
     throw { status: 404, message: 'Người đại diện không tồn tại hoặc không phải người thuê' };
   }
 
-  if (data.rentalRequest) {
-    const rentalRequest = await RentalRequests.findById(data.rentalRequest);
-    if (!rentalRequest) {
-      throw { status: 404, message: 'Yêu cầu thuê không tồn tại' };
-    }
-    if (String(rentalRequest.room) !== String(data.room) || String(rentalRequest.tenant) !== String(data.representative)) {
-      throw { status: 400, message: 'Yêu cầu thuê không khớp phòng hoặc người đại diện' };
-    }
-    if (rentalRequest.status !== 'approved') {
-      throw { status: 400, message: 'Yêu cầu thuê phải được phê duyệt' };
-    }
+  const propertyConfig = await Properties.findById(room.property).select('owner contractPolicy utilityRate');
+  if (!propertyConfig) throw { status: 404, message: 'Tòa nhà không tồn tại' };
+  const [template] = await getActivePropertyTemplates(room.property, propertyConfig.owner).limit(1);
+  if (!template) {
+    throw { status: 400, message: 'Tòa nhà chưa có mẫu hợp đồng đang áp dụng' };
   }
-
-  const otherMembers = [...new Set((data.otherMembers || []).map(String))].filter(
-    id => id !== String(data.representative),
-  );
-  if (otherMembers.length > 0) {
-    const validCount = await Users.countDocuments({ _id: { $in: otherMembers }, role: 'tenant' });
-    if (validCount !== otherMembers.length) {
-      throw { status: 400, message: 'Có người ở cùng không tồn tại hoặc không phải người thuê' };
-    }
+  const monthlyRent = room.price;
+  const depositAmount = Math.round(monthlyRent * (propertyConfig.contractPolicy?.depositMonths ?? 1));
+  if (!Number.isFinite(monthlyRent) || monthlyRent <= 0 || !Number.isSafeInteger(depositAmount) || depositAmount < 0) {
+    throw { status: 400, message: 'Giá thuê hoặc tiền cọc trong cấu hình của chủ trọ chưa hợp lệ' };
   }
-
-  const propertyConfig = await Properties.findById(room.property).select('contractPolicy utilityRate');
   const contract = await Contracts.create({
-    paymentDueDay: propertyConfig?.contractPolicy?.paymentDueDay ?? 5,
-    paymentGraceDays: propertyConfig?.contractPolicy?.paymentGraceDays ?? 3,
+    paymentDueDay: propertyConfig.contractPolicy?.paymentDueDay ?? 5,
+    paymentGraceDays: propertyConfig.contractPolicy?.paymentGraceDays ?? 3,
     utilityRateSnapshot: {
-      electricityPrice: propertyConfig?.utilityRate?.electricityPrice ?? 0,
-      waterPrice: propertyConfig?.utilityRate?.waterPrice ?? 0,
+      electricityPrice: propertyConfig.utilityRate?.electricityPrice ?? 0,
+      waterPrice: propertyConfig.utilityRate?.waterPrice ?? 0,
     },
-    room: data.room,
-    rentalRequest: data.rentalRequest || undefined,
+    room: room._id,
+    rentalRequest: rentalRequest._id,
     template: template._id,
     templateTitle: template.title,
     templateContent: template.content,
-    representative: data.representative,
-    otherMembers,
+    representative: rentalRequest.tenant,
     startDate: data.startDate,
     endDate: data.endDate,
-    monthlyRent: data.monthlyRent,
-    depositAmount: data.depositAmount || 0,
-    status: data.status || 'active',
+    monthlyRent,
+    depositAmount,
+    status: 'draft',
     createdBy: user.userId,
   });
-
-  if (contract.status === 'active' && room.status !== 'occupied') {
-    room.status = 'occupied';
-    await room.save();
-  }
 
   return contract.populate(populateFields);
 };
 
 export const updateContract = async (contractId, data, user) => {
   const contract = await findContractWithAccess(contractId, user);
+  assertContractEditable(contract);
+  if (contract.rentalRequest && contract.status === 'draft') {
+    if (data.status && data.status !== 'draft') {
+      throw { status: 409, message: 'Hợp đồng từ yêu cầu thuê cần hoàn tất ký để có hiệu lực.' };
+    }
+    const { startDate, endDate } = data;
+    data = { startDate, endDate };
+    const start = new Date(startDate ?? contract.startDate).getTime();
+    const end = new Date(endDate ?? contract.endDate).getTime();
+    if (startDate === null || endDate === null || !Number.isFinite(start) || !Number.isFinite(end) || start >= end) {
+      throw { status: 400, message: 'Ngày kết thúc phải sau ngày bắt đầu' };
+    }
+  }
 
   const lockedFields = ['monthlyRent', 'depositAmount'];
   for (const field of lockedFields) {
@@ -264,6 +276,15 @@ export const updateContract = async (contractId, data, user) => {
     // Bỏ trùng và bỏ người đại diện khỏi danh sách người ở cùng
     const repId = String(contract.representative);
     data.otherMembers = [...new Set(data.otherMembers.map(String))].filter(id => id !== repId);
+    const previousMembers = new Set((contract.otherMembers || []).map(String));
+    const membershipChanged = data.otherMembers.length !== previousMembers.size || data.otherMembers.some(id => !previousMembers.has(id));
+    if (membershipChanged) {
+      const room = await Rooms.findById(contract.room).select('maxTenants');
+      const roomCapacity = Math.min(4, Number(room?.maxTenants) || 1);
+      if (data.otherMembers.length + 1 > roomCapacity) {
+        throw { status: 400, message: `Phòng này chỉ nhận tối đa ${roomCapacity} người.` };
+      }
+    }
     const validCount = await Users.countDocuments({ _id: { $in: data.otherMembers }, role: 'tenant' });
     if (validCount !== data.otherMembers.length) {
       throw { status: 400, message: 'Có người ở cùng không tồn tại hoặc không phải người thuê' };
@@ -271,6 +292,8 @@ export const updateContract = async (contractId, data, user) => {
   }
 
   if (data.status === 'active' && previousStatus !== 'active') {
+    const room = await Rooms.findById(contract.room).select('status');
+    await assertNoApprovedReservation(room);
     const otherActive = await Contracts.exists({ room: contract.room, status: 'active', _id: { $ne: contract._id } });
     if (otherActive) {
       throw { status: 400, message: 'Phòng này đã có hợp đồng hoạt động khác' };
@@ -347,6 +370,10 @@ export const renewContract = async (contractId, newEndDate, user) => {
 
 export const changeRepresentative = async (contractId, newRepresentativeId, user) => {
   const contract = await findContractWithAccess(contractId, user);
+  assertContractEditable(contract);
+  if (contract.rentalRequest && contract.status === 'draft') {
+    throw { status: 409, message: 'Người thuê đứng tên hợp đồng nháp được lấy từ yêu cầu thuê đã duyệt.' };
+  }
 
   const allMembers = [contract.representative, ...contract.otherMembers];
   const isMember = allMembers.some(member => member.toString() === newRepresentativeId);
@@ -368,6 +395,26 @@ export const changeRepresentative = async (contractId, newRepresentativeId, user
 
   return contract.populate(populateFields);
 };
+
+function assertContractEditable(contract) {
+  if (contract.status === 'draft' && ['awaiting_tenant', 'awaiting_manager', 'signed'].includes(contract.signing?.status)) {
+    throw { status: 409, message: 'Hãy thu hồi bản đang chờ ký trước khi sửa hợp đồng.' };
+  }
+  // Chặn thao tác sửa đã bắt đầu trước khi một bản mới được gửi ký.
+  if (contract.status === 'draft') {
+    contract.$where = {
+      status: 'draft',
+      'signing.status': contract.signing?.status ?? null,
+      'signing.revision': contract.signing?.revision ?? null,
+    };
+  }
+}
+
+async function assertNoApprovedReservation(room) {
+  if (room?.status === 'reserved' && await RentalRequests.exists({ room: room._id, status: 'approved' })) {
+    throw { status: 409, message: 'Phòng đang giữ cho yêu cầu thuê đã duyệt. Hãy lập hợp đồng từ yêu cầu đó.' };
+  }
+}
 
 export const searchContracts = async (filters, user) => {
   if (!filters.property) {

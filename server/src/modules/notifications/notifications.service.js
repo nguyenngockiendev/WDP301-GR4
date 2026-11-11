@@ -47,8 +47,18 @@ export const createNotification = async ({
   content,
   type = 'general',
   related,
+  sender,
+  property,
 }) => {
-  const notification = await Notifications.create({ recipient, title, content, type, related });
+  const notification = await Notifications.create({
+    recipient,
+    title,
+    content,
+    type,
+    related,
+    ...(sender ? { sender } : {}),
+    ...(property ? { property } : {}),
+  });
   notifyRecipient(recipient);
   return notification;
 };

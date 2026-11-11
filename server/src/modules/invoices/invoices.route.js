@@ -17,7 +17,7 @@ const requireStaff = requireRole('landlord', 'manager');
 router.get('/', requireStaff, validate(validateManagedInvoiceFilters), getManagedInvoices);
 router.get('/:invoiceId', requireStaff, getManagedInvoice);
 router.post('/preview', requireStaff, previewInvoice);
-router.post('/send', requireStaff, createLimiter(10, 5, true), validate(validateSendInvoices), sendInvoices);
+router.post('/send', requireRole('manager'), createLimiter(10, 5, true), validate(validateSendInvoices), sendInvoices);
 router.post('/', requireStaff, createLimiter(10, 5, true), createInvoice);
 
 export default router;

@@ -6,6 +6,8 @@ import Rooms from '../../models/Rooms.js';
 import Services from '../../models/Services.js';
 import UtilityReadings from '../../models/UtilityReadings.js';
 import Users from '../../models/Users.js';
+import Notifications from '../../models/Notifications.js';
+import { notifyRecipient } from '../notifications/notifications.events.js';
 import { assertPropertyAccess } from '../properties/properties.service.js';
 
 const billingMonthPattern = /^[1-9]\d{3}-(0[1-9]|1[0-2])$/;
@@ -13,7 +15,7 @@ const billableStatuses = ['active', 'expired'];
 
 const validNumber = value => Number.isFinite(value) && value >= 0;
 
-const invoiceSummaryFields = 'contract billedTo billingMonth totalAmount paidAmount dueDate sentAt status';
+const invoiceSummaryFields = 'contract billedTo billingMonth invoiceType checkoutPaymentInvoice totalAmount paidAmount dueDate sentAt status';
 const invoiceContract = {
   path: 'contract',
   select: 'room',
@@ -24,6 +26,10 @@ const invoiceContract = {
   },
 };
 const invoiceContractWithRecipient = { ...invoiceContract, select: 'room representative' };
+const tenantInvoiceContract = {
+  ...invoiceContractWithRecipient,
+  select: 'room representative status endDate signing.depositInvoice',
+};
 
 function getInvoiceRecipientId(invoice) {
   return invoice.billedTo || invoice.contract?.representative;
@@ -71,10 +77,11 @@ export const getManagedInvoice = async (invoiceId, user) => {
 };
 
 export const sendInvoices = async (invoiceIds, user) => {
+  await Notifications.init();
   const ids = [...new Set(invoiceIds.map(id => id.toLowerCase()))];
   const session = await mongoose.startSession();
   try {
-    return await session.withTransaction(async () => {
+    const result = await session.withTransaction(async () => {
       const invoices = await Invoices.find({ _id: { $in: ids } })
         .select(invoiceSummaryFields)
         .populate({
@@ -119,6 +126,15 @@ export const sendInvoices = async (invoiceIds, user) => {
             update: { $set: { sentAt, billedTo } },
           },
         });
+        await Notifications.updateOne(
+          { eventKey: `invoice-sent:${invoice._id}`, recipient: billedTo },
+          { $setOnInsert: {
+            type: 'system', title: 'Bạn có hóa đơn mới',
+            content: `Hóa đơn ${label}. Tổng tiền: ${invoice.totalAmount.toLocaleString('vi-VN')} ₫. Vui lòng xem mục Hóa đơn để kiểm tra và thanh toán.`,
+            related: { entityType: 'invoice', entityId: invoice._id }, isRead: false,
+          } },
+          { upsert: true, session },
+        );
       }
 
       const result = await Invoices.bulkWrite(updates, { session });
@@ -127,6 +143,11 @@ export const sendInvoices = async (invoiceIds, user) => {
       }
       return { sentCount: result.modifiedCount };
     });
+    if (result.sentCount) {
+      const recipients = await Invoices.distinct('billedTo', { _id: { $in: ids } });
+      for (const recipient of recipients) notifyRecipient(recipient);
+    }
+    return result;
   } finally {
     await session.endSession();
   }
@@ -150,11 +171,11 @@ export const getMyInvoices = async userId => {
   const invoices = await Invoices.find(filter)
     .select(invoiceSummaryFields)
     .sort({ billingMonth: -1, sentAt: -1, _id: -1 })
-    .populate(invoiceContractWithRecipient)
+    .populate(tenantInvoiceContract)
     .lean();
 
   return invoices.map(invoice => {
-    const canPay = isInvoiceRecipient(invoice, userId);
+    const canPay = !invoice.checkoutPaymentInvoice && isInvoiceRecipient(invoice, userId) && isDepositPayable(invoice);
     if (invoice.contract) delete invoice.contract.representative;
     return { ...invoice, canPay };
   });
@@ -162,6 +183,14 @@ export const getMyInvoices = async userId => {
 
 function isInvoiceRecipient(invoice, userId) {
   return String(getInvoiceRecipientId(invoice)) === userId.toLowerCase();
+}
+
+function isDepositPayable(invoice) {
+  return invoice.invoiceType !== 'deposit' || (
+    invoice.contract?.status === 'draft' &&
+    invoice.contract.endDate >= new Date() &&
+    String(invoice.contract.signing?.depositInvoice) === String(invoice._id)
+  );
 }
 
 export const getMyInvoice = async (invoiceId, userId) => {
@@ -172,12 +201,12 @@ export const getMyInvoice = async (invoiceId, userId) => {
   const filter = await getTenantInvoiceFilter(userId);
   const invoice = await Invoices.findOne({ ...filter, _id: invoiceId })
     .select(invoiceSummaryFields + ' items images')
-    .populate(invoiceContractWithRecipient)
+    .populate(tenantInvoiceContract)
     .lean();
   if (!invoice) throw { status: 404, message: 'Không tìm thấy hóa đơn!' };
 
   const recipientId = getInvoiceRecipientId(invoice);
-  const canPay = isInvoiceRecipient(invoice, userId);
+  const canPay = !invoice.checkoutPaymentInvoice && isInvoiceRecipient(invoice, userId) && isDepositPayable(invoice);
   const recipient = recipientId ? await Users.findById(recipientId).select('fullName').lean() : null;
   if (invoice.contract) {
     if (invoice.billedTo) delete invoice.contract.representative;
@@ -189,12 +218,18 @@ export const getMyInvoice = async (invoiceId, userId) => {
 
 export const getInvoiceForPayment = async ({ invoiceId, roomId }, userId, session) => {
   const invoice = await Invoices.findOne({ _id: invoiceId, sentAt: { $ne: null } })
-    .select('contract billedTo status totalAmount paidAmount')
-    .populate('contract', 'room representative')
+    .select('contract billedTo status totalAmount paidAmount invoiceType checkoutPaymentInvoice')
+    .populate('contract', 'room representative status endDate signing.depositInvoice')
     .session(session)
     .lean();
   if (!invoice || String(invoice.contract?.room) !== roomId.toLowerCase() || !isInvoiceRecipient(invoice, userId)) {
     throw { status: 404, message: 'Không tìm thấy hóa đơn cần thanh toán của bạn!' };
+  }
+  if (invoice.checkoutPaymentInvoice) {
+    throw { status: 409, message: 'Số tiền còn lại đã được gộp vào hóa đơn trả phòng.' };
+  }
+  if (!isDepositPayable(invoice)) {
+    throw { status: 409, message: 'Hợp đồng không còn chờ đóng cọc.' };
   }
   return invoice;
 };

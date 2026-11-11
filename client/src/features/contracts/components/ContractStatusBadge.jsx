@@ -7,12 +7,13 @@ export const CONTRACT_STATUS = {
   terminated: { label: 'Đã kết thúc', cls: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' },
 };
 
-export default function ContractStatusBadge({ status }) {
+export default function ContractStatusBadge({ status, signingStatus }) {
   const c = CONTRACT_STATUS[status] || { label: status, cls: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' };
+  const label = status === 'draft' && signingStatus === 'signed' ? 'Chờ hiệu lực' : c.label;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold whitespace-nowrap ${c.cls}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
-      {c.label}
+      {label}
     </span>
   );
 }

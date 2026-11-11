@@ -1,12 +1,10 @@
 import React from 'react';
 import { Zap, Droplets } from 'lucide-react';
 
-export default function UtilityRateWidget() {
+export default function UtilityRateWidget({ rate }) {
   return (
     <div className="p-6 rounded-3xl bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col justify-between h-full">
-      <h3 className="text-sm font-extrabold text-slate-900 mb-4">
-        Chốt Chỉ Số Điện Nước
-      </h3>
+      <h3 className="text-sm font-extrabold text-slate-900 mb-4">Đơn Giá Điện Nước</h3>
 
       <div className="space-y-3.5">
         {/* Hộp Giá Điện */}
@@ -18,7 +16,8 @@ export default function UtilityRateWidget() {
             <span className="text-xs font-bold text-slate-700">Điện:</span>
           </div>
           <span className="text-base font-black text-slate-900">
-            3.500 <span className="text-xs font-bold text-slate-500">đ/kWh</span>
+            {rate?.electricityPrice == null ? '—' : rate.electricityPrice.toLocaleString('vi-VN')}{' '}
+            <span className="text-xs font-bold text-slate-500">đ/kWh</span>
           </span>
         </div>
 
@@ -31,13 +30,14 @@ export default function UtilityRateWidget() {
             <span className="text-xs font-bold text-slate-700">Nước:</span>
           </div>
           <span className="text-base font-black text-slate-900">
-            20.000 <span className="text-xs font-bold text-slate-500">đ/m³</span>
+            {rate?.waterPrice == null ? '—' : rate.waterPrice.toLocaleString('vi-VN')}{' '}
+            <span className="text-xs font-bold text-slate-500">đ/m³</span>
           </span>
         </div>
       </div>
 
       <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] font-bold text-emerald-800/80 text-center">
-        Áp dụng toàn bộ tòa nhà • Tháng 10
+        Đơn giá hiện tại của nhà trọ đang chọn
       </div>
     </div>
   );

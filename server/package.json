@@ -7,7 +7,9 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test",
-    "seed:demo": "node scripts/seed-demo.js"
+    "seed:demo": "node scripts/seed-demo.js",
+    "seed:review": "node scripts/seed-review.js",
+    "dev:review": "node --watch --import ./scripts/review-env.js src/server.js"
   },
   "engines": {
     "node": ">=22"
@@ -25,7 +27,6 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.13.0",
     "resend": "^6.37.0",
-    "sepay-pg-node": "^1.0.0",
     "vnpay": "^2.5.2",
     "ws": "^8.22.1"
   },

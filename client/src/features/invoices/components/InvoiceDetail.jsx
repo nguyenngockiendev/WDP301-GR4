@@ -6,6 +6,9 @@ import InvoiceStatusBadge from './InvoiceStatusBadge';
 export default function InvoiceDetail({ invoice, paymentAction }) {
   const room = invoice.contract?.room;
   const [year, month] = invoice.billingMonth.split('-');
+  const title = ['checkout_asset', 'checkout_payment'].includes(invoice.invoiceType)
+    ? 'Hóa đơn quyết toán trả phòng'
+    : invoice.invoiceType === 'deposit' ? 'Hóa đơn tiền đặt cọc' : `Hóa đơn tháng ${month}/${year}`;
   const paidAmount = invoice.paidAmount ?? 0;
   const balance = invoice.status === 'cancelled' ? 0 : Math.max(0, invoice.totalAmount - paidAmount);
   const images = (invoice.images || []).filter(image => typeof image === 'string' && image.trim());
@@ -16,7 +19,7 @@ export default function InvoiceDetail({ invoice, paymentAction }) {
         <div className="flex items-start gap-3">
           <span className="rounded-2xl bg-primary-50 p-3 text-primary-dark"><ReceiptText size={22} /></span>
           <div>
-            <h2 className="text-lg font-extrabold text-content-main">Hóa đơn tháng {month}/{year}</h2>
+            <h2 className="text-lg font-extrabold text-content-main">{title}</h2>
             <p className="mt-1 text-sm text-content-sub">
               {room?.property?.name || 'Nhà trọ'} · Phòng {room?.roomNumber || '—'}
             </p>
@@ -58,7 +61,9 @@ export default function InvoiceDetail({ invoice, paymentAction }) {
         </div>
         <div>
           <dt className="text-sm text-primary-900">Còn phải trả</dt>
-          <dd className="mt-1 text-xl font-black text-primary-900">{formatCurrency(balance)}</dd>
+          <dd className="mt-1 text-xl font-black text-primary-900">
+            {invoice.checkoutPaymentInvoice && balance > 0 ? 'Đã gộp vào hóa đơn trả phòng' : formatCurrency(balance)}
+          </dd>
         </div>
       </dl>
 

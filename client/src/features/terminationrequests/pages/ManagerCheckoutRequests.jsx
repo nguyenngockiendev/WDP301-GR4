@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CalendarDays, ClipboardList, RefreshCw, Search, DoorOpen, UserRound, Building2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import terminationRequestsAPI from '../api/terminationrequests-api';
 import CheckoutStatusBadge from '../components/CheckoutStatusBadge';
-import ManagerCheckoutRequestDetail from '../components/ManagerCheckoutRequestDetail';
 
 const unwrap = (response) => {
   const values = [response?.data?.data, response?.data, response?.data?.result];
@@ -17,7 +17,7 @@ export default function ManagerCheckoutRequests() {
   const [status, setStatus] = useState('all');
   const [room, setRoom] = useState('');
   const [tenant, setTenant] = useState('');
-  const [selected, setSelected] = useState(null);
+  const navigate = useNavigate();
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -33,14 +33,7 @@ export default function ManagerCheckoutRequests() {
 
   const count = key => requests.filter(item => item.status === key).length;
 
-  const openDetail = async item => {
-    try {
-      const response = await terminationRequestsAPI.getManagerRequestDetail(item._id);
-      setSelected(response?.data?.data || response?.data || item);
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Không thể tải chi tiết yêu cầu');
-    }
-  };
+
 
   return (
     <section className="mx-auto max-w-7xl py-7">
@@ -76,17 +69,17 @@ export default function ManagerCheckoutRequests() {
       <div className="overflow-hidden rounded-3xl border border-white bg-white/85 shadow-sm">
         {loading ? <div className="p-12 text-center text-sm font-semibold text-slate-500">Đang tải checkout request...</div> : !requests.length ? <div className="p-12 text-center"><ClipboardList size={32} className="mx-auto mb-3 text-slate-300"/><p className="font-bold text-slate-700">Không tìm thấy yêu cầu trả phòng</p><p className="mt-1 text-sm text-slate-400">Thử thay đổi từ khóa hoặc trạng thái lọc.</p></div> : (
           <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-4">Phòng</th><th className="px-5 py-4">Người đứng tên hợp đồng</th><th className="px-5 py-4">Ngày gửi</th><th className="px-5 py-4">Ngày dự kiến trả</th><th className="px-5 py-4">Trạng thái</th><th className="px-5 py-4">Chi tiết</th></tr></thead>
+            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-4">Phòng</th><th className="px-5 py-4">Người đứng tên hợp đồng</th><th className="px-5 py-4">Ngày gửi</th><th className="px-5 py-4">Ngày dự kiến trả</th><th className="px-5 py-4">Trạng thái</th><th className="px-5 py-4">Thao tác</th></tr></thead>
             <tbody className="divide-y divide-slate-100">{requests.map(item => <tr key={item._id} className="hover:bg-emerald-50/30">
               <td className="px-5 py-4 font-extrabold text-slate-800"><span className="flex items-center gap-2"><DoorOpen size={16} className="text-emerald-600"/>{item.contract?.room?.roomNumber || '—'}</span></td>
               <td className="px-5 py-4"><div className="font-bold text-slate-700">{item.contract?.representative?.fullName || '—'}</div><div className="mt-1 text-xs text-slate-400">{item.contract?.representative?.email || ''}</div></td>
               <td className="px-5 py-4 text-slate-600">{formatDate(item.requestedDate || item.createdAt)}</td><td className="px-5 py-4 text-slate-600">{formatDate(item.moveOutDate)}</td>
-              <td className="px-5 py-4"><CheckoutStatusBadge status={item.status}/></td><td className="px-5 py-4"><button onClick={() => openDetail(item)} className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-extrabold text-emerald-700 hover:bg-emerald-100">Xem chi tiết</button></td>
+              <td className="px-5 py-4"><CheckoutStatusBadge status={item.status}/></td><td className="px-5 py-4"><button onClick={() => navigate(`/manager/checkout-requests/${item._id}`)} className="rounded-xl bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800">Quản lý checkout</button></td>
             </tr>)}</tbody>
           </table></div>
         )}
       </div>
-      {selected && <ManagerCheckoutRequestDetail request={selected} onClose={() => setSelected(null)}/>}
+
     </section>
   );
 }

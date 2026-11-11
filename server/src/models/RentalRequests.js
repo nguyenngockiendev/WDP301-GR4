@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const rentalRequestSchema = new mongoose.Schema(
   {
+    notificationPending: { type: Boolean, default: false },
     tenant: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

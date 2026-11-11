@@ -2,7 +2,7 @@ import React from 'react';
 import { FileSignature } from 'lucide-react';
 import ContractItem from './ContractItem';
 
-export default function ContractList({ contracts, onEdit, onRefresh }) {
+export default function ContractList({ contracts, onEdit, onRefresh, readOnly = false }) {
   if (contracts.length === 0) {
     return (
       <div className="py-16 flex flex-col items-center text-center rounded-3xl bg-white/85 border border-white/90">
@@ -18,7 +18,7 @@ export default function ContractList({ contracts, onEdit, onRefresh }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
       {contracts.map(contract => (
-        <ContractItem key={contract._id} contract={contract} onEdit={onEdit} onRefresh={onRefresh} />
+        <ContractItem key={contract._id} contract={contract} onEdit={onEdit} onRefresh={onRefresh} readOnly={readOnly} />
       ))}
     </div>
   );

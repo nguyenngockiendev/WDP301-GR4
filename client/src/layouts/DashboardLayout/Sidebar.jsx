@@ -1,9 +1,8 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { getCurrentUser } from '../../shared/utils/auth';
 import {
   LayoutDashboard,
-  Bell,
   DoorOpen,
   FileSignature,
   CalendarClock,
@@ -12,44 +11,70 @@ import {
   ReceiptText,
   ChevronLeft,
   Building2,
+  ClipboardList,
   Sparkles,
   Settings,
-  ClipboardList,
   Search,
   FileText,
   UserCog,
 } from 'lucide-react';
 
-const STAFF = ['landlord', 'manager'];
+const STAFF = ['landlord'];
+const MANAGER = ['manager'];
+const TENANT = ['tenant'];
 
 export default function Sidebar({ isCollapsed, setIsCollapsed }) {
   const currentUser = getCurrentUser();
   const role = currentUser?.role;
+  const location = useLocation();
+  const routePropertyId = location.pathname.match(/^\/properties\/([^/]+)/)?.[1];
+  const selectedPropertyId = routePropertyId || localStorage.getItem('currentPropertyId');
 
   // roles: vai trò được thấy mục menu (bỏ trống = mọi vai trò)
   const allSections = [
     {
       title: 'TỔNG QUAN',
       items: [
-        { to: '/home', label: 'Trang chủ', icon: Building2, roles: ['tenant'] },
-        { to: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard, roles: STAFF },
-        { to: '/notifications', label: 'Thông báo', icon: Bell },
+        { to: '/dashboard', label: role === 'tenant' ? 'Trang chủ' : 'Tổng quan', icon: LayoutDashboard },
+        {
+          to: '/reports',
+          label: 'Báo cáo tháng',
+          icon: FileText,
+          roles: [...STAFF, ...MANAGER],
+        },
       ],
     },
     {
       title: 'QUẢN LÝ CHO THUÊ',
       items: [
         { to: '/rooms', label: 'Danh sách phòng', icon: DoorOpen, roles: STAFF },
-        { to: '/contracts', label: 'Hợp đồng thuê', icon: FileSignature, roles: STAFF },
+        {
+          to: '/contracts',
+          label: 'Hợp đồng thuê',
+          icon: FileSignature,
+          roles: [...STAFF, ...MANAGER],
+        },
+        { to: '/contracts/my', label: 'Hợp đồng của tôi', icon: FileSignature, roles: ['tenant'] },
         {
           to: '/rental-requests',
           label: 'Yêu cầu đặt phòng',
           icon: CalendarClock,
-          badge: '2',
-          roles: STAFF,
+          roles: [...STAFF, ...MANAGER],
         },
-        { to: '/tenants', label: 'Khách thuê', icon: Users, roles: STAFF },
-        { to: '/browse-rooms', label: 'Tìm phòng trống', icon: Search },
+        {
+          to: '/manager/checkout-requests',
+          label: 'Quản lý trả phòng',
+          icon: ClipboardList,
+          roles: MANAGER,
+        },
+        {
+          to: '/checkout-requests',
+          label: 'Lịch sử',
+          icon: ClipboardList,
+          roles: TENANT,
+        },
+        { to: '/tenants', label: 'Khách thuê', icon: Users, roles: [...MANAGER , ...STAFF] },
+        { to: '/browse-rooms', label: 'Tìm phòng trống', icon: Search, roles: ['tenant'] },
       ],
     },
     {
@@ -64,16 +89,29 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       title: 'DỊCH VỤ & TÀI CHÍNH',
       items: [
-        { to: '/utility-readings', label: 'Số điện & nước', icon: Zap, roles: STAFF },
-        { to: '/invoices', label: 'Quản lý hóa đơn', icon: ReceiptText, roles: STAFF },
-        { to: '/invoices/new', label: 'Lập hóa đơn', icon: FileText, roles: STAFF },
+        { to: '/utility-readings', label: 'Số điện & nước', icon: Zap, roles: MANAGER },
+        {
+          to: '/invoices',
+          label: 'Quản lý hóa đơn',
+          icon: ReceiptText,
+          roles: [...STAFF, ...MANAGER],
+        },
+        {
+          to: '/invoices/new',
+          label: 'Lập hóa đơn',
+          icon: FileText,
+          roles: [...STAFF, ...MANAGER],
+        },
         { to: '/invoices/my', label: 'Hóa đơn của tôi', icon: ReceiptText, roles: ['tenant'] },
       ],
     },
   ];
 
   const menuSections = allSections
-    .map(section => ({ ...section, items: section.items.filter(item => !item.roles || item.roles.includes(role)) }))
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => !item.roles || item.roles.includes(role)),
+    }))
     .filter(section => section.items.length > 0);
 
   return (
@@ -165,7 +203,12 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
                 return (
                   <NavLink
                     key={item.label}
-                    to={item.to}
+                    to={
+                      item.to === '/rooms' && selectedPropertyId
+                        ? `/properties/${selectedPropertyId}/rooms`
+                        : item.to
+                    }
+                    end={item.to === '/properties' || item.to === '/rooms'}
                     className={({ isActive }) =>
                       `flex items-center rounded-2xl text-xs font-bold transition-all duration-200 group relative ${
                         isCollapsed ? 'w-11 h-11 justify-center mx-auto' : 'gap-3 px-3.5 py-2.5'
@@ -229,26 +272,6 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
 
       {/* PHẦN DƯỚI: WIDGET TỶ LỆ LẤP ĐẦY & PROFILE QUẢN LÝ */}
       <div className="pt-2 border-t border-emerald-50/80 space-y-2 shrink-0">
-        {/* Widget Lấp đầy phòng (Chỉ hiển thị khi mở rộng) */}
-        {!isCollapsed && (
-          <div className="p-2.5 rounded-2xl bg-gradient-to-b from-white/90 to-emerald-50/50 border border-emerald-100/70 shadow-2xs">
-            <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 mb-1.5">
-              <span className="flex items-center gap-1.5 text-slate-500">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Lấp đầy phòng
-              </span>
-              <span className="text-emerald-700 font-black">75%</span>
-            </div>
-            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full w-3/4" />
-            </div>
-            <div className="flex justify-between items-center mt-1.5 text-[10px] text-slate-400 font-semibold">
-              <span>18 đã thuê</span>
-              <span>24 tổng phòng</span>
-            </div>
-          </div>
-        )}
-
         {/* Thông tin Quản lý */}
         <div
           className={`flex items-center gap-2.5 p-1.5 rounded-2xl hover:bg-slate-50/80 transition cursor-pointer group ${

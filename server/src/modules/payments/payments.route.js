@@ -3,20 +3,15 @@ import { requireAuth, requireRole } from '../../shared/middlewares/auth.middlewa
 import { createLimiter } from '../../shared/middlewares/middlewave.js';
 import { validate } from '../../shared/middlewares/validate.middleware.js';
 import {
-  createInvoicePayment, createSepayInvoicePayment, createVnpayPayment, getPaymentStatus,
-  sepayIpn, sepayReturn, vnpayIpn, vnpayReturn,
+  createInvoicePayment,
+  getPaymentStatus,
+  vnpayIpn,
+  vnpayReturn,
 } from './payments.controller.js';
-import { validateCreateVnpayPayment, validateInvoicePayment } from './payments.validation.js';
+import { validateInvoicePayment } from './payments.validation.js';
 
 const router = Router();
 
-router.post(
-  '/vnpay',
-  requireAuth,
-  createLimiter(10, 5, true),
-  validate(validateCreateVnpayPayment),
-  createVnpayPayment,
-);
 router.post(
   '/vnpay/invoice',
   requireAuth,
@@ -28,16 +23,6 @@ router.post(
 router.get('/vnpay-return', vnpayReturn);
 router.get('/vnpay-ipn', vnpayIpn);
 router.get('/vnpay/status/:paymentCode', requireAuth, requireRole('tenant'), getPaymentStatus);
-router.post(
-  '/sepay/invoice',
-  requireAuth,
-  requireRole('tenant'),
-  createLimiter(10, 5, true),
-  validate(validateInvoicePayment),
-  createSepayInvoicePayment,
-);
-router.get('/sepay/return/:paymentCode/:outcome', sepayReturn);
-router.post('/sepay/ipn', sepayIpn);
 router.get('/status/:paymentCode', requireAuth, requireRole('tenant'), getPaymentStatus);
 
 export default router;

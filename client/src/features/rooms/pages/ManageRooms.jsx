@@ -5,15 +5,19 @@ import { Plus, Search, DoorOpen, CheckCircle2, Users, Wrench } from 'lucide-reac
 import RoomList from '../components/RoomList';
 import RoomForm from '../components/RoomForm';
 import roomsAPI from '../api/rooms-api';
+import propertiesAPI from '../../properties/api/properties-api';
 import { ROOM_STATUS } from '../components/RoomStatusBadge';
+import { getCurrentUser } from '../../../shared/utils/auth';
 
 const FILTERS = [{ value: 'all', label: 'Tất cả' }, ...Object.entries(ROOM_STATUS).map(([value, c]) => ({ value, label: c.label }))];
 
 export default function ManageRooms() {
+  const canEditRooms = getCurrentUser()?.role === 'landlord';
   const { propertyId } = useParams();
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const [rooms, setRooms] = useState([]);
+  const [totalFloors, setTotalFloors] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -24,6 +28,15 @@ export default function ManageRooms() {
   useEffect(() => {
     fetchRooms();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId]);
+
+  useEffect(() => {
+    let active = true;
+    propertiesAPI.getMyProperties().then(response => {
+      const property = (response.data || []).find(item => String(item._id) === String(propertyId));
+      if (active) setTotalFloors(Math.min(5, Math.max(1, Number(property?.totalFloors) || 1)));
+    }).catch(() => { if (active) setTotalFloors(1); });
+    return () => { active = false; };
   }, [propertyId]);
 
   const fetchRooms = async () => {
@@ -104,14 +117,16 @@ export default function ManageRooms() {
           <h2 className="text-xl font-black text-slate-900 tracking-tight">Quản lý phòng</h2>
           <p className="text-xs font-semibold text-slate-400 mt-0.5">Theo dõi trạng thái, giá thuê và tiện nghi của từng phòng</p>
         </div>
-        <button
+        {canEditRooms && <button
           onClick={() => openForm()}
+          disabled={rooms.length >= 20}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 active:scale-95 text-white font-extrabold text-xs shadow-md shadow-emerald-600/25 transition cursor-pointer self-start"
         >
           <Plus size={16} className="stroke-[2.5]" />
-          Thêm phòng mới
-        </button>
+          {rooms.length >= 20 ? 'Đã đủ 20 phòng' : 'Thêm phòng mới'}
+        </button>}
       </div>
+      {rooms.length >= 20 && <p className="text-xs font-semibold text-amber-700">Mỗi tòa nhà được tạo tối đa 20 phòng.</p>}
 
       {/* Thẻ thống kê */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -172,11 +187,12 @@ export default function ManageRooms() {
             onEdit={openForm}
             onDeactivate={handleDeactivateRoom}
             onRefresh={fetchRooms}
+            canEdit={canEditRooms}
           />
         )}
       </div>
 
-      {showForm && <RoomForm room={selectedRoom} onSubmit={handleSaveRoom} onCancel={handleCloseForm} />}
+      {showForm && <RoomForm room={selectedRoom} propertyId={propertyId} totalFloors={totalFloors} onSubmit={handleSaveRoom} onCancel={handleCloseForm} />}
     </div>
   );
 }

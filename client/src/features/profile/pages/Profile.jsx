@@ -5,7 +5,7 @@ import api from '../../../shared/api/axiosClient';
 
 import { inputCls, labelCls } from '../../../shared/components/Modal';
 const Field = ({ label, helperText, ...props }) => <label className="block mb-4"><span className={labelCls}>{label}</span><input className={inputCls} required {...props} />{helperText && <small className="text-slate-500">{helperText}</small>}</label>;
-const Heading = ({ children, subtitle }) => <div className="mb-6"><Link to="/home" className="text-emerald-700">← Trang chủ</Link><h1 className="text-2xl font-bold mt-4">{children}</h1><p className="text-sm text-slate-500">{subtitle}</p></div>;
+const Heading = ({ children, subtitle }) => <div className="mb-6"><Link to="/" className="text-emerald-700">← Trang chủ</Link><h1 className="text-2xl font-bold mt-4">{children}</h1><p className="text-sm text-slate-500">{subtitle}</p></div>;
 import { ShieldCheck as IconShieldCheck, Mail as IconMail, Phone as IconPhone, Check as IconCheck } from 'lucide-react';
 
 export default function Profile() {
