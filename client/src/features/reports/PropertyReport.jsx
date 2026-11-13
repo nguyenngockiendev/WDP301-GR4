@@ -232,7 +232,7 @@ export default function PropertyReport({ row, month, provisional, asOf }) {
           <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-bold">Điện nước trong tháng</h3>
             <Link
-              to={`/utility-readings?billingMonth=${month}`}
+              to="/utility-readings"
               onClick={selectProperty}
               className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
             >

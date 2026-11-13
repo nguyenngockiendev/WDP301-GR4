@@ -12,11 +12,9 @@ export default function UtilityReadingsPage() {
     propertyId,
     selectProperty,
     billingMonth,
-    selectBillingMonth,
     loadingProperties,
     loadingRooms,
     loadingReadings,
-    validMonth,
     error,
     rateError,
     rooms,
@@ -28,11 +26,9 @@ export default function UtilityReadingsPage() {
     saveReadings,
     saveError,
   } = useUtilityReadings();
-  const [roomStatus, setRoomStatus] = useState('all');
   const [previewRoomId, setPreviewRoomId] = useState('');
 
   const property = properties.find(item => item._id === propertyId);
-  const visibleRooms = rooms.filter(room => roomStatus === 'all' || room.status === roomStatus);
   const loading = loadingProperties || loadingRooms || loadingReadings;
 
   return (
@@ -46,12 +42,12 @@ export default function UtilityReadingsPage() {
           Ghi chỉ số điện nước
         </h1>
         <p className="mt-1 text-sm text-content-sub">
-          Nhập chỉ số theo phòng và kỳ, sau đó xem tiền điện nước tạm tính.
+          Nhập chỉ số theo kỳ cho các phòng đang có người thuê.
         </p>
       </div>
 
       <section className="space-y-5 rounded-3xl border border-white bg-white/90 p-4 shadow-card backdrop-blur-md sm:p-6">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-bold text-content-main">
             Nhà trọ
             <select
@@ -73,36 +69,9 @@ export default function UtilityReadingsPage() {
               ))}
             </select>
           </label>
-          <label className="text-sm font-bold text-content-main">
-            Kỳ ghi chỉ số
-            <input
-              type="month"
-              className={fieldClass}
-              value={billingMonth}
-              disabled={saving}
-              onChange={event => {
-                selectBillingMonth(event.target.value);
-                setPreviewRoomId('');
-              }}
-            />
-          </label>
-          <label className="text-sm font-bold text-content-main">
-            Trạng thái phòng
-            <select
-              className={fieldClass}
-              value={roomStatus}
-              onChange={event => {
-                setRoomStatus(event.target.value);
-                setPreviewRoomId('');
-              }}
-            >
-              <option value="all">Tất cả</option>
-              <option value="occupied">Đang thuê</option>
-              <option value="available">Còn trống</option>
-              <option value="reserved">Đã đặt trước</option>
-              <option value="maintenance">Bảo trì</option>
-            </select>
-          </label>
+          <div className="self-end text-sm font-semibold text-content-sub">
+            Kỳ ghi chỉ số {billingMonth.split('-').reverse().join('/')}
+          </div>
         </div>
 
         {loading && (
@@ -120,22 +89,16 @@ export default function UtilityReadingsPage() {
             Bạn chưa có nhà trọ được phép quản lý.
           </p>
         )}
-        {!loading && !error && property && !validMonth && (
-          <p className="py-6 text-center text-sm text-content-sub">
-            Chọn kỳ ghi chỉ số để nhập dữ liệu.
-          </p>
-        )}
-        {!loading &&
+       {!loading &&
           !error &&
           property &&
-          validMonth &&
-          (visibleRooms.length ? (
+          (rooms.length ? (
             <>
               <p className="text-xs text-content-sub">
                 Số cũ lấy từ lần ghi trước. Nếu là lần đầu, nhập chỉ số bàn giao và số mới.
               </p>
               <UtilityReadingsTable
-                rooms={visibleRooms}
+                rooms={rooms}
                 propertyId={propertyId}
                 contracts={contracts}
                 propertyRate={property.utilityRate}
@@ -150,7 +113,7 @@ export default function UtilityReadingsPage() {
             </>
           ) : (
             <p className="py-6 text-center text-sm text-content-sub">
-              {rooms.length ? 'Không có phòng phù hợp với bộ lọc.' : 'Nhà trọ này chưa có phòng.'}
+              Nhà trọ này hiện không có phòng đang thuê.
             </p>
           ))}
 
@@ -167,7 +130,7 @@ export default function UtilityReadingsPage() {
             <button
               type="button"
               onClick={saveReadings}
-              disabled={saving || loading || Boolean(error) || !validMonth || !pendingCount}
+              disabled={saving || loading || Boolean(error) || !pendingCount}
               className="inline-flex items-center gap-2 rounded-2xl bg-gradient-emerald px-4 py-2.5 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Save size={16} /> {saving ? 'Đang lưu…' : 'Lưu chỉ số'}

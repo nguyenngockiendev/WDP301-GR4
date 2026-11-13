@@ -41,7 +41,7 @@ export const getUtilityReadings = async (data, user) => {
   validatePeriod(propertyId, billingMonth);
   await assertPropertyAccess(user, propertyId);
 
-  const roomIds = await Rooms.distinct('_id', { property: propertyId });
+  const roomIds = await Rooms.distinct('_id', { property: propertyId, status: 'occupied' });
   if (!roomIds.length) return [];
 
   const [currentReadings, previousReadings, laterRooms] = await Promise.all([
@@ -80,6 +80,13 @@ export const saveUtilityReadings = async (data, user) => {
   validatePeriod(propertyId, billingMonth);
   await assertPropertyAccess(user, propertyId);
 
+  const currentMonth = new Date()
+    .toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+    .slice(0, 7);
+  if (billingMonth !== currentMonth) {
+    throw { status: 400, message: 'Chỉ được ghi chỉ số cho kỳ hiện tại. Vui lòng tải lại trang!' };
+  }
+
   if (!Array.isArray(readings) || !readings.length) {
     throw { status: 400, message: 'Vui lòng nhập chỉ số cho ít nhất một phòng!' };
   }
@@ -103,11 +110,18 @@ export const saveUtilityReadings = async (data, user) => {
   try {
     return await session.withTransaction(async () => {
       const rooms = await Rooms.find({ _id: { $in: [...roomIds] }, property: propertyId })
-        .select('roomNumber')
+        .select('roomNumber status')
         .session(session)
         .lean();
       if (rooms.length !== roomIds.size) {
         throw { status: 403, message: 'Có phòng không thuộc nhà trọ đang quản lý!' };
+      }
+      const unoccupiedRoom = rooms.find(room => room.status !== 'occupied');
+      if (unoccupiedRoom) {
+        throw {
+          status: 409,
+          message: `Phòng ${unoccupiedRoom.roomNumber} hiện không có người thuê. Vui lòng tải lại danh sách!`,
+        };
       }
       const roomById = new Map(rooms.map(room => [String(room._id), room]));
       const ids = rooms.map(room => room._id);

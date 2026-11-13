@@ -1,8 +1,8 @@
 import HeaderSearch from './HeaderSearch';
 import React from 'react';
-import { Plus, ChevronDown, LogOut } from 'lucide-react';
+import { Plus, ChevronDown, LogOut, UserRound } from 'lucide-react';
 import NotificationBell from '../../features/notifications/components/NotificationBell';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import api from '../../shared/api/axiosClient';
 import { clearAuth, getCurrentUser } from '../../shared/utils/auth';
@@ -173,6 +173,17 @@ export default function Header() {
             <Plus size={16} className="stroke-[3]" />
             <span>Tạo Hợp Đồng Mới</span>
           </button>
+        )}
+
+        {user && (
+          <Link
+            to="/profile"
+            aria-label="Hồ sơ cá nhân"
+            title="Hồ sơ cá nhân"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-100 bg-white/80 text-emerald-700 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600"
+          >
+            <UserRound size={17} />
+          </Link>
         )}
 
         {/* Nút Đăng xuất */}

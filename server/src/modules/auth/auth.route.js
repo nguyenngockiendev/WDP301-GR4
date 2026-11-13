@@ -27,10 +27,22 @@ router.get('/profile', requireAuth, async (req, res) => {
 
 router.patch('/profile', requireAuth, async (req, res) => {
   try {
-    const fullName = String(req.body.fullName || '').trim();
-    const phone = String(req.body.phone || '').trim();
-    if (fullName.length < 2 || fullName.length > 100 || phone.length > 30) return sendError(res, { status: 400, message: 'Họ tên hoặc số điện thoại không hợp lệ' });
-    const user = await Users.findByIdAndUpdate(req.user.userId, { $set: { fullName, phone } }, { new: true, runValidators: true })
+    const { fullName: rawName, phone: rawPhone } = req.body ?? {};
+    const fullName = typeof rawName === 'string' ? rawName.trim() : '';
+    if (fullName.length < 2 || fullName.length > 100) {
+      return sendError(res, { status: 400, message: 'Họ tên phải từ 2 đến 100 ký tự.' });
+    }
+
+    const changes = { fullName };
+    if (rawPhone !== undefined) {
+      const phone = typeof rawPhone === 'string' ? rawPhone.trim() : null;
+      if (phone === null || (phone && (!/^[0-9+().\-\s]{8,20}$/.test(phone) || phone.replace(/\D/g, '').length < 8))) {
+        return sendError(res, { status: 400, message: 'Số điện thoại không hợp lệ.' });
+      }
+      changes.phone = phone;
+    }
+
+    const user = await Users.findByIdAndUpdate(req.user.userId, { $set: changes }, { new: true, runValidators: true })
       .select('username fullName email phone role status isVerified createdAt');
     if (!user) return sendError(res, { status: 404, message: 'Không tìm thấy tài khoản' });
     return sendSuccess(res, 200, 'Đã lưu thông tin tài khoản', user);
