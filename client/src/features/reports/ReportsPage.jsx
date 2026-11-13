@@ -1,3 +1,5 @@
+import { BarChart3, Download, RefreshCw, ArrowLeft, Clock3 } from 'lucide-react';
+import PropertyReport from './PropertyReport';
 import { getCurrentUser } from '../../shared/utils/auth';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -5,8 +7,6 @@ import reportsAPI from './api/reports-api';
 
 const currentMonth = () =>
   new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).slice(0, 7);
-const number = value => Number(value).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
-const money = value => `${number(value)} ₫`;
 const dateTime = value =>
   new Date(value).toLocaleString('vi-VN', {
     timeZone: 'Asia/Ho_Chi_Minh',
@@ -120,27 +120,37 @@ export default function ReportsPage() {
   };
 
   return (
-    <section className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
-      <div>
-        <p className="text-sm font-semibold text-primary">HAVEN STAY</p>
-        <h1 className="mt-2 text-2xl font-bold">Báo cáo tháng</h1>
-        <p className="mt-2 text-sm text-content-sub">
-          {isManager
-            ? 'Chọn tháng để xem báo cáo dãy trọ bạn đang quản lý.'
-            : 'Chọn tháng và dãy trọ để xem thu tiền, tình trạng phòng và điện nước.'}
-        </p>
-        <Link to="/dashboard" className="mt-2 inline-block text-sm text-primary">
-          Về tổng quan
-        </Link>
+    <section className="mx-auto max-w-7xl space-y-6 p-4 sm:px-8 sm:py-8">
+      <div className="flex items-start gap-4">
+        <span className="hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-500 p-3.5 text-white shadow-lg shadow-emerald-900/10 sm:flex">
+          <BarChart3 size={28} />
+        </span>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
+            HAVEN STAY / BÁO CÁO
+          </p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">Báo cáo tháng</h1>
+          <p className="mt-2 text-sm text-content-sub">
+            {isManager
+              ? 'Chọn tháng để xem báo cáo dãy trọ bạn đang quản lý.'
+              : 'Chọn tháng và dãy trọ để xem thu tiền, tình trạng phòng và điện nước.'}
+          </p>
+          <Link
+            to="/dashboard"
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary"
+          >
+            <ArrowLeft size={13} /> Về tổng quan
+          </Link>
+        </div>
       </div>
-      <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-surface-border bg-surface-card p-5">
+      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-white bg-white/90 p-4 shadow-sm sm:p-5">
         <label className="grid gap-2 text-sm font-medium">
           Tháng muốn xem
           <select
             aria-label="Tháng báo cáo"
             value={month.slice(5)}
             onChange={event => setMonth(month.slice(0, 4) + '-' + event.target.value)}
-            className="rounded-xl border border-surface-border p-3"
+            className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-emerald-100"
           >
             {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0')).map(
               value => (
@@ -200,16 +210,16 @@ export default function ReportsPage() {
         <button
           disabled={loading}
           onClick={() => setRevision(value => value + 1)}
-          className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-content-sub transition hover:bg-slate-50 disabled:opacity-50"
         >
-          Làm mới
+          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Làm mới
         </button>
         <button
           disabled={loading || !data?.rows.length}
           onClick={exportCsv}
-          className="rounded-xl border border-primary px-5 py-3 text-sm text-primary disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark disabled:opacity-50 sm:ml-auto"
         >
-          Tải file Excel
+          <Download size={16} /> Tải file Excel
         </button>
       </div>
       {error && (
@@ -239,10 +249,12 @@ export default function ReportsPage() {
             {data.provisional && (
               <div
                 role="status"
-                className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900"
+                className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-amber-900"
               >
-                <strong>Báo cáo tạm tính</strong>
-                <p className="mt-1 text-sm">Tháng chưa kết thúc, số liệu có thể còn thay đổi.</p>
+                <strong className="inline-flex items-center gap-2 text-sm">
+                  <Clock3 size={16} /> Báo cáo tạm tính
+                </strong>
+                <p className="mt-1 text-xs">Tháng chưa kết thúc, số liệu có thể còn thay đổi.</p>
               </div>
             )}
             {isManager && data.properties.length > 0 && (
@@ -260,176 +272,18 @@ export default function ReportsPage() {
                   : 'Bạn chưa có dãy trọ được phép xem báo cáo.'}
               </p>
             )}
-            {data.rows.map(row => (
-              <article
-                key={row.propertyId}
-                className="space-y-6 rounded-2xl border border-surface-border bg-surface-card p-5 sm:p-6"
-              >
-                <h2 className="text-xl font-bold">{row.name}</h2>
-                <section aria-label={`Thu tiền - ${row.name}`}>
-                  <h3 className="font-bold">Thu tiền trong tháng</h3>
-                  <p className="mt-1 text-sm text-content-sub">
-                    {data.provisional
-                      ? 'Tính đến hôm nay'
-                      : 'Tính đến hết ngày ' +
-                        new Date(data.asOf).toLocaleDateString('vi-VN', {
-                          timeZone: 'Asia/Ho_Chi_Minh',
-                        })}
-                  </p>
-                  {!row.invoiceCount &&
-                  !row.paymentCount &&
-                  !row.outstanding &&
-                  !row.openingBalance ? (
-                    <div className="mt-4 rounded-xl border border-surface-border p-5">
-                      <p className="font-semibold">
-                        Tháng {Number(data.month.slice(5))}/{data.month.slice(0, 4)} chưa có hóa đơn
-                        hoặc khoản thu nào.
-                      </p>
-                      <Link
-                        to={`/invoices/new?propertyId=${row.propertyId}&billingMonth=${data.month}`}
-                        onClick={() => localStorage.setItem('currentPropertyId', row.propertyId)}
-                        className="mt-3 inline-block rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white"
-                      >
-                        Lập hóa đơn
-                      </Link>
-                    </div>
-                  ) : (
-                    <>
-                      {!row.invoiceCount && (
-                        <p className="mt-3 text-sm text-content-sub">
-                          Tháng này chưa có hóa đơn mới. Các khoản bên dưới gồm thu tiền hoặc công
-                          nợ từ kỳ trước.
-                        </p>
-                      )}
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                        {[
-                          [
-                            'Phải thu trong tháng',
-                            row.invoiced,
-                            'Tổng hóa đơn thuộc tháng chọn, bỏ hóa đơn hủy.',
-                          ],
-                          [
-                            'Đã thu trong tháng',
-                            row.received,
-                            'Tiền thanh toán thành công trong tháng, kể cả trả nợ tháng trước.',
-                          ],
-                          [
-                            data.provisional
-                              ? 'Còn nợ đến hôm nay'
-                              : 'Còn nợ đến hết ngày ' +
-                                new Date(data.asOf).toLocaleDateString('vi-VN', {
-                                  timeZone: 'Asia/Ho_Chi_Minh',
-                                }),
-                            row.outstanding,
-                            'Gồm các hóa đơn chưa trả hết đến mốc báo cáo, kể cả tháng trước.',
-                          ],
-                          [
-                            'Trong đó: nợ quá hạn',
-                            row.overdue,
-                            'Phần còn nợ đã qua hạn thanh toán tại mốc báo cáo.',
-                          ],
-                        ].map(([label, value, help]) => (
-                          <div key={label} className="rounded-xl bg-primary/5 p-4">
-                            <p className="text-sm text-content-sub">{label}</p>
-                            <p className="mt-2 text-xl font-bold text-primary">{money(value)}</p>
-                            <details className="mt-2 text-xs text-content-sub">
-                              <summary
-                                aria-label={`Giải thích ${label}`}
-                                className="cursor-pointer text-primary"
-                              >
-                                ? Cách tính
-                              </summary>
-                              <p className="mt-2">{help}</p>
-                            </details>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="mt-3 text-sm text-content-sub">
-                        Nợ từ các tháng trước chuyển sang:{' '}
-                        <strong>{money(row.openingBalance)}</strong>.
-                      </p>
-                    </>
-                  )}
-                </section>
-                <section
-                  aria-label={`Phòng - ${row.name}`}
-                  className="border-t border-surface-border pt-5"
-                >
-                  <h3 className="font-bold">Tình trạng phòng hiện tại</h3>
-                  <p className="mt-1 text-sm text-content-sub">Tính đến hôm nay</p>
-                  <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    {[
-                      ['Tổng số phòng', number(row.rooms)],
-                      ['Phòng trống', number(row.available)],
-                      ['Phòng đang thuê', number(row.occupied)],
-                      ['Tỷ lệ lấp đầy', `${number(row.occupancyRate)}%`],
-                    ].map(([label, value]) => (
-                      <div key={label} className="rounded-xl border border-surface-border p-4">
-                        <p className="text-sm text-content-sub">{label}</p>
-                        <p className="mt-2 text-2xl font-bold">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-3 text-xs text-content-sub">
-                    Phòng bảo trì hoặc giữ chỗ vẫn thuộc tổng số phòng, không tính là phòng trống
-                    hay đang thuê.
-                  </p>
-                </section>
-                <section
-                  aria-label={`Điện nước - ${row.name}`}
-                  className="border-t border-surface-border pt-5"
-                >
-                  <h3 className="font-bold">Điện nước trong tháng</h3>
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    {[
-                      [
-                        'Điện',
-                        row.electricityTotal,
-                        row.electricityAverage,
-                        row.electricityRooms,
-                        'kWh',
-                      ],
-                      ['Nước', row.waterTotal, row.waterAverage, row.waterRooms, 'm³'],
-                    ].map(([label, total, average, count, unit]) => (
-                      <div key={label} className="rounded-xl border border-surface-border p-4">
-                        <h4 className="font-semibold">{label}</h4>
-                        {count ? (
-                          <>
-                            <p className="mt-2 text-xl font-bold text-primary">
-                              {number(total)} {unit}
-                            </p>
-                            <p className="mt-2 text-sm">
-                              Trung bình:{' '}
-                              <strong>
-                                {number(average)} {unit}/phòng
-                              </strong>
-                            </p>
-                          </>
-                        ) : (
-                          <p className="mt-3 text-sm text-content-sub">
-                            Tháng này chưa có số {label.toLowerCase()} để tính.
-                          </p>
-                        )}
-                        {count > 0 && (
-                          <p className="mt-2 text-xs text-content-sub">
-                            Tính trên {count}/{row.rooms} phòng đã ghi số. Phòng chưa ghi số không
-                            được tính là dùng 0.
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <Link
-                    to={`/utility-readings?billingMonth=${data.month}`}
-                    onClick={() => localStorage.setItem('currentPropertyId', row.propertyId)}
-                    className="mt-3 inline-block text-sm font-semibold text-primary underline"
-                  >
-                    Ghi số điện nước
-                  </Link>
-                </section>
-              </article>
-            ))}
-            <details className="rounded-2xl border border-surface-border bg-surface-card p-5 text-sm text-content-sub">
+            <div className="space-y-10">
+              {data.rows.map(row => (
+                <PropertyReport
+                  key={row.propertyId}
+                  row={row}
+                  month={data.month}
+                  provisional={data.provisional}
+                  asOf={data.asOf}
+                />
+              ))}
+            </div>
+            <details className="rounded-2xl border border-slate-200/80 bg-white/70 p-5 text-sm text-content-sub">
               <summary className="cursor-pointer font-semibold text-primary">
                 Cách tính số liệu
               </summary>
