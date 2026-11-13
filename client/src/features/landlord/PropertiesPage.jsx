@@ -22,7 +22,7 @@ function PropertyFormFields({ defaults = {} }) {
       {!defaults._id && (
         <>
           <div className="sm:col-span-2"><h3 className="font-extrabold text-slate-700">Đơn giá và chính sách ban đầu</h3><p className="mt-1 text-xs text-slate-500">Có thể thay đổi sau trong mục Giá và chính sách.</p></div>
-          <label><span className={labelCls}>Giá điện (đ/kWh)</span><input name="electricityPrice" type="number" min="1" max="4000" step="1" required defaultValue="3500" className={inputCls} /></label>
+          <label><span className={labelCls}>Giá điện (đ/kWh)</span><input name="electricityPrice" type="number" min="1" step="1" required defaultValue="3500" className={inputCls} /></label>
           <label><span className={labelCls}>Giá nước (đ/m³)</span><input name="waterPrice" type="number" min="1" step="1" required defaultValue="20000" className={inputCls} /></label>
           <label><span className={labelCls}>Ngày áp dụng giá điện, nước</span><input name="effectiveFrom" type="date" min={today} required defaultValue={today} className={inputCls} /></label>
           <label><span className={labelCls}>Ngày đến hạn thanh toán</span><input name="paymentDueDay" type="number" min="1" max="28" defaultValue="5" className={inputCls} /></label>
