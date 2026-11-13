@@ -2,6 +2,7 @@ import { getCurrentUser } from '../../shared/utils/auth';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import reportsAPI from './api/reports-api';
+import MonthlyOverview from './components/MonthlyOverview';
 
 const currentMonth = () =>
   new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).slice(0, 7);
@@ -18,10 +19,11 @@ const dateTime = value =>
   });
 const columns = [
   ['name', 'Dãy trọ'],
-  ['rooms', 'Tổng phòng hiện tại'],
-  ['available', 'Phòng trống hiện tại'],
-  ['occupied', 'Phòng đang thuê hiện tại'],
-  ['occupancyRate', 'Tỷ lệ lấp đầy hiện tại (%)'],
+  ['monthly.totalRooms', 'Tổng số phòng'],
+  ['monthly.rentedRooms', 'Phòng đang cho thuê'],
+  ['monthly.vacantRooms', 'Phòng trống'],
+  ['monthly.occupancyRate', 'Tỷ lệ lấp đầy (%)'],
+  ['monthly.revenue', 'Doanh thu tháng - hóa đơn đã thanh toán (₫)'],
   ['invoiced', 'Phải thu trong tháng (₫)'],
   ['received', 'Đã thu trong tháng (₫)'],
   ['openingBalance', 'Nợ đầu kỳ (₫)'],
@@ -34,11 +36,15 @@ const columns = [
   ['waterRooms', 'Số phòng có chỉ số nước hợp lệ'],
   ['waterAverage', 'Nước trung bình (m³/phòng)'],
 ];
+const valueOf = (row, key) => key.split('.').reduce((value, part) => value?.[part], row);
 
 export default function ReportsPage() {
   const isManager = getCurrentUser()?.role === 'manager';
   const [month, setMonth] = useState(currentMonth);
-  const [propertyId, setPropertyId] = useState('');
+  // Mặc định xem theo dãy trọ đang chọn ở thanh trên cùng.
+  const [propertyId, setPropertyId] = useState(
+    () => localStorage.getItem('currentPropertyId') || '',
+  );
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -51,7 +57,7 @@ export default function ReportsPage() {
       setError('');
       try {
         const filters = { month };
-        if (!isManager && propertyId) filters.propertyId = propertyId;
+        if (propertyId) filters.propertyId = propertyId;
         const response = await reportsAPI.getReports(filters, controller.signal);
         if (!controller.signal.aborted) setData(response.data);
       } catch (error) {
@@ -65,7 +71,17 @@ export default function ReportsPage() {
     };
     fetchReports();
     return () => controller.abort();
-  }, [month, propertyId, revision, isManager]);
+  }, [month, propertyId, revision]);
+
+  const selectProperty = id => {
+    setPropertyId(id);
+    if (!id) return;
+    localStorage.setItem('currentPropertyId', id);
+    window.dispatchEvent(new Event('property-changed'));
+  };
+  const selectMonth = value => {
+    if (value <= currentMonth()) setMonth(value);
+  };
 
   const exportCsv = () => {
     const escape = value =>
@@ -85,7 +101,7 @@ export default function ReportsPage() {
         data.provisional ? 'Tạm tính' : 'Báo cáo theo kỳ',
       ],
       columns.map(column => column[1]),
-      ...data.rows.map(row => columns.map(([key]) => row[key])),
+      ...data.rows.map(row => columns.map(([key]) => valueOf(row, key))),
     ];
     const xmlRows = rows
       .map(
@@ -125,9 +141,7 @@ export default function ReportsPage() {
         <p className="text-sm font-semibold text-primary">HAVEN STAY</p>
         <h1 className="mt-2 text-2xl font-bold">Báo cáo tháng</h1>
         <p className="mt-2 text-sm text-content-sub">
-          {isManager
-            ? 'Chọn tháng để xem báo cáo dãy trọ bạn đang quản lý.'
-            : 'Chọn tháng và dãy trọ để xem thu tiền, tình trạng phòng và điện nước.'}
+          Chọn tháng, năm và dãy trọ để xem phòng trống, tỉ lệ lấp đầy, doanh thu và điện nước.
         </p>
         <Link to="/dashboard" className="mt-2 inline-block text-sm text-primary">
           Về tổng quan
@@ -179,13 +193,13 @@ export default function ReportsPage() {
             ))}
           </select>
         </label>
-        {!isManager && (
+        {(data?.properties.length > 1 || propertyId) && (
           <label className="grid min-w-0 gap-2 text-sm font-medium">
             Dãy trọ
             <select
               aria-label="Nhà trọ"
               value={propertyId}
-              onChange={event => setPropertyId(event.target.value)}
+              onChange={event => selectProperty(event.target.value)}
               className="max-w-full rounded-xl border border-surface-border p-3 sm:max-w-xs"
             >
               <option value="">Tất cả dãy trọ được quản lý</option>
@@ -219,7 +233,7 @@ export default function ReportsPage() {
             Thử lại
           </button>
           {propertyId && (
-            <button onClick={() => setPropertyId('')} className="ml-3 underline">
+            <button onClick={() => selectProperty('')} className="ml-3 underline">
               Xem tất cả dãy
             </button>
           )}
@@ -266,7 +280,16 @@ export default function ReportsPage() {
                 className="space-y-6 rounded-2xl border border-surface-border bg-surface-card p-5 sm:p-6"
               >
                 <h2 className="text-xl font-bold">{row.name}</h2>
-                <section aria-label={`Thu tiền - ${row.name}`}>
+                <MonthlyOverview
+                  row={row}
+                  month={data.month}
+                  provisional={data.provisional}
+                  onSelectMonth={selectMonth}
+                />
+                <section
+                  aria-label={`Thu tiền - ${row.name}`}
+                  className="border-t border-surface-border pt-5"
+                >
                   <h3 className="font-bold">Thu tiền trong tháng</h3>
                   <p className="mt-1 text-sm text-content-sub">
                     {data.provisional
@@ -352,30 +375,6 @@ export default function ReportsPage() {
                   )}
                 </section>
                 <section
-                  aria-label={`Phòng - ${row.name}`}
-                  className="border-t border-surface-border pt-5"
-                >
-                  <h3 className="font-bold">Tình trạng phòng hiện tại</h3>
-                  <p className="mt-1 text-sm text-content-sub">Tính đến hôm nay</p>
-                  <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    {[
-                      ['Tổng số phòng', number(row.rooms)],
-                      ['Phòng trống', number(row.available)],
-                      ['Phòng đang thuê', number(row.occupied)],
-                      ['Tỷ lệ lấp đầy', `${number(row.occupancyRate)}%`],
-                    ].map(([label, value]) => (
-                      <div key={label} className="rounded-xl border border-surface-border p-4">
-                        <p className="text-sm text-content-sub">{label}</p>
-                        <p className="mt-2 text-2xl font-bold">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-3 text-xs text-content-sub">
-                    Phòng bảo trì hoặc giữ chỗ vẫn thuộc tổng số phòng, không tính là phòng trống
-                    hay đang thuê.
-                  </p>
-                </section>
-                <section
                   aria-label={`Điện nước - ${row.name}`}
                   className="border-t border-surface-border pt-5"
                 >
@@ -444,7 +443,13 @@ export default function ReportsPage() {
                   Tiền trả sau mốc này không làm giảm nợ của kỳ cũ.
                 </p>
                 <p>
-                  Phòng hiển thị tình trạng hiện tại. Điện nước lấy chỉ số mới trừ chỉ số cũ của
+                  Phòng đang cho thuê là phòng có hợp đồng (đang hiệu lực, đã hết hạn hoặc đã thanh
+                  lý) giao với tháng chọn; còn lại là phòng trống. Tỉ lệ lấp đầy = phòng đang cho
+                  thuê / tổng số phòng đã có trong tháng. Doanh thu tháng là tổng các hóa đơn của kỳ
+                  đó đã thanh toán đủ, không gồm tiền cọc.
+                </p>
+                <p>
+                  Điện nước lấy chỉ số mới trừ chỉ số cũ của
                   tháng chọn; phòng thiếu hoặc sai chỉ số không được coi là dùng 0.
                 </p>
                 <p>

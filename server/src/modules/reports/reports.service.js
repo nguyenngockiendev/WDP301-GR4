@@ -22,10 +22,15 @@ export const getReports = async (userId, { propertyId, month }) => {
 
   const rows = [];
   for (const property of selectedProperties) {
-    const rooms = await Rooms.find({ property: property._id }).select('status').lean();
+    const rooms = await Rooms.find({ property: property._id })
+      .select('status roomNumber name floor area price createdAt')
+      .sort({ roomNumber: 1 })
+      .lean();
     const roomIds = rooms.map(room => room._id);
     const finance = await getFinanceReport(roomIds, month, start, cutoff);
     const utilities = await getUtilityReport(roomIds, month);
+    const occupancy = await getMonthlyOccupancy(rooms, start, end, cutoff);
+    const revenue = await getPaidRevenue(roomIds, month);
     const occupied = rooms.filter(room => room.status === 'occupied').length;
 
     rows.push({
@@ -35,11 +40,88 @@ export const getReports = async (userId, { propertyId, month }) => {
       occupied,
       available: rooms.filter(room => room.status === 'available').length,
       occupancyRate: rooms.length ? Math.round((occupied / rooms.length) * 1000) / 10 : 0,
+      monthly: { ...occupancy, ...revenue },
       ...finance,
       ...utilities,
     });
   }
   return { properties, rows, month, generatedAt: now, asOf: cutoff, provisional: end > now };
+};
+
+// Phòng đang cho thuê trong tháng: có hợp đồng (không phải nháp) giao với kỳ báo cáo.
+// Hợp đồng đã thanh lý coi như kết thúc tại lần cập nhật cuối nếu sớm hơn ngày hết hạn.
+const getMonthlyOccupancy = async (rooms, start, end, cutoff) => {
+  const periodRooms = rooms.filter(room => !room.createdAt || room.createdAt < end);
+  const contracts = await Contracts.find({
+    room: { $in: periodRooms.map(room => room._id) },
+    status: { $in: ['active', 'expired', 'terminated'] },
+    startDate: { $lt: end },
+    endDate: { $gte: start },
+  })
+    .select('room status startDate endDate updatedAt monthlyRent')
+    .lean();
+  const rentedRoomIds = new Set(
+    contracts
+      .filter(contract => {
+        const effectiveEnd =
+          contract.status === 'terminated' && contract.updatedAt < contract.endDate
+            ? contract.updatedAt
+            : contract.endDate;
+        return effectiveEnd >= start && contract.startDate <= cutoff;
+      })
+      .map(contract => String(contract.room)),
+  );
+  const vacantRooms = periodRooms
+    .filter(room => !rentedRoomIds.has(String(room._id)))
+    .map(room => ({
+      _id: String(room._id),
+      roomNumber: room.roomNumber,
+      name: room.name || '',
+      floor: room.floor,
+      area: room.area,
+      price: room.price,
+      currentStatus: room.status,
+    }));
+  const total = periodRooms.length;
+  const rented = total - vacantRooms.length;
+  return {
+    totalRooms: total,
+    rentedRooms: rented,
+    vacantRooms: vacantRooms.length,
+    occupancyRate: total ? Math.round((rented / total) * 1000) / 10 : 0,
+    vacantRoomList: vacantRooms,
+  };
+};
+
+// Doanh thu tháng: tổng hóa đơn đã thanh toán đủ của kỳ (không gồm tiền cọc),
+// kèm doanh thu 12 tháng trong năm để vẽ biểu đồ.
+const getPaidRevenue = async (roomIds, month) => {
+  const year = month.slice(0, 4);
+  const contractIds = await Contracts.distinct('_id', { room: { $in: roomIds } });
+  const invoices = await Invoices.find({
+    contract: { $in: contractIds },
+    invoiceType: { $ne: 'deposit' },
+    status: 'paid',
+    billingMonth: { $gte: `${year}-01`, $lte: `${year}-12` },
+  })
+    .select('billingMonth totalAmount')
+    .lean();
+  const revenueByMonth = Array.from({ length: 12 }, (_, index) => {
+    const key = `${year}-${String(index + 1).padStart(2, '0')}`;
+    const monthInvoices = invoices.filter(invoice => invoice.billingMonth === key);
+    return {
+      month: key,
+      amount: monthInvoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0),
+      count: monthInvoices.length,
+    };
+  });
+  const current = revenueByMonth.find(item => item.month === month);
+  return {
+    revenue: current.amount,
+    paidInvoiceCount: current.count,
+    yearRevenue: revenueByMonth.reduce((sum, item) => sum + item.amount, 0),
+    revenueByMonth,
+  };
 };
 
 // Chỉ lấy các dãy thuộc quyền xem báo cáo của tài khoản.
