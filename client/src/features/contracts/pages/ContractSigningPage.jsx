@@ -5,6 +5,7 @@ import { btnGhost } from '../../../shared/components/Modal';
 import { getCurrentUser } from '../../../shared/utils/auth';
 import contractsAPI from '../api/contracts-api';
 import SignaturePad from '../components/SignaturePad';
+import ContractDocumentView from '../components/ContractDocumentView';
 import { signingLabels } from '../signingLabels';
 import { formatCurrency } from '../../../shared/utils/format';
 import InvoicePaymentButton from '../../invoices/components/InvoicePaymentButton';
@@ -91,7 +92,7 @@ export default function ContractSigningPage() {
         </div>
       )}
       {signing.rejectionReason && <p className="text-sm text-rose-700">Lý do từ chối — {signing.rejectionReason}</p>}
-      <article className="whitespace-pre-wrap break-words rounded-xl border p-5 font-serif leading-relaxed">{signing.document}</article>
+      <article><ContractDocumentView content={signing.document} /></article>
       <div className="grid gap-3 sm:grid-cols-2">
         {signatures.map(([label, signature]) => signature && (
           <div key={label} className="rounded-xl border p-3">

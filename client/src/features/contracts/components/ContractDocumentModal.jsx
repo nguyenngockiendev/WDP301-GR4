@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Printer } from 'lucide-react';
 import Modal, { btnPrimary, btnGhost } from '../../../shared/components/Modal';
 import contractsAPI from '../api/contracts-api';
-
-const escapeHtml = s =>
-  String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+import ContractDocumentView from './ContractDocumentView';
+import { buildContractPrintPage } from '../utils/contractDocumentHtml';
 
 /** Xem / in văn bản hợp đồng (mẫu của chủ trọ đã điền dữ liệu hợp đồng). */
 export default function ContractDocumentModal({ contract, onClose }) {
@@ -27,12 +26,13 @@ export default function ContractDocumentModal({ contract, onClose }) {
   const handlePrint = () => {
     const win = window.open('', '_blank', 'width=900,height=1000');
     if (!win) return;
-    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(doc.title)}</title>
-      <style>body{font-family:'Times New Roman',serif;font-size:15px;line-height:1.7;margin:40px;white-space:pre-wrap;color:#111}</style>
-      </head><body>${escapeHtml(doc.content)}</body></html>`);
+    win.document.write(buildContractPrintPage(doc.title, doc.content));
     win.document.close();
     win.focus();
-    win.print();
+    // Đợi font tải xong rồi mới in để chữ không bị nhảy font
+    const print = () => win.print();
+    if (win.document.fonts?.ready) win.document.fonts.ready.then(print);
+    else setTimeout(print, 300);
   };
 
   return (
@@ -55,9 +55,7 @@ export default function ContractDocumentModal({ contract, onClose }) {
       ) : error ? (
         <p className="text-sm font-semibold text-amber-600">{error}</p>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-800 whitespace-pre-wrap leading-relaxed font-serif">
-          {doc.content}
-        </div>
+        <ContractDocumentView content={doc.content} />
       )}
     </Modal>
   );

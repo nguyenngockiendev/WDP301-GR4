@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Eye, PencilLine } from 'lucide-react';
 import Modal, { btnPrimary, btnGhost, inputCls, labelCls } from '../../../shared/components/Modal';
+import ContractDocumentView from '../../contracts/components/ContractDocumentView';
 
 // Dữ liệu mẫu để xem trước (chỉ hiển thị, không lưu)
 const SAMPLE_VALUES = {
@@ -68,6 +69,12 @@ export default function TemplateForm({ template, properties = [], placeholders, 
     return [...found];
   }, [content, knownKeys]);
 
+  // Vị trí con trỏ lần cuối người dùng đặt trong ô soạn (null = chưa đặt -> chèn cuối văn bản)
+  const cursorRef = useRef(null);
+  const rememberCursor = e => {
+    cursorRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
+  };
+
   // Chèn biến tại vị trí con trỏ
   const insertPlaceholder = key => {
     const el = textareaRef.current;
@@ -76,14 +83,18 @@ export default function TemplateForm({ template, properties = [], placeholders, 
       setContent(c => c + token);
       return;
     }
-    const start = el.selectionStart ?? content.length;
-    const end = el.selectionEnd ?? content.length;
+    // Không dùng el.selectionStart trực tiếp: khi ô soạn vừa render lại / chưa được bấm vào,
+    // trình duyệt trả về 0 khiến biến bị chèn dính lên đầu văn bản.
+    const saved = cursorRef.current;
+    const start = Math.min(saved?.start ?? content.length, content.length);
+    const end = Math.min(saved?.end ?? content.length, content.length);
     const next = content.slice(0, start) + token + content.slice(end);
     setContent(next);
     requestAnimationFrame(() => {
       el.focus();
       el.selectionStart = el.selectionEnd = start + token.length;
     });
+    cursorRef.current = { start: start + token.length, end: start + token.length };
   };
 
   const handleSubmit = async e => {
@@ -200,12 +211,16 @@ export default function TemplateForm({ template, properties = [], placeholders, 
               className={`${inputCls} font-mono text-[13px] leading-relaxed`}
               rows={16}
               value={content}
-              onChange={e => setContent(e.target.value)}
+              onChange={e => {
+                setContent(e.target.value);
+                rememberCursor(e);
+              }}
+              onSelect={rememberCursor}
             />
           ) : (
-            <div className="rounded-xl border border-slate-200 bg-white p-5 max-h-[420px] overflow-y-auto">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 max-h-[520px] overflow-y-auto">
               <p className="text-[11px] font-semibold text-amber-600 mb-3">Xem trước với dữ liệu mẫu</p>
-              <div className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{fill(content, SAMPLE_VALUES)}</div>
+              <ContractDocumentView content={fill(content, SAMPLE_VALUES)} />
             </div>
           )}
           {errors.content && <p className="mt-1 text-[11px] font-semibold text-rose-500">{errors.content}</p>}
