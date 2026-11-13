@@ -16,6 +16,12 @@ const dateText = value => {
 };
 const allowedStatuses = ['in_use', 'maintenance', 'retired'];
 
+function getUsage(value) {
+  if (value === '') return null;
+  const usage = Number(value);
+  return Number.isFinite(usage) && usage >= 0 ? usage : null;
+}
+
 const fileToBase64 = file => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onload = () => resolve(reader.result);
@@ -35,8 +41,8 @@ export default function ManagerCheckoutRequestDetail() {
   const [assets, setAssets] = useState([]);
   const [invoice, setInvoice] = useState(null);
   const [reconciliation, setReconciliation] = useState(null);
-  const [newElectricity, setNewElectricity] = useState('');
-  const [newWater, setNewWater] = useState('');
+  const [electricityInput, setElectricityInput] = useState('');
+  const [waterInput, setWaterInput] = useState('');
   const [savingReconciliation, setSavingReconciliation] = useState(false);
   const [inspections, setInspections] = useState({});
   const [loading, setLoading] = useState(true);
@@ -64,8 +70,8 @@ export default function ManagerCheckoutRequestDetail() {
       setAssets(inspection.assets || []);
       setInspections(Object.fromEntries((inspection.assets || []).map(asset => [asset._id, initialInspection(asset)])));
       setReconciliation(reconciliationData);
-      setNewElectricity(reconciliationData.newElectricity ?? '');
-      setNewWater(reconciliationData.newWater ?? '');
+      setElectricityInput(reconciliationData.electricityUsed ?? '');
+      setWaterInput(reconciliationData.waterUsed ?? '');
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || 'Không thể tải thông tin checkout');
     } finally {
@@ -166,10 +172,11 @@ export default function ManagerCheckoutRequestDetail() {
   };
 
 
-  const electricityUsed = reconciliation && newElectricity !== ''
-    ? Math.max(0, Number(newElectricity) - Number(reconciliation.oldElectricity || 0)) : 0;
-  const waterUsed = reconciliation && newWater !== ''
-    ? Math.max(0, Number(newWater) - Number(reconciliation.oldWater || 0)) : 0;
+  const electricityUsed = getUsage(electricityInput);
+  const waterUsed = getUsage(waterInput);
+  const electricityInvalid = electricityInput !== '' && electricityUsed === null;
+  const waterInvalid = waterInput !== '' && waterUsed === null;
+  const metersReady = electricityUsed !== null && waterUsed !== null;
   const electricityAmount = Math.round(electricityUsed * Number(reconciliation?.electricityPrice || 0));
   const waterAmount = Math.round(waterUsed * Number(reconciliation?.waterPrice || 0));
   const utilityAmount = electricityAmount + waterAmount;
@@ -183,18 +190,13 @@ export default function ManagerCheckoutRequestDetail() {
 
   const saveReconciliation = async () => {
     if (!invoice) return toast.error('Vui lòng bắt đầu kiểm tra tài sản trước');
-    if (newElectricity === '' || newWater === '') return toast.error('Vui lòng nhập chỉ số điện và nước cuối cùng');
-    if (!Number.isFinite(Number(newElectricity)) || Number(newElectricity) < Number(reconciliation.oldElectricity || 0)) {
-      return toast.error('Chỉ số điện cuối không hợp lệ');
-    }
-    if (!Number.isFinite(Number(newWater)) || Number(newWater) < Number(reconciliation.oldWater || 0)) {
-      return toast.error('Chỉ số nước cuối không hợp lệ');
-    }
+    if (electricityInput === '' || waterInput === '') return toast.error('Vui lòng nhập lượng điện và nước đã dùng.');
+    if (!metersReady) return toast.error('Lượng điện và nước đã dùng phải là số không âm.');
     try {
       setSavingReconciliation(true);
       const response = await terminationRequestsAPI.saveCheckoutReconciliation(id, {
-        newElectricity: Number(newElectricity),
-        newWater: Number(newWater),
+        electricityUsed,
+        waterUsed,
       });
       const result = response?.data || response?.result || {};
       const saved = result.reconciliation || null;
@@ -437,28 +439,46 @@ export default function ManagerCheckoutRequestDetail() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-4">
           <div className="flex items-center gap-2"><ClipboardCheck className="text-amber-600" size={20}/><h2 className="font-bold text-slate-900">Đối soát điện nước tháng checkout</h2></div>
-          <p className="mt-1 text-sm text-slate-500">Kỳ checkout: {reconciliation?.billingMonth || '—'}. Nhập chỉ số chốt cuối cùng trước khi tenant bàn giao phòng.</p>
+          <p className="mt-1 text-sm text-slate-500">Kỳ checkout: {reconciliation?.billingMonth || '—'}. Nhập lượng điện và nước cần tính trong tháng trả phòng.</p>
         </div>
-        {!reconciliation ? <p className="text-sm text-slate-500">Đang tải chỉ số và đơn giá...</p> : (
+        {!reconciliation ? <p className="text-sm text-slate-500">Đang tải đơn giá...</p> : (
           <>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-xl border border-slate-200 p-4">
                 <h3 className="mb-3 font-semibold text-slate-800">Điện (kWh)</h3>
-                <p className="mb-2 text-xs text-slate-500">Chỉ số đầu: {Number(reconciliation.oldElectricity || 0).toLocaleString('vi-VN')} · Đơn giá: {money(reconciliation.electricityPrice)}/kWh</p>
-                <label className="mb-1 block text-sm text-slate-600">Chỉ số điện cuối</label>
-                <input type="number" min={reconciliation.oldElectricity || 0} value={newElectricity} onChange={e => setNewElectricity(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-3 outline-none focus:border-emerald-500"/>
-                <p className="mt-2 text-sm text-slate-600">Đã dùng: {electricityUsed.toLocaleString('vi-VN')} kWh · Thành tiền: <b>{money(electricityAmount)}</b></p>
+                <p className="mb-2 text-xs text-slate-500">Đơn giá: {money(reconciliation.electricityPrice)}/kWh</p>
+                <label htmlFor="checkout-electricity" className="mb-1 block text-sm text-slate-600">Điện đã dùng (kWh)</label>
+                <input id="checkout-electricity" type="number" step="any" min={0} value={electricityInput}
+                  onChange={e => setElectricityInput(e.target.value)} aria-invalid={electricityInvalid}
+                  aria-describedby={electricityInvalid ? 'checkout-electricity-error' : undefined}
+                  className={'w-full rounded-xl border px-3 py-3 outline-none ' + (electricityInvalid ? 'border-rose-400 focus:border-rose-500' : 'border-slate-200 focus:border-emerald-500')} />
+                {electricityInvalid ? (
+                  <p id="checkout-electricity-error" className="mt-2 text-sm text-rose-700">
+                    Điện đã dùng (kWh) phải là số không âm.
+                  </p>
+                ) : electricityUsed !== null && (
+                  <p className="mt-2 text-sm text-slate-600">Đã dùng: {electricityUsed.toLocaleString('vi-VN')} kWh · Thành tiền: <b>{money(electricityAmount)}</b></p>
+                )}
               </div>
               <div className="rounded-xl border border-slate-200 p-4">
                 <h3 className="mb-3 font-semibold text-slate-800">Nước (m³)</h3>
-                <p className="mb-2 text-xs text-slate-500">Chỉ số đầu: {Number(reconciliation.oldWater || 0).toLocaleString('vi-VN')} · Đơn giá: {money(reconciliation.waterPrice)}/m³</p>
-                <label className="mb-1 block text-sm text-slate-600">Chỉ số nước cuối</label>
-                <input type="number" min={reconciliation.oldWater || 0} value={newWater} onChange={e => setNewWater(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-3 outline-none focus:border-emerald-500"/>
-                <p className="mt-2 text-sm text-slate-600">Đã dùng: {waterUsed.toLocaleString('vi-VN')} m³ · Thành tiền: <b>{money(waterAmount)}</b></p>
+                <p className="mb-2 text-xs text-slate-500">Đơn giá: {money(reconciliation.waterPrice)}/m³</p>
+                <label htmlFor="checkout-water" className="mb-1 block text-sm text-slate-600">Nước đã dùng (m³)</label>
+                <input id="checkout-water" type="number" step="any" min={0} value={waterInput}
+                  onChange={e => setWaterInput(e.target.value)} aria-invalid={waterInvalid}
+                  aria-describedby={waterInvalid ? 'checkout-water-error' : undefined}
+                  className={'w-full rounded-xl border px-3 py-3 outline-none ' + (waterInvalid ? 'border-rose-400 focus:border-rose-500' : 'border-slate-200 focus:border-emerald-500')} />
+                {waterInvalid ? (
+                  <p id="checkout-water-error" className="mt-2 text-sm text-rose-700">
+                    Nước đã dùng (m³) phải là số không âm.
+                  </p>
+                ) : waterUsed !== null && (
+                  <p className="mt-2 text-sm text-slate-600">Đã dùng: {waterUsed.toLocaleString('vi-VN')} m³ · Thành tiền: <b>{money(waterAmount)}</b></p>
+                )}
               </div>
             </div>
             <div className="mt-4 flex justify-end rounded-xl bg-amber-50 p-4">
-              <p className="font-bold text-slate-800">Tổng điện nước: <span className="text-amber-700">{money(utilityAmount)}</span></p>
+              <p className="font-bold text-slate-800">Tổng điện nước: <span className="text-amber-700">{metersReady ? money(utilityAmount) : 'Chờ nhập lượng sử dụng'}</span></p>
             </div>
           </>
         )}
@@ -485,14 +505,14 @@ export default function ManagerCheckoutRequestDetail() {
                 <div className="flex justify-between gap-3"><span>Tiền cọc ban đầu</span><b>{money(depositAmount)}</b></div>
                 <div className="flex justify-between gap-3"><span>Công nợ hóa đơn cũ</span><b>{money(debtAmount)}</b></div>
                 <div className="flex justify-between gap-3"><span>Chi phí tài sản</span><b>{money(assetAmount)}</b></div>
-                <div className="flex justify-between gap-3"><span>Điện nước tháng cuối</span><b>{money(utilityAmount)}</b></div>
+                <div className="flex justify-between gap-3"><span>Điện nước tháng cuối</span><b>{metersReady ? money(utilityAmount) : '—'}</b></div>
                 <div className="flex justify-between gap-3"><span>Phạt hợp đồng</span><b>{money(penaltyAmount)}</b></div>
-                <div className="border-t border-slate-200 pt-3 flex justify-between gap-3 font-bold"><span>Tổng khấu trừ</span><span>{money(totalDeductions)}</span></div>
-                {additionalPayment > 0 ? (
+                <div className="border-t border-slate-200 pt-3 flex justify-between gap-3 font-bold"><span>Tổng khấu trừ</span><span>{metersReady ? money(totalDeductions) : '—'}</span></div>
+                {metersReady && (additionalPayment > 0 ? (
                   <div className="flex justify-between gap-3 text-rose-700 font-bold"><span>Tenant cần thanh toán thêm</span><span>{money(additionalPayment)}</span></div>
                 ) : (
                   <div className="flex justify-between gap-3 text-emerald-700 font-bold"><span>Tiền cọc hoàn lại Tenant</span><span>{money(depositRefund)}</span></div>
-                )}
+                ))}
               </div>
             </div>
             <div className="mt-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
@@ -503,7 +523,7 @@ export default function ManagerCheckoutRequestDetail() {
                   Tạo hóa đơn checkout ở mục Kiểm tra tài sản để mở nút lưu.
                 </a>
               )}
-              <button type="button" onClick={saveReconciliation} disabled={savingReconciliation || !invoice} className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-700 px-5 py-3 text-sm font-bold text-white hover:bg-purple-800 disabled:opacity-60">
+              <button type="button" onClick={saveReconciliation} disabled={savingReconciliation || !invoice || !metersReady} className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-700 px-5 py-3 text-sm font-bold text-white hover:bg-purple-800 disabled:opacity-60">
                 {savingReconciliation ? <LoaderCircle className="animate-spin" size={17}/> : <Save size={17}/>} Lưu đối soát & quyết toán
               </button>
             </div>
@@ -523,6 +543,7 @@ export default function ManagerCheckoutRequestDetail() {
           const refund = Number(saved?.depositRefund || 0);
           const extra = Number(saved?.additionalPayment || 0);
           const settlement = request.checkoutSettlement || {};
+          const { bankName, accountNumber, accountHolder } = request.refundBankAccount ?? {};
           const refundNeeded = refund >= 10000;
           const paymentNeeded = extra > 0;
           const refundConfirmed = Boolean(settlement.refundConfirmedAt && settlement.refundProofImage);
@@ -557,6 +578,30 @@ export default function ManagerCheckoutRequestDetail() {
                         : <p className="mt-2 text-xs text-amber-700">Tạo hóa đơn trả phòng cho số tiền còn thiếu và gửi thông báo cho khách thuê.</p>
                     ) : <p className="mt-2 text-xs text-slate-500">Không phát sinh khoản cần thanh toán thêm.</p>}
                   </div>
+                </div>
+              )}
+
+              {saved?.calculatedAt && refundNeeded && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                  <h3 className="text-sm font-bold text-slate-900">Thông tin tài khoản nhận hoàn cọc</h3>
+                  {bankName || accountNumber || accountHolder ? (
+                    <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+                      <div className="min-w-0">
+                        <dt className="text-xs text-slate-600">Ngân hàng</dt>
+                        <dd className="mt-1 break-words font-semibold text-slate-900">{bankName || 'Chưa cung cấp'}</dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="text-xs text-slate-600">Số tài khoản</dt>
+                        <dd className="mt-1 select-all break-words font-semibold tabular-nums text-slate-900">{accountNumber || 'Chưa cung cấp'}</dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="text-xs text-slate-600">Chủ tài khoản</dt>
+                        <dd className="mt-1 break-words font-semibold text-slate-900">{accountHolder || 'Chưa cung cấp'}</dd>
+                      </div>
+                    </dl>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-600">Yêu cầu này chưa có thông tin tài khoản ngân hàng.</p>
+                  )}
                 </div>
               )}
 

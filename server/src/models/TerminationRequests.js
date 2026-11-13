@@ -87,15 +87,15 @@ const terminationRequestSchema = new mongoose.Schema(
     checkoutReconciliation: {
       billingMonth: { type: String, default: '' },
       electricity: {
-        oldIndex: { type: Number, default: 0 },
-        newIndex: { type: Number, default: 0 },
+        oldIndex: Number,
+        newIndex: Number,
         used: { type: Number, default: 0 },
         unitPrice: { type: Number, default: 0 },
         amount: { type: Number, default: 0 },
       },
       water: {
-        oldIndex: { type: Number, default: 0 },
-        newIndex: { type: Number, default: 0 },
+        oldIndex: Number,
+        newIndex: Number,
         used: { type: Number, default: 0 },
         unitPrice: { type: Number, default: 0 },
         amount: { type: Number, default: 0 },
