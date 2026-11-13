@@ -214,7 +214,7 @@ export default function SettingsPage() {
 
           <SettingsCard title="Giá điện và nước" description="Đơn giá và ngày bắt đầu áp dụng tại nhà trọ này.">
             <form key={`rates-${formKey}`} onSubmit={event => savePropertySetting('rates', event)} className="grid gap-4 md:grid-cols-3">
-              <label><span className={labelCls}>Điện (đ/kWh)</span><input name="electricityPrice" type="number" min="1" max="4000" step="1" required defaultValue={property.utilityRate?.electricityPrice ?? 1} className={inputCls} /></label>
+              <label><span className={labelCls}>Điện (đ/kWh)</span><input name="electricityPrice" type="number" min="1" step="1" required defaultValue={property.utilityRate?.electricityPrice ?? 1} className={inputCls} /></label>
               <label><span className={labelCls}>Nước (đ/m³)</span><input name="waterPrice" type="number" min="1" step="1" required defaultValue={property.utilityRate?.waterPrice ?? 1} className={inputCls} /></label>
               <label><span className={labelCls}>Ngày áp dụng</span><input name="effectiveFrom" type="date" min={minRateDate} required defaultValue={property.utilityRate?.effectiveFrom?.slice(0, 10) || minRateDate} className={inputCls} /></label>
               <button disabled={saving} className={`${btnPrimary} md:col-span-3`}>{saving ? 'Đang lưu…' : 'Lưu đơn giá'}</button>

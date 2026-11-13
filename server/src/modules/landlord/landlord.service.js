@@ -71,13 +71,12 @@ export async function createProperty(userId, data) {
   const depositMonths =
     data.depositMonths === undefined || data.depositMonths === '' ? 1 : Number(data.depositMonths);
   if (
-    !Number.isFinite(electricityPrice) ||
+    !Number.isInteger(electricityPrice) ||
     electricityPrice <= 0 ||
-    electricityPrice > 4000 ||
-    !Number.isFinite(waterPrice) ||
+    !Number.isInteger(waterPrice) ||
     waterPrice <= 0
   ) {
-    fail(400, 'Giá điện phải lớn hơn 0 và tối đa 4.000 đồng/kWh; giá nước phải lớn hơn 0.');
+    fail(400, 'Giá điện và giá nước phải là số nguyên lớn hơn 0.');
   }
   if (!Number.isInteger(paymentDueDay) || paymentDueDay < 1 || paymentDueDay > 28)
     fail(400, 'Ngày đến hạn phải từ ngày 1 đến ngày 28.');
@@ -296,13 +295,12 @@ export async function configureRates(userId, propertyId, data) {
   const electricityPrice = Number(data.electricityPrice);
   const waterPrice = Number(data.waterPrice);
   if (
-    !Number.isFinite(electricityPrice) ||
+    !Number.isInteger(electricityPrice) ||
     electricityPrice <= 0 ||
-    electricityPrice > 4000 ||
-    !Number.isFinite(waterPrice) ||
+    !Number.isInteger(waterPrice) ||
     waterPrice <= 0
   ) {
-    fail(400, 'Giá điện phải lớn hơn 0 và tối đa 4.000 đồng/kWh; giá nước phải lớn hơn 0.');
+    fail(400, 'Giá điện và giá nước phải là số nguyên lớn hơn 0.');
   }
   const effectiveFrom = parseEffectiveDate(data.effectiveFrom);
   const currentEffectiveFrom = property.utilityRate?.effectiveFrom;
