@@ -1,6 +1,6 @@
 import Login from "../pages/Login";
 import ForgotPassword from "../pages/ForgotPassword";
-import Register from "../pages/Register";
+import { Navigate } from "react-router-dom";
 import HomePage from '../../home/HomePage';
 
 export const authRoutes = [
@@ -18,6 +18,6 @@ export const authRoutes = [
   },
   {
     path: "/register",
-    element: <Register />,
+    element: <Navigate to="/login" replace />,
   },
 ];
