@@ -128,15 +128,6 @@ const LoginForm = ({
               )}
             </button>
 
-            <p className="text-center text-xs font-medium text-content-sub pt-2">
-              Chưa có tài khoản quản lý?{' '}
-              <Link
-                to="/register"
-                className="font-bold text-primary hover:text-primary-dark underline underline-offset-2"
-              >
-                Đăng ký ngay
-              </Link>
-            </p>
           </form>
         </div>
 
