@@ -9,7 +9,6 @@ import Notifications from '../../models/Notifications.js';
 import { notifyRecipient } from '../notifications/notifications.events.js';
 import { createNotification } from '../notifications/notifications.service.js';
 import { isValidPaymentAmount } from '../payments/payments.validation.js';
-import UtilityReadings from '../../models/UtilityReadings.js';
 import Properties from '../../models/Properties.js';
 import ManagerAssignments from '../../models/ManagerAssignments.js';
 import { validateCreateTerminationRequest } from './terminationrequests.validation.js';
@@ -579,11 +578,8 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
     const checkoutDate = request.moveOutDate || new Date();
     const billingMonth = getCheckoutMonth(checkoutDate);
 
-    const [property, currentMonthReading, previousReading, debts, assetInvoice, previousContracts, depositInvoice] = await Promise.all([
+    const [property, debts, assetInvoice, depositInvoice] = await Promise.all([
         Properties.findById(room.property).select('utilityRate').lean(),
-        UtilityReadings.findOne({ room: room._id, billingMonth }).lean(),
-        UtilityReadings.findOne({ room: room._id, billingMonth: { $lt: billingMonth } })
-            .sort({ billingMonth: -1 }).lean(),
         Invoices.find({
             contract: contract._id,
             checkoutPaymentInvoice: null,
@@ -595,12 +591,7 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
             terminationRequest: request._id,
             invoiceType: 'checkout_asset',
         }).select('_id items totalAmount status').lean(),
-        Contracts.find({
-            room: room._id,
-            _id: { $ne: contract._id },
-            status: 'terminated',
-        }).select('_id endDate').sort({ endDate: -1 }).lean(),
-        contract.signing?.depositInvoice
+       contract.signing?.depositInvoice
             ? Invoices.findOne({
                 _id: contract.signing.depositInvoice,
                 contract: contract._id,
@@ -608,25 +599,6 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
             }).select('paidAmount').lean()
             : null,
     ]);
-
-    // Nếu phòng đã có hợp đồng checkout trước đó, lấy chỉ số chốt cuối của lần checkout đó
-    // làm chỉ số đầu cho hợp đồng mới (kể cả hai hợp đồng kết thúc/bắt đầu cùng tháng).
-    let previousCheckout = null;
-    if (previousContracts.length) {
-        previousCheckout = await TerminationRequests.findOne({
-            contract: { $in: previousContracts.map((item) => item._id) },
-            status: 'completed',
-            moveOutDate: { $lte: contract.startDate },
-            'checkoutReconciliation.calculatedAt': { $ne: null },
-        }).select('checkoutReconciliation moveOutDate').sort({ moveOutDate: -1, updatedAt: -1 }).lean();
-    }
-
-    const oldElectricity = previousCheckout?.checkoutReconciliation?.electricity?.newIndex
-        ?? currentMonthReading?.oldElectricity
-        ?? previousReading?.newElectricity ?? 0;
-    const oldWater = previousCheckout?.checkoutReconciliation?.water?.newIndex
-        ?? currentMonthReading?.oldWater
-        ?? previousReading?.newWater ?? 0;
 
     const electricityPrice = Number(
         contract.utilityRateSnapshot?.electricityPrice
@@ -655,10 +627,8 @@ const getCheckoutReconciliationData = async (managerId, requestId) => {
     return {
         billingMonth,
         checkoutDate,
-        oldElectricity,
-        oldWater,
-        newElectricity: saved.electricity?.newIndex ?? '',
-        newWater: saved.water?.newIndex ?? '',
+        electricityUsed: saved.calculatedAt ? saved.electricity?.used ?? null : null,
+        waterUsed: saved.calculatedAt ? saved.water?.used ?? null : null,
         electricityPrice,
         waterPrice,
         debtInvoices,
@@ -700,17 +670,13 @@ export const saveCheckoutReconciliation = async (managerId, requestId, data) => 
     }
 
     const dataBeforeSave = await getCheckoutReconciliationData(managerId, requestId);
-    const newElectricity = Number(data.newElectricity);
-    const newWater = Number(data.newWater);
-    if (!Number.isFinite(newElectricity) || newElectricity < dataBeforeSave.oldElectricity) {
-        throw { status: 400, message: 'Chỉ số điện cuối phải lớn hơn hoặc bằng chỉ số điện đầu kỳ' };
+    const { electricityUsed, waterUsed } = data ?? {};
+    if (!Number.isFinite(electricityUsed) || electricityUsed < 0) {
+        throw { status: 400, message: 'Lượng điện đã dùng phải là số không âm' };
     }
-    if (!Number.isFinite(newWater) || newWater < dataBeforeSave.oldWater) {
-        throw { status: 400, message: 'Chỉ số nước cuối phải lớn hơn hoặc bằng chỉ số nước đầu kỳ' };
+    if (!Number.isFinite(waterUsed) || waterUsed < 0) {
+        throw { status: 400, message: 'Lượng nước đã dùng phải là số không âm' };
     }
-
-    const electricityUsed = newElectricity - dataBeforeSave.oldElectricity;
-    const waterUsed = newWater - dataBeforeSave.oldWater;
     const electricityAmount = Math.round(electricityUsed * dataBeforeSave.electricityPrice);
     const waterAmount = Math.round(waterUsed * dataBeforeSave.waterPrice);
     const utilityAmount = electricityAmount + waterAmount;
@@ -762,15 +728,11 @@ export const saveCheckoutReconciliation = async (managerId, requestId, data) => 
     request.checkoutReconciliation = {
         billingMonth: dataBeforeSave.billingMonth,
         electricity: {
-            oldIndex: dataBeforeSave.oldElectricity,
-            newIndex: newElectricity,
             used: electricityUsed,
             unitPrice: dataBeforeSave.electricityPrice,
             amount: electricityAmount,
         },
         water: {
-            oldIndex: dataBeforeSave.oldWater,
-            newIndex: newWater,
             used: waterUsed,
             unitPrice: dataBeforeSave.waterPrice,
             amount: waterAmount,

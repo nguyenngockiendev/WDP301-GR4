@@ -1,4 +1,3 @@
-import { useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import {
@@ -12,22 +11,15 @@ import {
 const emptyRoomData = { propertyId: '', rooms: [], contracts: [], error: '', rateError: '' };
 
 function getCurrentMonth() {
-  const today = new Date();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  return today.getFullYear() + '-' + month;
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).slice(0, 7);
 }
 
 export default function useUtilityReadings() {
-  const [searchParams] = useSearchParams();
   const [properties, setProperties] = useState([]);
   const [loadingProperties, setLoadingProperties] = useState(true);
   const [propertyError, setPropertyError] = useState('');
   const [propertyId, setPropertyId] = useState('');
-  const [billingMonth, setBillingMonth] = useState(() =>
-    /^20\d{2}-(0[1-9]|1[0-2])$/.test(searchParams.get('billingMonth') || '')
-      ? searchParams.get('billingMonth')
-      : getCurrentMonth(),
-  );
+  const [billingMonth] = useState(getCurrentMonth);
   const [roomData, setRoomData] = useState(emptyRoomData);
   const [savedData, setSavedData] = useState({ periodKey: '', readings: {}, error: '' });
   const [draftsByPeriod, setDraftsByPeriod] = useState({});
@@ -35,7 +27,6 @@ export default function useUtilityReadings() {
   const [saveResult, setSaveResult] = useState({ periodKey: '', error: '' });
 
   const periodKey = propertyId + ':' + billingMonth;
-  const validMonth = /^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(billingMonth);
 
   useEffect(() => {
     let active = true;
@@ -94,7 +85,7 @@ export default function useUtilityReadings() {
   }, [propertyId]);
 
   useEffect(() => {
-    if (!propertyId || !validMonth) return;
+    if (!propertyId) return;
     let active = true;
 
     const loadReadings = async () => {
@@ -118,17 +109,18 @@ export default function useUtilityReadings() {
     return () => {
       active = false;
     };
-  }, [propertyId, billingMonth, periodKey, validMonth]);
+  }, [propertyId, billingMonth, periodKey]);
 
   const loadingRooms = Boolean(propertyId && roomData.propertyId !== propertyId);
-  const loadingReadings = Boolean(propertyId && validMonth && savedData.periodKey !== periodKey);
+  const loadingReadings = Boolean(propertyId && savedData.periodKey !== periodKey);
   const savedReadings = savedData.periodKey === periodKey ? savedData.readings : {};
+  const rooms = roomData.rooms.filter(room => Object.hasOwn(savedReadings, room._id));
   const drafts = draftsByPeriod[periodKey] || {};
   const readings = {};
   const pendingRooms = [];
 
   if (!loadingRooms && !loadingReadings) {
-    for (const room of roomData.rooms) {
+    for (const room of rooms) {
       const saved = savedReadings[room._id];
       const draft = drafts[room._id] || {};
       const hasDraft = Object.values(draft).some(value => value !== '');
@@ -144,13 +136,7 @@ export default function useUtilityReadings() {
     setPropertyId(value);
   };
 
-  const selectBillingMonth = value => {
-    if (value === billingMonth) return;
-    setSavedData({ periodKey: '', readings: {}, error: '' });
-    setBillingMonth(value);
-  };
-
-  const changeReading = (roomId, field, value) => {
+ const changeReading = (roomId, field, value) => {
     setSaveResult({ periodKey, error: '' });
     setDraftsByPeriod(previous => {
       const periodReadings = previous[periodKey] || {};
@@ -235,17 +221,15 @@ export default function useUtilityReadings() {
     propertyId,
     selectProperty,
     billingMonth,
-    selectBillingMonth,
     loadingProperties,
     loadingRooms,
     loadingReadings,
-    validMonth,
     error:
       propertyError ||
       (loadingRooms ? '' : roomData.error) ||
       (savedData.periodKey === periodKey ? savedData.error : ''),
     rateError: loadingRooms ? '' : roomData.rateError,
-    rooms: loadingRooms ? [] : roomData.rooms,
+    rooms: loadingRooms ? [] : rooms,
     contracts: loadingRooms ? [] : roomData.contracts,
     readings,
     changeReading,

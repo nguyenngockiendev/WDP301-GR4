@@ -1,208 +1,173 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, AtSign, LockKeyhole, Mail, Pencil, Phone, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../../../shared/api/axiosClient';
+import { inputCls, labelCls, btnGhost, btnPrimary } from '../../../shared/components/Modal';
 
+const roles = { tenant: 'Người thuê', landlord: 'Chủ trọ', manager: 'Quản lý' };
+const cardClass = 'min-w-0 rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-sm sm:p-7';
 
-import { inputCls, labelCls } from '../../../shared/components/Modal';
-const Field = ({ label, helperText, ...props }) => <label className="block mb-4"><span className={labelCls}>{label}</span><input className={inputCls} required {...props} />{helperText && <small className="text-slate-500">{helperText}</small>}</label>;
-const Heading = ({ children, subtitle }) => <div className="mb-6"><Link to="/" className="text-emerald-700">← Trang chủ</Link><h1 className="text-2xl font-bold mt-4">{children}</h1><p className="text-sm text-slate-500">{subtitle}</p></div>;
-import { ShieldCheck as IconShieldCheck, Mail as IconMail, Phone as IconPhone, Check as IconCheck } from 'lucide-react';
+function Field({ label, ...props }) {
+  return (
+    <label className="block space-y-1">
+      <span className={labelCls}>{label}</span>
+      <input className={inputCls} {...props} />
+    </label>
+  );
+}
 
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [loadError, setLoadError] = useState('');
-  const refresh = async () => {
-    const response = await api.get('/auth/profile');
-    setUser({ ...response.data, name: response.data.fullName, roleLabel: ({ tenant: 'Người thuê', landlord: 'Chủ trọ', manager: 'Quản lý' })[response.data.role] });
-  };
-  useEffect(() => { let active = true;
-    api.get('/auth/profile').then(response => { if (active) setUser({ ...response.data, name: response.data.fullName, roleLabel: ({ tenant: 'Người thuê', landlord: 'Chủ trọ', manager: 'Quản lý' })[response.data.role] }); })
-      .catch(() => { if (active) setLoadError('Không tải được thông tin tài khoản. Vui lòng tải lại trang.'); });
-    return () => { active = false; };
-  }, []);
+  const [retry, setRetry] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [passwordBusy, setPasswordBusy] = useState(false);
 
-  async function submit(e) {
-    e.preventDefault();
-    setBusy(true);
-    setMessage('');
+  useEffect(() => {
+    const controller = new AbortController();
+    api.get('/auth/profile', { signal: controller.signal })
+      .then(response => setUser(response.data))
+      .catch(error => {
+        if (!controller.signal.aborted) {
+          setLoadError(error.response?.data?.message || 'Không tải được thông tin tài khoản.');
+        }
+      });
+    return () => controller.abort();
+  }, [retry]);
+
+  async function saveProfile(event) {
+    event.preventDefault();
+    const { fullName, phone } = Object.fromEntries(new FormData(event.currentTarget));
+    setSaving(true);
     setError('');
     try {
-      const values = Object.fromEntries(new FormData(e.currentTarget));
-      await api.patch('/auth/profile', { fullName: values.name, phone: values.phone });
-      await refresh();
-      setMessage('Your profile details have been saved successfully.');
-    } catch (e) {
-      setError(e.response?.data?.message || e.message);
+      const response = await api.patch('/auth/profile', { fullName, phone });
+      setUser(response.data);
+      setEditing(false);
+      setMessage(response.message);
+    } catch (error) {
+      setError(error.response?.data?.message || 'Không lưu được thông tin. Vui lòng thử lại.');
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   }
 
-  async function changePassword(e) {
-    e.preventDefault();
-    const form = e.currentTarget;
+  async function changePassword(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
     setPasswordBusy(true);
     setPasswordMessage('');
     setPasswordError('');
     try {
-      await api.post('/auth/password', Object.fromEntries(new FormData(form)));
+      const response = await api.post('/auth/password', Object.fromEntries(new FormData(form)));
       form.reset();
-      setPasswordMessage('Mật khẩu đã được cập nhật.');
-    } catch (e) {
-      setPasswordError(e.response?.data?.message || e.message);
+      setPasswordMessage(response.message);
+    } catch (error) {
+      setPasswordError(error.response?.data?.message || 'Không đổi được mật khẩu.');
     } finally {
       setPasswordBusy(false);
     }
   }
 
-  if (!user) return <div className="p-8" role={loadError ? 'alert' : 'status'}>{loadError || 'Đang tải thông tin tài khoản...'}</div>;
   return (
-    <div className="max-w-6xl mx-auto p-6 text-slate-800">
-      <Heading
-        eyebrow="USER SETTINGS"
-        subtitle="Manage your personal contact details, role clearances, and workspace preferences."
-      >
-        Account Profile
-      </Heading>
+    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 text-slate-800 sm:px-6 sm:py-12">
+      <Link to="/dashboard" className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50">
+        <ArrowLeft size={16} /> Về bảng điều khiển
+      </Link>
+      <div className="relative isolate overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-800 px-5 py-7 text-white sm:px-8 sm:py-9">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-28 -z-10 h-72 w-72 rounded-full border-[36px] border-white/10" />
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Hồ sơ cá nhân</h1>
+        {user && (
+          <div className="mt-5 flex min-w-0 items-center gap-4">
+            <div aria-hidden="true" className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/15 text-lg font-bold ring-1 ring-inset ring-white/25 sm:h-14 sm:w-14">
+              {user.fullName.trim().charAt(0).toLocaleUpperCase('vi') || <UserRound size={22} />}
+            </div>
+            <div className="min-w-0">
+              <p className="break-words text-lg font-semibold sm:text-xl">{user.fullName}</p>
+              <p className="mt-0.5 text-sm text-emerald-100">{roles[user.role] || user.role}</p>
+            </div>
+          </div>
+        )}
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column: Editable Profile Details */}
-        <div className="min-w-0">
-          <div className="rounded-2xl bg-white border border-slate-200 p-6">
-            <h2 className="text-lg font-bold mb-1">Personal Details</h2>
-            <p className="text-sm text-slate-500 mb-4">
-              Update how your name and contact phone appear across invoices, leases, and staff
-              directories.
-            </p>
+      {!user && (
+        <div className={cardClass}>
+          <p role={loadError ? 'alert' : 'status'}>{loadError || 'Đang tải hồ sơ…'}</p>
+          {loadError && (
+            <button type="button" className="mt-3 font-semibold text-emerald-700" onClick={() => {
+              setLoadError('');
+              setRetry(value => value + 1);
+            }}>
+              Thử lại
+            </button>
+          )}
+        </div>
+      )}
 
-            {message && (
-              <div
-                className="alert alert-success d-flex align-items-center gap-2 mb-3 py-2 small"
-                role="status"
-              >
-                <IconCheck size={16} />
-                <span>{message}</span>
-              </div>
+      {user && (
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+          <section className={cardClass}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-bold tracking-tight">Thông tin cá nhân</h2>
+              {!editing && (
+                <button type="button" className={btnGhost} onClick={() => { setEditing(true); setMessage(''); }}>
+                  <span className="inline-flex items-center gap-2"><Pencil size={15} /> Chỉnh sửa</span>
+                </button>
+              )}
+            </div>
+
+            {message && <p role="status" className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p>}
+            {editing ? (
+              <form onSubmit={saveProfile} className="mt-5 space-y-4">
+                <Field label="Họ và tên" name="fullName" defaultValue={user.fullName} autoComplete="name" required minLength={2} maxLength={100} disabled={saving} />
+                <Field label="Số điện thoại" name="phone" defaultValue={user.phone ?? ''} type="tel" autoComplete="tel" maxLength={20} disabled={saving} />
+                {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
+                <div className="flex flex-wrap gap-2">
+                  <button type="submit" className={btnPrimary} disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu thay đổi'}</button>
+                  <button type="button" className={btnGhost} disabled={saving} onClick={() => { setEditing(false); setError(''); }}>Hủy</button>
+                </div>
+              </form>
+            ) : (
+              <dl className="mt-5 divide-y divide-slate-200/70 rounded-2xl bg-slate-50 px-4">
+                {[
+                  ['Họ và tên', user.fullName, UserRound],
+                  ['Số điện thoại', user.phone || 'Chưa cập nhật', Phone],
+                  ['Email', user.email, Mail],
+                  ['Tên đăng nhập', user.username, AtSign],
+                ].map(([label, value, Icon]) => (
+                  <div key={label} className="grid gap-1 py-3.5 text-sm sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-center">
+                    <dt className="flex items-center gap-2.5 font-medium text-slate-600"><Icon aria-hidden="true" size={16} className="shrink-0 text-emerald-700" />{label}</dt>
+                    <dd className="break-words font-semibold">{value}</dd>
+                  </div>
+                ))}
+              </dl>
             )}
+          </section>
 
-            {error && (
-              <div className="alert alert-danger mb-3 py-2 small" role="alert">
-                {error}
+          <section className={cardClass}>
+            <div className="mb-5 flex items-center gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
+                <LockKeyhole aria-hidden="true" size={19} />
               </div>
-            )}
-
-            <form onSubmit={submit}>
-              <Field
-                label="Full Name"
-                name="name"
-                defaultValue={user.name}
-                placeholder="e.g. Nguyễn Văn An"
-              />
-              <Field
-                label="Phone Number"
-                name="phone"
-                defaultValue={user.phone}
-                required={false}
-                placeholder="e.g. 0901234567"
-                helperText="Used for SMS notifications and tenant emergency calls."
-              />
-
-              <div className="form-field-group mb-4">
-                <label className="form-label" htmlFor="email-disabled">
-                  Email Address
-                </label>
-                <input
-                  id="email-disabled"
-                  type="email"
-                  className="w-full rounded-xl border bg-slate-100 p-3"
-                  value={user.email}
-                  disabled
-                  readOnly
-                />
-                <small className="form-helper-text">
-                  Email address serves as your primary sign-in identifier and cannot be changed
-                  here.
-                </small>
-              </div>
-
-              <button className="rounded-xl bg-emerald-600 text-white px-4 py-2 font-bold disabled:opacity-50" disabled={busy}>
-                {busy ? 'Saving Changes…' : 'Save Changes'}
+              <h2 className="text-lg font-bold tracking-tight">Đổi mật khẩu</h2>
+            </div>
+            <form onSubmit={changePassword} className="space-y-4">
+              <Field label="Mật khẩu hiện tại" name="currentPassword" type="password" autoComplete="current-password" required disabled={passwordBusy} />
+              <Field label="Mật khẩu mới" name="newPassword" type="password" autoComplete="new-password" required minLength={8} maxLength={128} disabled={passwordBusy} />
+              {passwordMessage && <p role="status" className="text-sm text-emerald-700">{passwordMessage}</p>}
+              {passwordError && <p role="alert" className="text-sm text-rose-700">{passwordError}</p>}
+              <button type="submit" className={btnPrimary} disabled={passwordBusy}>
+                {passwordBusy ? 'Đang lưu…' : 'Cập nhật mật khẩu'}
               </button>
             </form>
-          </div>
+          </section>
         </div>
-
-        {/* Right Column: Identity Card & Role Privileges */}
-        <div className="min-w-0">
-          <div className="rounded-2xl bg-white border border-slate-200 p-6 mb-4">
-            <h2 className="text-lg font-bold mb-1">Đổi mật khẩu</h2>
-            <p className="text-sm text-slate-500 mb-3">Xác nhận mật khẩu hiện tại trước khi lưu mật khẩu mới.</p>
-            {passwordMessage && <div className="alert alert-success py-2 small" role="status">{passwordMessage}</div>}
-            {passwordError && <div className="alert alert-danger py-2 small" role="alert">{passwordError}</div>}
-            <form onSubmit={changePassword}>
-              <Field label="Mật khẩu hiện tại" name="currentPassword" type="password" autoComplete="current-password" minLength="8" />
-              <Field label="Mật khẩu mới" name="newPassword" type="password" autoComplete="new-password" minLength="8" helperText="Tối thiểu 8 ký tự." />
-              <button className="rounded-xl bg-emerald-600 text-white px-4 py-2 font-bold disabled:opacity-50" disabled={passwordBusy}>{passwordBusy ? 'Đang lưu…' : 'Cập nhật mật khẩu'}</button>
-            </form>
-          </div>
-          <div className="rounded-2xl bg-white border border-slate-200 p-6 mb-4">
-            <div className="d-flex align-items-center gap-3 mb-3">
-              <div className="profile-large-avatar">
-                {user.name?.trim().charAt(0).toUpperCase() || 'U'}
-              </div>
-              <div>
-                <h3 className="h5 mb-0 text-dark">{user.name}</h3>
-                <span className={`role-chip role-chip-${(user.role || '').toLowerCase()}`}>
-                  {user.roleLabel || user.role}
-                </span>
-              </div>
-            </div>
-
-            <hr className="my-3" />
-
-            <div className="profile-meta-list small">
-              <div className="d-flex justify-content-between py-1">
-                <span className="text-muted d-flex align-items-center gap-2">
-                  <IconMail size={14} /> Email:
-                </span>
-                <strong className="text-dark">{user.email}</strong>
-              </div>
-              <div className="d-flex justify-content-between py-1">
-                <span className="text-muted d-flex align-items-center gap-2">
-                  <IconPhone size={14} /> Phone:
-                </span>
-                <span>{user.phone || '—'}</span>
-              </div>
-              <div className="d-flex justify-content-between py-1">
-                <span className="text-muted d-flex align-items-center gap-2">
-                  <IconShieldCheck size={14} /> Role:
-                </span>
-                <span className="fw-semibold text-emerald">{user.roleLabel || user.role}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-white border border-slate-200 p-6">
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <IconShieldCheck size={18} className="text-emerald" />
-              <h3 className="h6 mb-0">Role Permissions</h3>
-            </div>
-            <p className="text-muted small mb-0">
-              {user.role === 'landlord'
-                ? 'Full administrative control over properties, room listings, user roles, financial reports, and utility rates.'
-                : user.role === 'manager'
-                  ? 'Operational access to assigned buildings, meter reading entries, room occupancy, and tenant maintenance.'
-                  : 'Tenant account with access to lease agreements, payment history, and utility invoice statements.'}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+      )}
+    </main>
   );
 }
