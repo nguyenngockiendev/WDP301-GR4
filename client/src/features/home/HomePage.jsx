@@ -162,7 +162,7 @@ export default function HomePage() {
               <button type="button" onClick={logout} className="px-4 py-2 text-sm font-bold text-slate-700 hover:text-rose-600">Đăng xuất</button>
             </> : <>
               <Link to={user ? accountPath : "/login"} className="px-4 py-2 text-sm font-bold text-slate-700">Đăng nhập</Link>
-              <Link to={user ? accountPath : "/register"} className="px-5 py-2.5 rounded-2xl bg-[#098b6c] text-white text-sm font-bold">Bắt đầu ngay</Link>
+              <Link to={user ? accountPath : "/login"} className="px-5 py-2.5 rounded-2xl bg-[#098b6c] text-white text-sm font-bold">Bắt đầu ngay</Link>
             </>}
           </div>
 
@@ -225,7 +225,7 @@ export default function HomePage() {
                 <button type="button" onClick={logout} className="w-full py-2.5 font-bold border rounded-xl">Đăng xuất</button>
               </> : <>
                 <Link to={user ? accountPath : "/login"} className="w-full text-center py-2.5 font-bold border rounded-xl">Đăng nhập</Link>
-                <Link to={user ? accountPath : "/register"} className="w-full text-center py-2.5 font-bold bg-[#098b6c] text-white rounded-xl">Bắt đầu ngay</Link>
+                <Link to={user ? accountPath : "/login"} className="w-full text-center py-2.5 font-bold bg-[#098b6c] text-white rounded-xl">Bắt đầu ngay</Link>
               </>}
             </div>
           </div>
@@ -1184,7 +1184,7 @@ export default function HomePage() {
                 </div>
 
                 <Link
-                  to={user ? accountPath : "/register"}
+                  to={user ? accountPath : "/login"}
                   className="w-full py-3 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-xs font-bold text-center shadow-lg transition-colors"
                 >
                   Đăng Ký Thuê Ngay
@@ -1213,10 +1213,10 @@ export default function HomePage() {
               </p>
               <div className="flex flex-wrap items-center justify-center gap-4 pt-3">
                 <Link
-                  to={user ? accountPath : "/register"}
+                  to={user ? accountPath : "/login"}
                   className="px-8 py-3.5 rounded-2xl bg-[#098b6c] hover:bg-[#077a5e] text-white text-sm font-bold shadow-lg shadow-black/20 transition-all"
                 >
-                  {user ? accountLabel : 'Tạo Tài Khoản Ngay'}
+                  {user ? accountLabel : 'Đăng nhập ngay'}
                 </Link>
                 <Link
                   to={user ? accountPath : "/login"}
@@ -1262,8 +1262,8 @@ export default function HomePage() {
             <Link to={user ? accountPath : "/login"} className="hover:text-[#098b6c]">
               {user ? accountLabel : 'Đăng nhập'}
             </Link>
-            <Link to={user ? accountPath : "/register"} className="hover:text-[#098b6c]">
-              {user ? 'Tìm phòng' : 'Đăng ký'}
+            <Link to={user ? accountPath : "/login"} className="hover:text-[#098b6c]">
+              {user ? 'Tìm phòng' : 'Bắt đầu ngay'}
             </Link>
           </div>
 
